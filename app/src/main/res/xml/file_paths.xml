@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        UpdateChecker 写到 cacheDir/update.apk，授权 installer 读取。
+        FileProvider (manifest 中声明) 负责把 file:// 转为 content:// URI 并附
+        FLAG_GRANT_READ_URI_PERMISSION，供系统 package installer 读取。
+    -->
+    <cache-path
+        name="update_apk"
+        path="update.apk" />
+</paths>

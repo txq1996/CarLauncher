@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- sharedUserId 必须挂在 <manifest> 上（此前误放 <application> 导致未生效，拿不到 system uid） -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="android.uid.system">
+
+    <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_STACKS" />
+    <!-- VirtualDisplay 承载第三方应用需要 trusted 标志（system uid + 该权限） -->
+    <uses-permission android:name="android.permission.INTERNAL_SYSTEM_WINDOW" />
+    <!-- 内存清理：结束后台进程（system uid 自动授予） -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- MapPipHost：getRunningTasks 查询（system uid 自动授予） -->
+    <uses-permission android:name="android.permission.REAL_GET_TASKS" />
+    <!-- Updater：从 GitHub Releases 拉取最新 release JSON（普通应用自动授予） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Updater：下载完成后用系统 installer 安装（Android 8+ 需显式声明） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- 包可见性：允许查询可启动应用与标准媒体意图（Android 11+） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MEDIA_BUTTON" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/launcher_bk"
+        android:label="CarLauncher"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.Launcher37"
+        android:usesNonSdkApi="true">
+
+        <activity
+            android:name=".LauncherActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|navigation|touchscreen|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="nosensor">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
+        <!--
+            UpdateChecker: 安装下载的 APK 需要 content:// URI 授权；
+            自实现 FileProvider (UpdateFileProvider) 把 cacheDir/update.apk 包成
+            content://.../update_apk/update.apk 给系统安装器读取，避开 Android N+ 的
+            file:// 暴露限制 (FileUriExposedException)。不依赖 androidx。
+        -->
+        <provider
+            android:name=".UpdateFileProvider"
+            android:authorities="${applicationId}.updater"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

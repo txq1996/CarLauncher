@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_grid_line"
+    android:gravity="center_vertical"
+    android:minHeight="52px"
+    android:orientation="horizontal"
+    android:paddingStart="8px"
+    android:paddingEnd="8px"
+    android:paddingTop="6px"
+    android:paddingBottom="6px">
+
+    <TextView
+        android:id="@+id/item_label"
+        android:layout_width="0px"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/onSurface"
+        android:textSize="17px" />
+
+    <CheckBox
+        android:id="@+id/item_check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/onSurface"
+        android:minWidth="0px"
+        android:minHeight="0px"
+        android:padding="8px" />
+
+    <com.android.launcher37.NumberPickerView
+        android:id="@+id/picker_font"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12px" />
+
+    <Button
+        android:id="@+id/btn_up"
+        android:layout_width="36px"
+        android:layout_height="32px"
+        android:layout_marginStart="12px"
+        android:text="▲"
+        android:textSize="14px"
+        android:padding="0px"
+        android:minWidth="0px"
+        android:minHeight="0px"
+        android:insetTop="0px"
+        android:insetBottom="0px" />
+
+    <Button
+        android:id="@+id/btn_down"
+        android:layout_width="36px"
+        android:layout_height="32px"
+        android:layout_marginStart="4px"
+        android:text="▼"
+        android:textSize="14px"
+        android:padding="0px"
+        android:minWidth="0px"
+        android:minHeight="0px"
+        android:insetTop="0px"
+        android:insetBottom="0px" />
+</LinearLayout>

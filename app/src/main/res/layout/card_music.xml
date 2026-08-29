@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/card_music"
+    android:layout_width="match_parent"
+    android:layout_height="200px"
+    android:orientation="vertical"
+    android:padding="12px">
+
+    <LinearLayout
+        android:id="@+id/music_info"
+        android:layout_width="match_parent"
+        android:layout_height="0px"
+        android:layout_weight="1"
+        android:gravity="bottom"
+        android:clickable="true"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_music_name"
+            android:includeFontPadding="false"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="未在播放"
+            android:textColor="@color/onSurface"
+            android:textSize="24px"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_artist"
+            android:includeFontPadding="false"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7px"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="@color/onSurfaceVariant"
+            android:textSize="15px" />
+    </LinearLayout>
+
+    <RelativeLayout
+        android:id="@+id/music_time_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="9px"
+        android:layout_marginBottom="8px">
+
+        <TextView
+            android:id="@+id/music_cur_time"
+            android:includeFontPadding="false"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:maxLines="1"
+            android:text="00:00"
+            android:textColor="@color/onSurfaceVariant"
+            android:textSize="15px" />
+
+        <TextView
+            android:id="@+id/music_total_time"
+            android:includeFontPadding="false"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:maxLines="1"
+            android:text="00:00"
+            android:textColor="@color/onSurfaceVariant"
+            android:textSize="15px" />
+    </RelativeLayout>
+
+    <ProgressBar
+        android:id="@+id/music_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6px"
+        android:max="1000"
+        android:progress="0"
+        android:progressDrawable="@drawable/progress_music" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0px"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btn_prev"
+            android:layout_width="58px"
+            android:layout_height="58px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="上一曲"
+            android:padding="15px"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_prev" />
+
+        <ImageButton
+            android:id="@+id/btn_playpause"
+            android:layout_width="76px"
+            android:layout_height="76px"
+            android:layout_marginLeft="16px"
+            android:layout_marginRight="16px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="播放/暂停"
+            android:padding="18px"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_pause" />
+
+        <ImageButton
+            android:id="@+id/btn_next"
+            android:layout_width="58px"
+            android:layout_height="58px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="下一曲"
+            android:padding="15px"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_next" />
+    </LinearLayout>
+</LinearLayout>

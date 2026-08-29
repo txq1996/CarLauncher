@@ -1,0 +1,48 @@
+# Gradle
+.gradle/
+build/
+*/build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+captures/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Local config
+local.properties
+keystore.properties
+*.keystore
+*.jks
+!keys/keystore.jks
+
+# Kotlin
+.kotlin/
+*.hprof
+
+# Logs
+*.log
+hs_err_pid*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Test artifacts
+test-screenshots/
+test-output/
+
+# Tool local state
+.commandcode/
+.vs

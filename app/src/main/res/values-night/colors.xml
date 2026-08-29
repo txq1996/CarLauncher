@@ -1,0 +1,52 @@
+<!--
+    Material 3 调色板（深色模式 / values-night/）
+    与 values/colors.xml 一一对应，仅十六进制值不同。
+-->
+<resources>
+
+    <!-- Primary -->
+    <color name="primary">#A8C7FA</color>
+    <color name="onPrimary">#062E6F</color>
+    <color name="primaryContainer">#284777</color>
+    <color name="onPrimaryContainer">#D3E3FD</color>
+
+    <!-- Secondary -->
+    <color name="secondary">#BEC8DC</color>
+    <color name="onSecondary">#293041</color>
+    <color name="secondaryContainer">#3F4759</color>
+    <color name="onSecondaryContainer">#DAE2F9</color>
+
+    <!-- Tertiary -->
+    <color name="tertiary">#DEBCDF</color>
+    <color name="onTertiary">#3E2844</color>
+    <color name="tertiaryContainer">#564157</color>
+    <color name="onTertiaryContainer">#F8D8F8</color>
+
+    <!-- Error -->
+    <color name="error">#FFB4AB</color>
+    <color name="onError">#690005</color>
+    <color name="errorContainer">#93000A</color>
+    <color name="onErrorContainer">#FFDAD6</color>
+
+    <!-- Surface / Background -->
+    <color name="background">#1A1B22</color>
+    <color name="onBackground">#E3E2E9</color>
+    <color name="surface">#1A1B22</color>
+    <color name="onSurface">#E3E2E9</color>
+    <color name="surfaceVariant">#44464F</color>
+    <color name="onSurfaceVariant">#C5C6D0</color>
+    <color name="surfaceContainerHigh">#363841</color>
+
+    <!-- Outline -->
+    <color name="outline">#8F9099</color>
+    <color name="outlineVariant">#44464F</color>
+
+    <!-- Scrim -->
+    <color name="scrim">#000000</color>
+
+    <!-- Traffic lights (固定色值) -->
+    <color name="trafficRed">#FFFF5252</color>
+    <color name="trafficYellow">#FFFFD740</color>
+    <color name="trafficGreen">#FF69F0AE</color>
+
+</resources>

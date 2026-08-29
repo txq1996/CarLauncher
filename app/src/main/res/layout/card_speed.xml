@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 车速卡：所有内容合并到一个容器，整体水平垂直居中 -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/card_speed"
+    android:layout_width="match_parent"
+    android:layout_height="0px"
+    android:layout_weight="1">
+
+    <!-- 唯一容器：速度 + 导航全部在此，整体居中 -->
+    <LinearLayout
+        android:id="@+id/speed_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <!-- ===== 车速区域 ===== -->
+
+        <!-- 车速数字：大字体显示当前速度（88px） -->
+        <TextView
+            android:id="@+id/tv_speed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="0"
+            android:textColor="@color/onSurface"
+            android:textSize="88px"
+            android:textStyle="bold" />
+
+        <!-- 单位和限速行：水平排列 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- 速度单位：km/h 或 mph（24px） -->
+            <TextView
+                android:id="@+id/tv_km"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="km/h"
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="24px" />
+
+            <!-- 道路限速：当前道路限速值（20px） -->
+            <TextView
+                android:id="@+id/tv_limit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8px"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text=""
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="20px" />
+        </LinearLayout>
+
+        <!-- 红绿灯区域：水平排列，仅倒计时（方向由高德 12110 透出但本 UI 暂不渲染） -->
+        <LinearLayout
+            android:id="@+id/tv_traffic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- 红绿灯倒计时：秒数（36px） -->
+            <TextView
+                android:id="@+id/tv_traffic_sec"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="--"
+                android:textSize="36px"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- ===== 导航区域（默认隐藏） ===== -->
+
+        <LinearLayout
+            android:id="@+id/navi_panel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8px"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- 转向行：转向图标 + 距离 -->
+            <LinearLayout
+                android:id="@+id/navi_row_turn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- 转向图标：转弯方向（48x48px） -->
+                <ImageView
+                    android:id="@+id/iv_turn_icon"
+                    android:layout_width="48px"
+                    android:layout_height="48px"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_navi_straight" />
+
+                <!-- 转向距离：当前路段剩余距离（36px） -->
+                <TextView
+                    android:id="@+id/tv_navi_dist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12px"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text=""
+                    android:textColor="@color/onSurface"
+                    android:textSize="36px"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- 路名：当前/下一条道路名称（26px） -->
+            <TextView
+                android:id="@+id/tv_navi_road"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4px"
+                android:includeFontPadding="false"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text=""
+                android:textColor="@color/onSurface"
+                android:textSize="26px"
+                android:textStyle="bold" />
+
+            <!-- 终点名称：目的地POI（17px） -->
+            <TextView
+                android:id="@+id/tv_navi_dest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3px"
+                android:includeFontPadding="false"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text=""
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="17px" />
+
+            <!-- 剩余距离和时间行：水平排列 -->
+            <LinearLayout
+                android:id="@+id/navi_row_eta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3px"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- 剩余距离（17px） -->
+                <TextView
+                    android:id="@+id/tv_navi_remain"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text=""
+                    android:textColor="@color/onSurfaceVariant"
+                    android:textSize="17px" />
+
+                <!-- 剩余时间（17px） -->
+                <TextView
+                    android:id="@+id/tv_navi_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14px"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text=""
+                    android:textColor="@color/onSurfaceVariant"
+                    android:textSize="17px" />
+            </LinearLayout>
+
+            <!-- 电子眼/服务区提醒：黄色文字（17px） -->
+            <TextView
+                android:id="@+id/tv_navi_alert"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3px"
+                android:includeFontPadding="false"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text=""
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="17px" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>
