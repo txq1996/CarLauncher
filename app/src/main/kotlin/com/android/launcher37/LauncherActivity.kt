@@ -34,7 +34,6 @@ class LauncherActivity : Activity() {
     private lateinit var navi: NaviPanelDelegate
     private lateinit var music: MusicDelegate
     private lateinit var update: UpdateDelegate
-    private lateinit var traffic: TrafficLightClient
 
     // Exposed to sibling modules (AppDrawer / MemoryCleaner) via cast.
     internal lateinit var dockBar: DockBar
@@ -103,14 +102,7 @@ class LauncherActivity : Activity() {
         ).also { it.bindListeners() }
         navi = NaviPanelDelegate(this, views, { snapshot }, speed)
         update = UpdateDelegate(application, this)
-        traffic = TrafficLightClient(this, object : TrafficLightClient.Listener {
-            override fun onTrafficLight(dir: Int, status: Int, countdown: Int) {
-                speed.onTrafficLight(status, countdown)
-            }
-            override fun onTrafficLightHidden() {
-                speed.onTrafficLightHidden()
-            }
-        })
+        speed.bind()
 
         // MapPipHost survives Activity recreation - reuse the application-scoped
         // instance to keep the navigation VirtualDisplay alive.
@@ -137,10 +129,8 @@ class LauncherActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        speed.start()
         music.start()
         navi.start()
-        traffic.start()
         update.checkOnLaunch()
     }
 
@@ -150,10 +140,8 @@ class LauncherActivity : Activity() {
     }
 
     override fun onStop() {
-        speed.stop()
         music.stop()
         navi.stop()
-        traffic.stop()
         super.onStop()
     }
 
@@ -170,11 +158,10 @@ class LauncherActivity : Activity() {
         // update, LMK kill) the navigation state must survive so a new process
         // can attach a fresh Surface and continue showing it.
         pip.releaseTransient()
-        speed.stop()
+        speed.unbind()
         music.stop()
         music.cancelPending()
         navi.stop()
-        traffic.stop()
         update.release()
         music.clearReturnHome()
         super.onDestroy()

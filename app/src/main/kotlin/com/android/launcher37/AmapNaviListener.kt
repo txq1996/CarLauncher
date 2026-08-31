@@ -12,11 +12,11 @@ import android.util.Log
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * 高德地图广播全数据监听器。
+ * 高德地图广播全数据监听器（车速 / 红绿灯 / 导航文字信息的统一入口）。
  *
  * 监听 `AUTONAVI_STANDARD_BROADCAST_SEND`，全量解析以下 KEY_TYPE：
- * - `10001 (0x2711)` 导航/巡航：转向/路名/距离/限速/电子眼/服务区/红绿灯数/车头方向/出口
- * - `60073 (0xEA79)` 红绿灯：单灯（导航）+ 多灯 JSONArray（巡航）
+ * - `10001 (0x2711)` 导航/巡航：转向/路名/距离/限速/电子眼/服务区/红绿灯数/车头方向/出口/车速
+ * - `60073 (0xEA79)` 红绿灯：单灯（导航）+ 多灯 JSONArray（巡航），含 STALE 过期回收
  * - `10019 (0x2723)` 昼夜/状态：37=白天 38=夜晚 3=前台 4=后台 9=导航结束 25=巡航结束
  * - `13011 (0x32D7)` TMC 路况 JSON
  * - `13012 (0x32D8)` 车道线 JSON
@@ -26,11 +26,11 @@ import java.util.concurrent.CopyOnWriteArrayList
  * - 静态字段缓存：[lastNaviInfo] / [lastCruiseInfo] / [lastTrafficLight] /
  *   [lastCruiseTrafficLights] / [lastTmcJson] / [lastLaneJson] /
  *   [lastIntervalSpeed] / [dayNightState]
- * - 订阅：[addListener] / [removeListener]，主线程回调（与 TrafficLightClient/NaviTextClient 一致）
+ * - 订阅：[addListener] / [removeListener]，主线程回调（与 NaviTextClient 一致）
  *
- * 与已有 NaviTextClient / TrafficLightClient 关系：同一广播 action 由各自 receiver 独立
- * registerReceiver，Android 框架会向所有 receiver 派发同一 intent，因此可共存互不干扰。
- * 本类是它们的"全字段汇总"，对外提供未在它们里暴露的 TMC/车道线/区间测速/巡航多灯 JSON。
+ * 与 NaviTextClient 关系：同一广播 action 由各自 receiver 独立 registerReceiver，
+ * Android 框架会向所有 receiver 派发同一 intent，因此可共存互不干扰。
+ * 本类额外提供 TMC/车道线/区间测速/巡航多灯 JSON，以及车速（CUR_SPEED）和红绿灯全字段。
  *
  * 调试：通过 [AdbDebug] 的 `/dump?kl=...AmapNaviListener` 直接看所有缓存字段与最后一次值。
  */
@@ -39,6 +39,9 @@ object AmapNaviListener {
     private const val TAG = "AmapNaviListener"
     private const val ACTION = "AUTONAVI_STANDARD_BROADCAST_SEND"
 
+    /** 红绿灯数据过期回收：原 TrafficLightClient.STALE_MS=2s，无新数据即隐藏。 */
+    private const val TRAFFIC_LIGHT_STALE_MS = 2000L
+
     const val KEY_TYPE_ROUTE = 10001
     const val KEY_TYPE_TRAFFIC_LIGHT = 60073
     const val KEY_TYPE_STATE = 10019
@@ -46,7 +49,7 @@ object AmapNaviListener {
     const val KEY_TYPE_LANE = 13012
     const val KEY_TYPE_INTERVAL = 12110
 
-    /** [AmapNaviListener.State.EXTRA_STATE] 取值（与 TrafficLightClient/NaviTextClient 一致语义） */
+    /** [AmapNaviListener.State.EXTRA_STATE] 取值（与 NaviTextClient 一致语义） */
     object State {
         const val DAY = 37
         const val NIGHT = 38
@@ -167,6 +170,8 @@ object AmapNaviListener {
         fun onNavigationEnded() {}
         fun onCruiseEnded() {}
         fun onCrossMapStatus(active: Boolean) {}
+        /** 简化回调：单个红绿灯过期 / 退出 / 无效数据时触发。 */
+        fun onTrafficLightHidden() {}
     }
 
     // ── 缓存：原子引用写，最后值读取无锁 ─────────────────────────────
@@ -292,8 +297,16 @@ object AmapNaviListener {
                 isAmapForeground = false
                 post { listeners.forEach { runCatching { it.onAmapForegroundChanged(false) } } }
             }
-            State.NAV_ENDED -> post { listeners.forEach { runCatching { it.onNavigationEnded() } } }
-            State.CRUISE_ENDED -> post { listeners.forEach { runCatching { it.onCruiseEnded() } } }
+            State.NAV_ENDED -> {
+                resetTrafficLight()
+                post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
+                post { listeners.forEach { runCatching { it.onNavigationEnded() } } }
+            }
+            State.CRUISE_ENDED -> {
+                resetTrafficLight()
+                post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
+                post { listeners.forEach { runCatching { it.onCruiseEnded() } } }
+            }
         }
         // 路口放大图：1 = 放大图激活
         if (extras.containsKey("EXTRA_CROSS_MAP")) {
@@ -319,6 +332,13 @@ object AmapNaviListener {
         val dir = asInt(extras.get("dir"), 4)
         val countdown = asInt(extras.get("redLightCountDownSeconds"), 0)
         val lightsData = extras.getString("lightsData")
+        // 无效数据：status 与 countdown 都 ≤ 0 → 复位并隐藏，不刷新过期基点
+        // （避免退出导航后红绿灯永不消失的实机 bug，与旧 TrafficLightClient 行为一致）
+        if (status <= 0 && countdown <= 0) {
+            resetTrafficLight()
+            post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
+            return
+        }
         lastTrafficLight = TrafficLightInfo(status, dir, countdown)
         // lightsData 非空 = 巡航多灯 JSON；同时也缓存并回调，便于 AdbDebug / 调试页直接看
         if (!lightsData.isNullOrEmpty()) {
@@ -326,6 +346,17 @@ object AmapNaviListener {
             post { listeners.forEach { runCatching { it.onCruiseTrafficLights(lightsData) } } }
         } else {
             post { listeners.forEach { runCatching { it.onTrafficLight(lastTrafficLight!!) } } }
+        }
+        // 仅在收到有效灯色数据时刷新过期基点
+        scheduleTrafficLightStaleCheck()
+    }
+
+    /** 红绿灯过期回收：TRAFFIC_LIGHT_STALE_MS 内未刷新即视为隐藏。 */
+    private val mTrafficLightStale = Runnable {
+        if (mTrafficLightLastUpdate > 0 &&
+            System.currentTimeMillis() - mTrafficLightLastUpdate > TRAFFIC_LIGHT_STALE_MS) {
+            resetTrafficLight()
+            post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
         }
     }
 
@@ -418,9 +449,23 @@ object AmapNaviListener {
         )
     }
 
-    /** 把任务切到主线程（与 TrafficLightClient/NaviTextClient 一致）。仅在已注册时 post。 */
+    /** 把任务切到主线程（与 NaviTextClient 一致）。仅在已注册时 post。 */
     private fun post(block: () -> Unit) {
         if (mRegistered) mHandler.post(block)
+    }
+
+    private var mTrafficLightLastUpdate: Long = 0
+
+    private fun scheduleTrafficLightStaleCheck() {
+        mTrafficLightLastUpdate = System.currentTimeMillis()
+        mHandler.removeCallbacks(mTrafficLightStale)
+        mHandler.postDelayed(mTrafficLightStale, TRAFFIC_LIGHT_STALE_MS)
+    }
+
+    /** 清空红绿灯缓存 + 取消过期调度。导航/巡航退出与无效数据复用。 */
+    private fun resetTrafficLight() {
+        mTrafficLightLastUpdate = 0
+        mHandler.removeCallbacks(mTrafficLightStale)
     }
 
     /**

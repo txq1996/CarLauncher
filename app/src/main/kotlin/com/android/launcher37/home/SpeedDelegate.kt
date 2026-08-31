@@ -1,39 +1,45 @@
 package com.android.launcher37.home
 
-import android.view.View
+import com.android.launcher37.AmapNaviListener
 import com.android.launcher37.R
-import com.android.launcher37.SettingsActivity
-import com.android.launcher37.SpeedClient
 import com.android.launcher37.SysProps
 
 /**
- * 车速委派：`SpeedClient.Listener` + 限速 / 超速变色 / 红绿灯渲染。
+ * 车速委派：从 [AmapNaviListener] 读取高德广播的 CUR_SPEED，渲染限速 / 超速变色 / 红绿灯。
  *
- * 持有 Activity 强引用 + SpeedClient 强引用；速度单位（km/h / mph）
- * 在构造时一次性读取，运行时不再变。
+ * 数据源：`AmapNaviListener` 缓存的 NaviInfo.curSpeed（导航/巡航 ICON!=0 期间）与
+ * CruiseInfo.curSpeed（巡航 ICON=0）。高德不在前台时不推送 CUR_SPEED，按用户决策
+ * tvSpeed 维持上次显示；`AmapNaviListener.start` 后未收到 10001 时缓存为 null，
+ * 监听器不会回调，tvSpeed 维持初值 "0"。
+ *
+ * 持有 Activity 强引用；速度单位（km/h / mph）在构造时一次性读取，运行时不再变。
  */
 class SpeedDelegate(
     private val activity: android.app.Activity,
     private val views: HomeViews
-) : SpeedClient.Listener {
-    private val mClient: SpeedClient = SpeedClient(activity, this)
+) : AmapNaviListener.Listener {
     private val mMiles: Boolean = isMiles(activity)
     private var mShownSpeed: Int = 0
     private var mLimitKmh: Int = 0
 
-    fun start() = mClient.start()
-    fun stop() = mClient.stop()
-
-    override fun onSpeedChanged(kmh: Int) {
-        val target = if (mMiles) (kmh * MILE_RATIO).toInt() else kmh
-        if (target == mShownSpeed) return
-        mShownSpeed = target
-        views.tvSpeed.text = target.toString()
-        refreshOverspeed()
+    fun bind() {
+        AmapNaviListener.addListener(this)
     }
 
-    override fun onAccOff() {
-        val target = if (mMiles) (0 * MILE_RATIO).toInt() else 0
+    fun unbind() {
+        AmapNaviListener.removeListener(this)
+    }
+
+    override fun onNaviInfo(info: AmapNaviListener.NaviInfo) {
+        applySpeed(info.curSpeed)
+    }
+
+    override fun onCruiseInfo(info: AmapNaviListener.CruiseInfo) {
+        applySpeed(info.curSpeed)
+    }
+
+    private fun applySpeed(kmh: Int) {
+        val target = if (mMiles) (kmh * MILE_RATIO).toInt() else kmh
         if (target == mShownSpeed) return
         mShownSpeed = target
         views.tvSpeed.text = target.toString()
@@ -56,18 +62,17 @@ class SpeedDelegate(
         if (views.tvLimit.currentTextColor != limitColor) views.tvLimit.setTextColor(limitColor)
     }
 
-    /** 红绿灯倒计时（TrafficLightClient.Listener 转发）；status: 1=红 / 4=绿 / 其他=黄 */
-    fun onTrafficLight(status: Int, countdown: Int) {
-        val color = when (status) {
+    override fun onTrafficLight(info: AmapNaviListener.TrafficLightInfo) {
+        val color = when (info.status) {
             1 -> activity.resources.getColor(R.color.trafficRed, activity.theme)
             4 -> activity.resources.getColor(R.color.trafficGreen, activity.theme)
             else -> activity.resources.getColor(R.color.trafficYellow, activity.theme)
         }
         views.tvTrafficSec.setTextColor(color)
-        views.tvTrafficSec.text = if (countdown >= 0) "$countdown" else "--"
+        views.tvTrafficSec.text = if (info.countdown >= 0) "${info.countdown}" else "--"
     }
 
-    fun onTrafficLightHidden() {
+    override fun onTrafficLightHidden() {
         views.tvTrafficSec.setTextColor(activity.resources.getColor(R.color.onSurfaceVariant, activity.theme))
         views.tvTrafficSec.text = "--"
     }

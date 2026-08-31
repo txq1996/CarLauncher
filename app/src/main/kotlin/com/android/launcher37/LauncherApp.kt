@@ -17,9 +17,10 @@ class LauncherApp : Application() {
         super.onCreate()
         // ADB 调试入口默认开启，开关关闭时 [AdbDebug.tryStartIfEnabled] 不会起 HTTP
         AdbDebug.tryStartIfEnabled(this)
-        // 高德广播全数据监听：与已有 NaviTextClient/TrafficLightClient 共存（同一 action
-        // 由各自 receiver 独立 registerReceiver，Android 向所有 receiver 派发）。
-        // 负责缓存 TMC/车道线/区间测速/巡航多灯 JSON 等其它客户端未覆盖的字段。
+        // 高德广播全数据监听：与 NaviTextClient 共存（同一 action 由各自 receiver 独立
+        // registerReceiver，Android 向所有 receiver 派发）。
+        // 负责缓存车速（CUR_SPEED）/红绿灯/路名/限速/转向/电子眼/服务区/TMC/车道线/区间测速
+        // 等 NaviTextClient 未覆盖的字段。
         AmapNaviListener.start(this)
     }
 }
