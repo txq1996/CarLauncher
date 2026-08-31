@@ -1,0 +1,60 @@
+<!--
+    Material 3 调色板（浅色模式 / values/）
+    - 主色组：primary / onPrimary / primaryContainer / onPrimaryContainer
+    - 辅助色组：secondary / onSecondary / secondaryContainer / onSecondaryContainer
+    - 第三色组：tertiary / onTertiary / tertiaryContainer / onTertiaryContainer
+    - 错误组：error / onError / errorContainer / onErrorContainer
+    - 表面组：background / onBackground / surface / onSurface /
+              surfaceVariant / onSurfaceVariant / surfaceContainerHigh
+    - 描边：outline / outlineVariant
+    - 遮罩：scrim
+    - 红绿灯（保留，固定色值不随日/夜切换）：trafficRed / trafficYellow / trafficGreen
+-->
+<resources>
+
+    <!-- Primary -->
+    <color name="primary">#A8C7FA</color>
+    <color name="onPrimary">#062E6F</color>
+    <color name="primaryContainer">#D3E3FD</color>
+    <color name="onPrimaryContainer">#001A41</color>
+
+    <!-- Secondary -->
+    <color name="secondary">#BEC8DC</color>
+    <color name="onSecondary">#293041</color>
+    <color name="secondaryContainer">#DAE2F9</color>
+    <color name="onSecondaryContainer">#141C2B</color>
+
+    <!-- Tertiary -->
+    <color name="tertiary">#DEBCDF</color>
+    <color name="onTertiary">#3E2844</color>
+    <color name="tertiaryContainer">#F8D8F8</color>
+    <color name="onTertiaryContainer">#27122E</color>
+
+    <!-- Error -->
+    <color name="error">#BA1A1A</color>
+    <color name="onError">#FFFFFF</color>
+    <color name="errorContainer">#FFDAD6</color>
+    <color name="onErrorContainer">#410002</color>
+
+    <!-- Surface / Background -->
+    <color name="background">#FCFCFF</color>
+    <color name="onBackground">#1A1B22</color>
+    <color name="surface">#FCFCFF</color>
+    <color name="onSurface">#1A1B22</color>
+    <color name="surfaceVariant">#E0E2EC</color>
+    <color name="onSurfaceVariant">#44464F</color>
+    <color name="surfaceContainerHigh">#ECEDF1</color>
+
+    <!-- Outline -->
+    <color name="outline">#757780</color>
+    <color name="outlineVariant">#C5C6D0</color>
+
+    <!-- Scrim (遮罩/底层半透明) -->
+    <color name="scrim">#000000</color>
+
+    <!-- Traffic lights (固定视觉语言，不随日/夜切换) -->
+    <color name="trafficRed">#FFFF5252</color>
+    <color name="trafficYellow">#FFFFD740</color>
+    <color name="trafficGreen">#FF69F0AE</color>
+
+</resources>

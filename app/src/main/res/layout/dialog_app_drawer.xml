@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_holo_dialog"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="64px"
+        android:paddingTop="8px"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="32px"
+        android:paddingRight="24px">
+
+        <TextView
+            android:id="@+id/tv_drawer_title"
+            android:layout_width="0px"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="全部应用"
+            android:textColor="@color/onSurface"
+            android:textSize="27px"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/btn_drawer_close"
+            android:layout_width="40px"
+            android:layout_height="40px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="关闭"
+            android:padding="10px"
+            android:src="@drawable/ic_close"
+            android:tint="@color/onSurface" />
+    </LinearLayout>
+
+    <GridView
+        android:id="@+id/drawer_grid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:columnWidth="120px"
+        android:gravity="center"
+        android:horizontalSpacing="12px"
+        android:numColumns="auto_fit"
+        android:overScrollMode="never"
+        android:paddingBottom="24px"
+        android:paddingLeft="24px"
+        android:paddingRight="24px"
+        android:paddingTop="12px"
+        android:scrollbars="none"
+        android:stretchMode="columnWidth"
+        android:verticalSpacing="12px" />
+</LinearLayout>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- sharedUserId 必须挂在 <manifest> 上（此前误放 <application> 导致未生效，拿不到 system uid） -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="android.uid.system">
+
+    <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_STACKS" />
+    <!-- VirtualDisplay 承载第三方应用需要 trusted 标志（system uid + 该权限） -->
+    <uses-permission android:name="android.permission.INTERNAL_SYSTEM_WINDOW" />
+    <!-- 内存清理：结束后台进程（system uid 自动授予） -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- MapPipHost：getRunningTasks 查询（system uid 自动授予） -->
+    <uses-permission android:name="android.permission.REAL_GET_TASKS" />
+    <!-- Updater：从 GitHub Releases 拉取最新 release JSON（普通应用自动授予） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Updater：下载完成后用系统 installer 安装（Android 8+ 需显式声明） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- AdbDebug 反射 InputManager.injectInputEvent 注入点击/滑动/按键。
+         signature 权限：系统 app（sharedUserId=android.uid.system）自动满足。
+         本地 release 默认启用，CI 走 -PminifyRelease=true 时 AdbDebug 被 R8 shrink 剔除，
+         残留的权限声明是 system uid 进程的合理配置（无对应类调用则 framework 拒注入）。 -->
+    <uses-permission android:name="android.permission.INJECT_EVENTS" />
+
+    <!-- 包可见性：允许查询可启动应用与标准媒体意图（Android 11+） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MEDIA_BUTTON" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".LauncherApp"
+        android:allowBackup="false"
+        android:icon="@drawable/launcher_bk"
+        android:label="CarLauncher"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.Launcher37"
+        android:usesNonSdkApi="true">
+
+        <activity
+            android:name=".LauncherActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|navigation|touchscreen|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="nosensor">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
+        <!--
+            独立进程持有 VirtualDisplay：launcher 进程被 force-stop / APK 替换时
+            本 service 仍在运行 → VD 和导航任务保留，导航不中断。
+        -->
+        <service
+            android:name=".PipService"
+            android:process=":pip"
+            android:exported="false" />
+    </application>
+</manifest>

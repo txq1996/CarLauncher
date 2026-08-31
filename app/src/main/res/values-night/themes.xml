@@ -1,0 +1,25 @@
+<resources>
+    <style name="Theme.Launcher37" parent="android:Theme.Material.NoActionBar">
+        <!-- 窗口与状态栏 -->
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+
+        <!--
+            M3 token 映射（仅 framework 原生支持的属性）。
+            M3 新增的 *Container / onSurface / colorOutline 等属性需 androidx Material，
+            此项目仍走 framework Material。layout 内直接 @color/* 引用，不依赖 ?attr/。
+        -->
+        <item name="android:colorPrimary">@color/primary</item>
+        <item name="android:colorPrimaryDark">@color/primaryContainer</item>
+        <item name="android:colorSecondary">@color/secondary</item>
+        <item name="android:colorAccent">@color/primary</item>
+        <item name="android:colorError">@color/error</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:colorControlNormal">@color/onSurface</item>
+        <item name="android:colorControlActivated">@color/primary</item>
+        <!-- state layer: onSurface 12% alpha -->
+        <item name="android:colorControlHighlight">#1FE3E2E9</item>
+    </style>
+</resources>

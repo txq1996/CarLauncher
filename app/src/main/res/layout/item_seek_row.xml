@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="48px"
+    android:background="@drawable/bg_grid_line"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="8px"
+    android:paddingEnd="8px">
+
+    <TextView
+        android:id="@+id/seek_name"
+        android:layout_width="0px"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:maxLines="1"
+        android:text=""
+        android:textColor="@color/onSurface"
+        android:textSize="17px" />
+
+    <TextView
+        android:id="@+id/seek_value"
+        android:layout_width="52px"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:maxLines="1"
+        android:text=""
+        android:textColor="@color/onSurfaceVariant"
+        android:textSize="17px" />
+
+    <com.android.launcher37.NumberPickerView
+        android:id="@+id/seek_picker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8px" />
+</LinearLayout>
