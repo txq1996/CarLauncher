@@ -1,0 +1,209 @@
+name: release
+
+# 触发条件：
+# - push (任意分支)  → 自动跑 build + test；main 分支还会推 release
+# - pull_request     → 跑 build + test，验证 PR 不破坏构建
+# - workflow_dispatch → 手动触发（GitHub 网页 Actions tab / gh CLI）；
+#   只 build + test + 推 release，不做模拟器部署
+#
+# 注意：本 workflow 只产出 release APK 并推到 GitHub Releases，
+# **不**主动 install 到任何模拟器/真机 —— adb install 步骤是开发者
+# 本地动作，CI 端不参与。
+#
+# CI 走 -PminifyRelease=true 启用完整 R8 + 关闭 AdbDebug（详见 app/build.gradle.kts）。
+# 本地 `gradlew assembleRelease` 默认不混淆 + 启 AdbDebug 便于调试。
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ "v*" ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      skip_release:
+        description: "Skip the 'release' job (only build + test)"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'
+          packages: 'build-tools;35.0.0'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Assemble release (R8 enabled, AdbDebug stripped)
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease -PminifyRelease=true
+
+      - name: Test
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:testDebugUnitTest
+
+      - name: Verify label
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          test -x "$AAPT2" || (echo "aapt2 not found at $AAPT2"; exit 1)
+          test -f "$APK" || (echo "APK not found"; exit 1)
+          "$AAPT2" dump badging "$APK" | grep "application-label:'CarLauncher'" || \
+            (echo "label mismatch"; exit 1)
+
+      - name: Determine version
+        id: ver
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          VER=$("$AAPT2" dump badging "$APK" | \
+                grep -oP "package: name='\S+' versionCode='\K\d+(?=')" | head -1)
+          VNAME=$("$AAPT2" dump badging "$APK" | \
+                  grep -oP "package: name='\S+' versionCode='\d+' versionName='\K[^']+" | head -1)
+          echo "version_code=$VER" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VNAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: release
+    needs: build
+    runs-on: ubuntu-latest
+    # 只在 main 分支 push / workflow_dispatch 时推 release；
+    # PR 不推 release（PR 只能验证 build 通过）。手动触发时尊重
+    # `skip_release` input —— 只跑 build + test 不推 release。
+    # 用 always() 避免 inputs 在非 dispatch 事件里被当成 null 触发表达式错误。
+    if: |
+      always() &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        || (github.event_name == 'workflow_dispatch' && (inputs.skip_release != true))
+      )
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'
+          packages: 'build-tools;35.0.0'
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release
+          path: dist
+
+      - name: Read version
+        id: ver
+        run: |
+          APK=dist/app-release.apk
+          AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          test -x "$AAPT2" || (echo "aapt2 not found at $AAPT2"; exit 1)
+          test -f "$APK" || (echo "APK not found"; exit 1)
+          VER=$("$AAPT2" dump badging "$APK" | \
+                grep -oP "package: name='\S+' versionCode='\K\d+(?=')" | head -1)
+          VNAME=$("$AAPT2" dump badging "$APK" | \
+                  grep -oP "package: name='\S+' versionCode='\d+' versionName='\K[^']+" | head -1)
+          echo "version_code=$VER" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VNAME" >> "$GITHUB_OUTPUT"
+          echo "version: $VNAME (code $VER)"
+
+      - name: Delete old releases and tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          # 主 tag 用 'latest' 单一标签；其它历史 v* tag 全部清掉（含本地仓库 + 远端 tag）
+          # --cleanup-tag 是单数（不是 --cleanup-tags）；|| true 兜底防止 race
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | \
+            while read -r t; do
+              if [ "$t" != "latest" ]; then
+                echo "Deleting old release: $t"
+                gh release delete --yes --cleanup-tag "$t" || true
+              fi
+            done
+          # 兜底：清理掉远端悬挂 tag
+          git ls-remote --tags origin | awk '{print $2}' | sed 's#refs/tags/##' | \
+            while read -r t; do
+              if [ "$t" != "latest" ]; then
+                echo "Deleting orphan tag: $t"
+                git push origin --delete "$t" || true
+              fi
+            done
+
+      - name: Create or replace 'latest' release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          VERSION="${{ steps.ver.outputs.version_name }}"
+          TAG="latest"
+          NOTES=$(cat <<EOF
+          ## CarLauncher
+
+          - versionName: \`${VERSION}\`
+          - versionCode: \`${{ steps.ver.outputs.version_code }}\`
+          - 构建时间 (UTC): \`$(date -u +%FT%TZ)\`
+          - 签名: platform key
+
+          安装方式：下载 \`app-release.apk\` 在车机端打开安装；
+          应用内「桌面设置 → 通用 → 检查更新」也可自动检测并安装。
+          EOF
+          )
+          # 用 'latest' 单一 tag，避免 tag 漂移带来的版本比较问题
+          # 若已存在则先删除（带 --yes 跳确认）
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Replacing existing '$TAG' release"
+            gh release delete --yes "$TAG" || true
+          fi
+          gh release create "$TAG" \
+            dist/app-release.apk \
+            --title "CarLauncher ${VERSION}" \
+            --notes "$NOTES" \
+            --latest
+
+      - name: Cleanup old artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          ARTIFACTS=$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" --jq '.artifacts[].id' || true)
+          for id in $ARTIFACTS; do
+            echo "Deleting artifact $id"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || true
+          done
