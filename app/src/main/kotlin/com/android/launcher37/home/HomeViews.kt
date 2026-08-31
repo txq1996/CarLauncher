@@ -49,5 +49,9 @@ class HomeViews(
     val tvNaviDest: TextView,
     val tvNaviTime: TextView,
     val tvNaviRemain: TextView,
-    val tvNaviAlert: TextView
+    val tvNaviAlert: TextView,
+    val tvNaviEtaText: TextView,
+    val tvNaviLightCount: TextView,
+    val tvNaviExit: TextView,
+    val tvNaviDirection: TextView
 )

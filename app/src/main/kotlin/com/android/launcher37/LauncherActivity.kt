@@ -86,7 +86,11 @@ class LauncherActivity : Activity() {
             tvNaviDest = findViewById(R.id.tv_navi_dest),
             tvNaviTime = findViewById(R.id.tv_navi_time),
             tvNaviRemain = findViewById(R.id.tv_navi_remain),
-            tvNaviAlert = findViewById(R.id.tv_navi_alert)
+            tvNaviAlert = findViewById(R.id.tv_navi_alert),
+            tvNaviEtaText = findViewById(R.id.tv_navi_eta_text),
+            tvNaviLightCount = findViewById(R.id.tv_navi_light_count),
+            tvNaviExit = findViewById(R.id.tv_navi_exit),
+            tvNaviDirection = findViewById(R.id.tv_navi_direction)
         )
 
         views.tvSpeed.text = "0"

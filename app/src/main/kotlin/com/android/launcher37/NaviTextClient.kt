@@ -77,33 +77,42 @@ class NaviTextClient(
         private const val STATE_CRUISE_ENTER = 24
         private const val STATE_CRUISE_EXIT = 25
 
-        /**
-         * 高德 ICON 转向类型 → 本应用转向图标资源 id。
-         * 对应 `ic_navi_*.xml` 共 15 个白色 vector（环岛 17/18 需镜像，见 [turnIconMirrored]）。
+/**
+         * 高位IC 转向类型 → 本应用转向图标资源 id。
+         * 对应 `drawable-nodpi/navinfo_icon{2..20}_white.png` 共 19 个白色位图。
+         * 后续白天/夜晚不同色版本用 `navinfo_icon{N}_day.png` / `_night.png` 替换此处即可。
          */
         @JvmStatic
         fun turnIconRes(icon: Int): Int = when (icon) {
-            2 -> R.drawable.ic_navi_left
-            3 -> R.drawable.ic_navi_right
-            4 -> R.drawable.ic_navi_left_front
-            5 -> R.drawable.ic_navi_right_front
-            6 -> R.drawable.ic_navi_left_back
-            7 -> R.drawable.ic_navi_right_back
-            8 -> R.drawable.ic_navi_uturn_left
-            9 -> R.drawable.ic_navi_straight
-            10, 15 -> R.drawable.ic_navi_dest
-            11, 12, 17, 18 -> R.drawable.ic_navi_island
-            13 -> R.drawable.ic_navi_park
-            14 -> R.drawable.ic_navi_charge
-            16 -> R.drawable.ic_navi_tunnel
-            19 -> R.drawable.ic_navi_uturn_right
-            20 -> R.drawable.ic_navi_slow
+            2 -> R.drawable.navinfo_icon2_white
+            3 -> R.drawable.navinfo_icon3_white
+            4 -> R.drawable.navinfo_icon4_white
+            5 -> R.drawable.navinfo_icon5_white
+            6 -> R.drawable.navinfo_icon6_white
+            7 -> R.drawable.navinfo_icon7_white
+            8 -> R.drawable.navinfo_icon8_white
+            9 -> R.drawable.navinfo_icon9_white
+            10 -> R.drawable.navinfo_icon10_white
+            11 -> R.drawable.navinfo_icon11_white
+            12 -> R.drawable.navinfo_icon12_white
+            13 -> R.drawable.navinfo_icon13_white
+            14 -> R.drawable.navinfo_icon14_white
+            15 -> R.drawable.navinfo_icon15_white
+            16 -> R.drawable.navinfo_icon16_white
+            17 -> R.drawable.navinfo_icon17_white
+            18 -> R.drawable.navinfo_icon18_white
+            19 -> R.drawable.navinfo_icon19_white
+            20 -> R.drawable.navinfo_icon20_white
             else -> 0
         }
 
-        /** ICON=17/18 环岛左需要水平镜像显示 */
+        /**
+         * ICON=17/18 在原 `ic_navi_island` 体系下需水平镜像显示；新 navinfo_icon*
+         * 已自带左右区分，本项目保留镜像位标但**不应用**——若新资源后续被发现也要
+         * 镜像，调回 true 即可。
+         */
         @JvmStatic
-        fun turnIconMirrored(icon: Int): Boolean = icon == 17 || icon == 18
+        fun turnIconMirrored(icon: Int): Boolean = false
 
         /**
          * 电子眼类型名：0 测速 1 监控 2 闯红灯 3 违章拍照 4 公交道 5 应急车道

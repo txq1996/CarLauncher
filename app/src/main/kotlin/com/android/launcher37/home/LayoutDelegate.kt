@@ -22,16 +22,12 @@ class LayoutDelegate(
     private val views: HomeViews
 ) {
     private val textSizers: Array<TextSizer> = arrayOf(
-        TextSizer(views.tvSpeed, SettingsActivity.KEY_TS_SPEED, 100),
+        TextSizer(views.tvSpeed, SettingsActivity.KEY_TS_SPEED, 110),
         TextSizer(views.tvKm, SettingsActivity.KEY_TS_KMH, 20),
         TextSizer(views.tvLimit, SettingsActivity.KEY_TS_LIMIT, 17),
-        TextSizer(views.tvTrafficSec, SettingsActivity.KEY_TS_TRAFFIC_SEC, 20),
-        TextSizer(views.tvNaviDist, SettingsActivity.KEY_TS_NAVI_DIST, 36),
-        TextSizer(views.tvNaviRoad, SettingsActivity.KEY_TS_NAVI_ROAD, 26),
-        TextSizer(views.tvNaviDest, SettingsActivity.KEY_TS_NAVI_DEST, 15),
-        TextSizer(views.tvNaviRemain, SettingsActivity.KEY_TS_NAVI_ETA, 17),
-        TextSizer(views.tvNaviTime, SettingsActivity.KEY_TS_NAVI_ETA, 17),
-        TextSizer(views.tvNaviAlert, SettingsActivity.KEY_TS_NAVI_ALERT, 17),
+        TextSizer(views.tvTrafficSec, SettingsActivity.KEY_TS_TRAFFIC_SEC, 36),
+        // 顶部"车速/kmh/限速/红绿灯"是固定行；以下 navi/cruise 各 view 的字号
+        // 由 NaviPanelDelegate 在 addView 时按当前模式 key 应用，故此处不再预设。
         TextSizer(views.tvMusicName, SettingsActivity.KEY_TS_MUSIC_TITLE, 24),
         TextSizer(views.tvArtist, SettingsActivity.KEY_TS_MUSIC_ARTIST, 15),
         TextSizer(views.curTime, SettingsActivity.KEY_TS_MUSIC_TIME, 15),

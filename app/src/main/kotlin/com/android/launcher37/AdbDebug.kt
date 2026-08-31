@@ -86,6 +86,7 @@ object AdbDebug {
         "com.android.launcher37.SpeedClient",
         "com.android.launcher37.NaviTextClient",
         "com.android.launcher37.TrafficLightClient",
+        "com.android.launcher37.AmapNaviListener",
         "com.android.launcher37.MapFeature",
         "com.android.launcher37.NaviOrder",
         "com.android.launcher37.NumberPickerView",
@@ -171,6 +172,14 @@ object AdbDebug {
             }
         }
         val f = findField(cls, name)
+        if (f != null) {
+            return try {
+                f.isAccessible = true
+                "get ${cls.name}.$name (static field) = ${fmt(f.get(null))}"
+            } catch (t: Throwable) {
+                "ERR: get static field failed: ${rootCauseMessage(t)}"
+            }
+        }
         val m = findStaticMethod(cls, name, arrayOf<Class<*>>())
             ?: return "ERR: get: no static field or 0-arg method '$name' on ${cls.name}"
         return try {
