@@ -83,7 +83,11 @@ class LayoutDelegate(
      * + 各静态文字颜色。红绿灯三色 / 超速色 / 导航提醒黄在各自渲染点直接读 R.color.*。
      */
     fun applyTheme() {
-        views.contentRoot.setBackgroundColor(activity.resources.getColor(R.color.background, activity.theme))
+        val bg = activity.resources.getColor(R.color.background, activity.theme)
+        // 状态栏跟随日/夜主题切换：configChanges=uiMode 不会重建 Activity，
+        // 因此仅在 onCreate 设置一次会卡在初始配色，必须在 applyTheme 同步。
+        activity.window.statusBarColor = bg
+        views.contentRoot.setBackgroundColor(bg)
         val card = activity.resources.getColor(R.color.surface, activity.theme)
         views.cardSpeed.background = GradientDrawable().apply { setColor(card) }
         views.cardMusic.background = GradientDrawable().apply { setColor(card) }

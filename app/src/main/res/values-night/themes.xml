@@ -14,7 +14,6 @@
         <item name="android:colorBackground">@color/background</item>
         <item name="android:colorControlNormal">@color/foreground</item>
         <item name="android:colorControlActivated">@color/foreground_secondary</item>
-        <!-- state layer: foreground 12% alpha -->
-        <item name="android:colorControlHighlight">#1FF1F5F9</item>
+        <item name="android:colorControlHighlight">@color/surface_highlight</item>
     </style>
 </resources>

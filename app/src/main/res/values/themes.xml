@@ -12,7 +12,7 @@
             - colorAccent = foreground_secondary
             - colorError = trafficRed（错误/超速与红绿灯同色）
             - colorBackground / windowBackground = background
-            - colorControlNormal / Activated = foreground / foreground_secondary
+            - colorControlNormal / Activated / Highlight = foreground / foreground_secondary / surface_highlight
             layout 内直接 @color/* 引用 palette token。
         -->
         <item name="android:colorPrimary">@color/foreground_secondary</item>
@@ -23,7 +23,6 @@
         <item name="android:colorBackground">@color/background</item>
         <item name="android:colorControlNormal">@color/foreground</item>
         <item name="android:colorControlActivated">@color/foreground_secondary</item>
-        <!-- state layer: foreground 12% alpha -->
-        <item name="android:colorControlHighlight">#1F18202A</item>
+        <item name="android:colorControlHighlight">@color/surface_highlight</item>
     </style>
 </resources>
