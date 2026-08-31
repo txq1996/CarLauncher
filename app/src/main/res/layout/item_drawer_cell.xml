@@ -21,6 +21,6 @@
         android:ellipsize="end"
         android:gravity="center"
         android:maxLines="1"
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="17px" />
 </LinearLayout>

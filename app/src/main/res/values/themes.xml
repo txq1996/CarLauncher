@@ -4,22 +4,26 @@
         <item name="android:windowBackground">@color/background</item>
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:statusBarColor">@color/background</item>
 
         <!--
-            M3 token 映射（仅 framework 原生支持的属性）。
-            M3 新增的 *Container / onSurface / colorOutline 等属性需 androidx Material，
-            此项目仍走 framework Material。layout 内直接 @color/* 引用，不依赖 ?attr/。
+            framework 原生 Material 属性映射到 A_深灰蓝 palette：
+            - colorPrimary = foreground_secondary（中性主色）
+            - colorAccent = foreground_secondary
+            - colorError = trafficRed（错误/超速与红绿灯同色）
+            - colorBackground / windowBackground = background
+            - colorControlNormal / Activated = foreground / foreground_secondary
+            layout 内直接 @color/* 引用 palette token。
         -->
-        <item name="android:colorPrimary">@color/primary</item>
-        <item name="android:colorPrimaryDark">@color/primaryContainer</item>
-        <item name="android:colorSecondary">@color/secondary</item>
-        <item name="android:colorAccent">@color/primary</item>
-        <item name="android:colorError">@color/error</item>
+        <item name="android:colorPrimary">@color/foreground_secondary</item>
+        <item name="android:colorPrimaryDark">@color/foreground_secondary</item>
+        <item name="android:colorSecondary">@color/foreground_tertiary</item>
+        <item name="android:colorAccent">@color/foreground_secondary</item>
+        <item name="android:colorError">@color/trafficRed</item>
         <item name="android:colorBackground">@color/background</item>
-        <item name="android:colorControlNormal">@color/onSurface</item>
-        <item name="android:colorControlActivated">@color/primary</item>
-        <!-- state layer: onSurface 12% alpha -->
-        <item name="android:colorControlHighlight">#1F1A1B22</item>
+        <item name="android:colorControlNormal">@color/foreground</item>
+        <item name="android:colorControlActivated">@color/foreground_secondary</item>
+        <!-- state layer: foreground 12% alpha -->
+        <item name="android:colorControlHighlight">#1F18202A</item>
     </style>
 </resources>

@@ -2,7 +2,6 @@ package com.android.launcher37
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.GridView
@@ -122,7 +121,7 @@ class LauncherActivity : Activity() {
 
         window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-        window.statusBarColor = Color.BLACK
+        window.statusBarColor = getColor(R.color.background)
 
         layout.applyTheme()
     }

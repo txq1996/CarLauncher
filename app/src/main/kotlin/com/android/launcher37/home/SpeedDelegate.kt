@@ -55,10 +55,10 @@ class SpeedDelegate(
 
     private fun refreshOverspeed() {
         val over = mLimitKmh > 0 && mShownSpeed > displaySpeed(mLimitKmh)
-        val overColor = activity.resources.getColor(R.color.error)
-        val color = if (over) overColor else activity.resources.getColor(R.color.onSurface, activity.theme)
+        val overColor = activity.resources.getColor(R.color.trafficRed)
+        val color = if (over) overColor else activity.resources.getColor(R.color.foreground, activity.theme)
         if (views.tvSpeed.currentTextColor != color) views.tvSpeed.setTextColor(color)
-        val limitColor = if (over) overColor else activity.resources.getColor(R.color.onSurfaceVariant, activity.theme)
+        val limitColor = if (over) overColor else activity.resources.getColor(R.color.foreground_secondary, activity.theme)
         if (views.tvLimit.currentTextColor != limitColor) views.tvLimit.setTextColor(limitColor)
     }
 
@@ -73,7 +73,7 @@ class SpeedDelegate(
     }
 
     override fun onTrafficLightHidden() {
-        views.tvTrafficSec.setTextColor(activity.resources.getColor(R.color.onSurfaceVariant, activity.theme))
+        views.tvTrafficSec.setTextColor(activity.resources.getColor(R.color.foreground_secondary, activity.theme))
         views.tvTrafficSec.text = "--"
     }
 

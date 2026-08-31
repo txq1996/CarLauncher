@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="全部应用"
-            android:textColor="@color/onSurface"
+            android:textColor="@color/foreground"
             android:textSize="27px"
             android:textStyle="bold" />
 
@@ -32,7 +32,7 @@
             android:contentDescription="关闭"
             android:padding="10px"
             android:src="@drawable/ic_close"
-            android:tint="@color/onSurface" />
+            android:tint="@color/foreground" />
     </LinearLayout>
 
     <GridView

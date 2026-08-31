@@ -17,7 +17,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="桌面设置"
-            android:textColor="@color/onSurface"
+            android:textColor="@color/foreground"
             android:textSize="24px"
             android:textStyle="bold" />
 
@@ -29,7 +29,7 @@
             android:paddingStart="16px"
             android:paddingEnd="16px"
             android:text="重启桌面"
-            android:textColor="@color/onSurface"
+            android:textColor="@color/foreground"
             android:textSize="18px" />
     </LinearLayout>
 
@@ -120,7 +120,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="页面与卡片（px，滑条左右拉）"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="23px"
                             android:textStyle="bold" />
 
@@ -163,14 +163,14 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:text="名称"
-                                android:textColor="@color/onSurfaceVariant"
+                                android:textColor="@color/foreground_secondary"
                                 android:textSize="14px" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="显"
-                                android:textColor="@color/onSurfaceVariant"
+                                android:textColor="@color/foreground_secondary"
                                 android:textSize="14px"
                                 android:paddingStart="8px"
                                 android:paddingEnd="8px" />
@@ -180,7 +180,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="12px"
                                 android:text="字号"
-                                android:textColor="@color/onSurfaceVariant"
+                                android:textColor="@color/foreground_secondary"
                                 android:textSize="14px" />
 
                             <TextView
@@ -188,7 +188,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="24px"
                                 android:text="顺序"
-                                android:textColor="@color/onSurfaceVariant"
+                                android:textColor="@color/foreground_secondary"
                                 android:textSize="14px" />
                         </LinearLayout>
 
@@ -219,7 +219,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="字号（px）"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="23px"
                             android:textStyle="bold" />
 
@@ -235,7 +235,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="24px"
                             android:text="显示内容"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="23px"
                             android:textStyle="bold" />
 
@@ -245,7 +245,7 @@
                             android:layout_height="wrap_content"
                             android:minHeight="52px"
                             android:text="歌曲名"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="21px" />
 
                         <CheckBox
@@ -254,7 +254,7 @@
                             android:layout_height="wrap_content"
                             android:minHeight="52px"
                             android:text="歌手名"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="21px" />
 
                         <CheckBox
@@ -263,7 +263,7 @@
                             android:layout_height="wrap_content"
                             android:minHeight="52px"
                             android:text="进度时间（当前/总时长）"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="21px" />
 
                         <CheckBox
@@ -272,7 +272,7 @@
                             android:layout_height="wrap_content"
                             android:minHeight="52px"
                             android:text="进度条"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="21px" />
 
                         <TextView
@@ -281,7 +281,7 @@
                             android:layout_marginStart="40px"
                             android:layout_marginTop="12px"
                             android:text="全部关闭时音乐卡仅保留播放控制按钮"
-                            android:textColor="@color/onSurfaceVariant"
+                            android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
                     </LinearLayout>
                 </ScrollView>
@@ -304,7 +304,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="ADB 调试入口"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="23px"
                             android:textStyle="bold" />
 
@@ -314,7 +314,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8px"
                             android:text="不支持 debug"
-                            android:textColor="@color/onSurfaceVariant"
+                            android:textColor="@color/foreground_secondary"
                             android:textSize="17px" />
 
                         <TextView
@@ -322,7 +322,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="24px"
                             android:text="在线更新"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="23px"
                             android:textStyle="bold" />
 
@@ -332,7 +332,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8px"
                             android:text="未检查"
-                            android:textColor="@color/onSurfaceVariant"
+                            android:textColor="@color/foreground_secondary"
                             android:textSize="17px" />
 
                         <TextView
@@ -341,7 +341,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16px"
                             android:text="当前版本：--"
-                            android:textColor="@color/onSurfaceVariant"
+                            android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
 
                         <Button
@@ -350,7 +350,7 @@
                             android:layout_height="60px"
                             android:layout_marginTop="16px"
                             android:text="检查更新"
-                            android:textColor="@color/onSurface"
+                            android:textColor="@color/foreground"
                             android:textSize="21px" />
 
                         <TextView
@@ -358,7 +358,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16px"
                             android:text="从 GitHub Releases 拉取最新版本，发现新版本时自动下载并弹出系统安装器"
-                            android:textColor="@color/onSurfaceVariant"
+                            android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
                     </LinearLayout>
                 </ScrollView>
@@ -373,7 +373,7 @@
             android:paddingStart="4px"
             android:paddingBottom="4px"
             android:text="尺寸单位均为 px"
-            android:textColor="@color/onSurfaceVariant"
+            android:textColor="@color/foreground_secondary"
             android:textSize="15px" />
     </FrameLayout>
 </LinearLayout>

@@ -18,14 +18,14 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="17px" />
 
     <CheckBox
         android:id="@+id/item_check"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:buttonTint="@color/onSurface"
+        android:buttonTint="@color/foreground"
         android:minWidth="0px"
         android:minHeight="0px"
         android:padding="8px" />

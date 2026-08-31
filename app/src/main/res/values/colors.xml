@@ -1,58 +1,41 @@
 <!--
-    Material 3 调色板（浅色模式 / values/）
-    - 主色组：primary / onPrimary / primaryContainer / onPrimaryContainer
-    - 辅助色组：secondary / onSecondary / secondaryContainer / onSecondaryContainer
-    - 第三色组：tertiary / onTertiary / tertiaryContainer / onTertiaryContainer
-    - 错误组：error / onError / errorContainer / onErrorContainer
-    - 表面组：background / onBackground / surface / onSurface /
-              surfaceVariant / onSurfaceVariant / surfaceContainerHigh
-    - 描边：outline / outlineVariant
-    - 遮罩：scrim
-    - 红绿灯（保留，固定色值不随日/夜切换）：trafficRed / trafficYellow / trafficGreen
+    调色板：A_深灰蓝（浅色模式 / values/）
+    来源：out/car_launcher_color_palettes/A_深灰蓝/res/values/colors.xml
+    8 个核心 token 直接对应 palette 命名：
+      background / surface / surface_variant / surface_highlight
+      foreground / foreground_secondary / foreground_tertiary
+      divider
+    另保留：trafficRed / trafficYellow / trafficGreen（红绿灯语义固定，不随主题变）。
+    其它 M3 token（primary / secondary / error / outline 等）已删除——
+    layout / drawable / themes 中按组件语义直接引用 8 色。
 -->
 <resources>
 
-    <!-- Primary -->
-    <color name="primary">#A8C7FA</color>
-    <color name="onPrimary">#062E6F</color>
-    <color name="primaryContainer">#D3E3FD</color>
-    <color name="onPrimaryContainer">#001A41</color>
+    <!-- 页面背景 -->
+    <color name="background">#F5F7FA</color>
 
-    <!-- Secondary -->
-    <color name="secondary">#BEC8DC</color>
-    <color name="onSecondary">#293041</color>
-    <color name="secondaryContainer">#DAE2F9</color>
-    <color name="onSecondaryContainer">#141C2B</color>
+    <!-- 卡片 / 按钮 / 普通组件 -->
+    <color name="surface">#FFFFFF</color>
 
-    <!-- Tertiary -->
-    <color name="tertiary">#DEBCDF</color>
-    <color name="onTertiary">#3E2844</color>
-    <color name="tertiaryContainer">#F8D8F8</color>
-    <color name="onTertiaryContainer">#27122E</color>
+    <!-- 输入框 / 选中区域 / 特殊组件 / 进度条底 -->
+    <color name="surface_variant">#E9EDF2</color>
 
-    <!-- Error -->
-    <color name="error">#BA1A1A</color>
-    <color name="onError">#FFFFFF</color>
-    <color name="errorContainer">#FFDAD6</color>
-    <color name="onErrorContainer">#410002</color>
+    <!-- Hover / Pressed / 选中状态 / 对话框底 -->
+    <color name="surface_highlight">#DDE5EE</color>
 
-    <!-- Surface / Background -->
-    <color name="background">#FCFCFF</color>
-    <color name="onBackground">#1A1B22</color>
-    <color name="surface">#FCFCFF</color>
-    <color name="onSurface">#1A1B22</color>
-    <color name="surfaceVariant">#E0E2EC</color>
-    <color name="onSurfaceVariant">#44464F</color>
-    <color name="surfaceContainerHigh">#ECEDF1</color>
+    <!-- 主文字 / 所有 icon stroke -->
+    <color name="foreground">#18202A</color>
 
-    <!-- Outline -->
-    <color name="outline">#757780</color>
-    <color name="outlineVariant">#C5C6D0</color>
+    <!-- 次级文字 / 单位 / 限速 / 副标题 -->
+    <color name="foreground_secondary">#5F6B78</color>
 
-    <!-- Scrim (遮罩/底层半透明) -->
-    <color name="scrim">#000000</color>
+    <!-- 辅助文字 / 选中主色 -->
+    <color name="foreground_tertiary">#8994A0</color>
 
-    <!-- Traffic lights (固定视觉语言，不随日/夜切换) -->
+    <!-- 分割线 / 边框 / 描边 -->
+    <color name="divider">#D7DDE4</color>
+
+    <!-- 红绿灯（固定视觉语言，不随日/夜切换） -->
     <color name="trafficRed">#FFFF5252</color>
     <color name="trafficYellow">#FFFFD740</color>
     <color name="trafficGreen">#FF69F0AE</color>

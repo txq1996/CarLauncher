@@ -356,7 +356,7 @@ class DockBar(
         override fun bindAdd(cell: View) {
             withRenderedShell(cell) { icon, label ->
                 icon.setImageResource(R.drawable.ic_plus)
-                val secondary = mActivity.resources.getColor(R.color.onSurfaceVariant, mActivity.theme)
+                val secondary = mActivity.resources.getColor(R.color.foreground_secondary, mActivity.theme)
                 icon.setColorFilter(secondary)
                 label.text = "添加"
                 label.setTextColor(secondary)
@@ -381,7 +381,7 @@ class DockBar(
         val icon = cell.findViewById<ImageView>(R.id.dock_icon)
         val label = cell.findViewById<TextView>(R.id.dock_label)
         icon.clearColorFilter()
-        label.setTextColor(mActivity.resources.getColor(R.color.onSurface, mActivity.theme))
+        label.setTextColor(mActivity.resources.getColor(R.color.foreground, mActivity.theme))
         block(icon, label)
     }
 

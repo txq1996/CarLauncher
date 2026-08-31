@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Holo 瀵硅瘽妗嗛鏍奸潰鏉匡細鏃ュ鑷€傚簲搴?+ 缁嗘弿杈?-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/surfaceContainerHigh" />
-    <stroke android:width="2px" android:color="@color/outline" />
+    <solid android:color="@color/surface_highlight" />
+    <stroke android:width="2px" android:color="@color/divider" />
 </shape>

@@ -46,7 +46,7 @@ object IconNormalizer {
         IconCache.normalizedCache().get(key)?.let { return it }
         val d: Drawable = try {
             c.resources.getDrawable(resId, c.theme).mutate().apply {
-                setTint(c.resources.getColor(R.color.onSurfaceVariant))
+                setTint(c.resources.getColor(R.color.foreground_secondary))
             }
         } catch (e: Exception) {
             return null
@@ -244,8 +244,8 @@ object IconNormalizer {
         val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 0f, 0f, 0f, NORM_SIZE.toFloat(),
-                c.resources.getColor(R.color.surfaceVariant),
-                c.resources.getColor(R.color.outline),
+                c.resources.getColor(R.color.surface_variant),
+                c.resources.getColor(R.color.divider),
                 Shader.TileMode.CLAMP
             )
         }

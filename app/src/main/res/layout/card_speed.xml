@@ -28,7 +28,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:text="0"
-            android:textColor="@color/onSurface"
+            android:textColor="@color/foreground"
             android:textSize="88px"
             android:textStyle="bold" />
 
@@ -47,7 +47,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="km/h"
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="24px" />
 
             <!-- 道路限速：当前道路限速值（20px） -->
@@ -59,7 +59,7 @@
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="20px" />
         </LinearLayout>
 
@@ -118,7 +118,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="1"
                     android:text=""
-                    android:textColor="@color/onSurface"
+                    android:textColor="@color/foreground"
                     android:textSize="36px"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -134,7 +134,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurface"
+                android:textColor="@color/foreground"
                 android:textSize="26px"
                 android:textStyle="bold" />
 
@@ -149,7 +149,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="17px" />
 
             <!-- ETA：预计到达时间（默认跟随终点：17px onSurfaceVariant） -->
@@ -163,7 +163,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="17px" />
 
             <!-- 剩余红绿灯数（默认 17px onSurfaceVariant） -->
@@ -177,7 +177,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="17px" />
 
             <!-- 出口信息（默认 17px onSurfaceVariant） -->
@@ -191,7 +191,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="17px" />
 
             <!-- 车头方向（默认 17px onSurfaceVariant） -->
@@ -205,7 +205,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="17px" />
 
             <!-- 剩余距离和时间行：水平排列 -->
@@ -224,7 +224,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="1"
                     android:text=""
-                    android:textColor="@color/onSurfaceVariant"
+                    android:textColor="@color/foreground_secondary"
                     android:textSize="17px" />
 
                 <TextView
@@ -235,7 +235,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="1"
                     android:text=""
-                    android:textColor="@color/onSurfaceVariant"
+                    android:textColor="@color/foreground_secondary"
                     android:textSize="17px" />
             </LinearLayout>
 
@@ -250,7 +250,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text=""
-                android:textColor="@color/onSurfaceVariant"
+                android:textColor="@color/foreground_secondary"
                 android:textSize="17px" />
         </LinearLayout>
     </LinearLayout>

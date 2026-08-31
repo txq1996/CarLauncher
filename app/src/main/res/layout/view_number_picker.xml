@@ -13,7 +13,7 @@
         android:background="@drawable/bg_number_value"
         android:gravity="center"
         android:text="−"
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="22px"
         android:textStyle="bold" />
 
@@ -27,7 +27,7 @@
         android:inputType="number"
         android:padding="0px"
         android:maxLines="1"
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="18px"
         android:textStyle="bold" />
 
@@ -39,7 +39,7 @@
         android:background="@drawable/bg_number_value"
         android:gravity="center"
         android:text="+"
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="22px"
         android:textStyle="bold" />
 </LinearLayout>

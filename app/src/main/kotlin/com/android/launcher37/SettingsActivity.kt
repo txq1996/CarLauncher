@@ -268,8 +268,8 @@ class SettingsActivity : Activity() {
 
     /** 左侧选项卡切换：选中项卡片底 + 主文字色，其余透明 + 次文字色 */
     private fun switchTab(index: Int) {
-        val primary = resources.getColor(R.color.onSurface, theme)
-        val secondary = resources.getColor(R.color.onSurfaceVariant, theme)
+        val primary = resources.getColor(R.color.foreground, theme)
+        val secondary = resources.getColor(R.color.foreground_secondary, theme)
         for (i in mTabs.indices) {
             val active = i == index
             mTabs[i].background = if (active) mTabActiveBg else null
@@ -340,7 +340,7 @@ class SettingsActivity : Activity() {
         val tv = TextView(this).apply {
             text = title
             textSize = 16f
-            setTextColor(resources.getColor(R.color.onSurface, theme))
+            setTextColor(resources.getColor(R.color.foreground, theme))
             paint.isFakeBoldText = true
             setPadding(0, dpToPx(16), 0, dpToPx(8))
         }

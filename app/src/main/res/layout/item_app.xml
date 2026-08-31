@@ -21,6 +21,6 @@
         android:layout_marginStart="14px"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="22px" />
 </LinearLayout>

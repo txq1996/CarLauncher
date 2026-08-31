@@ -15,7 +15,7 @@
         android:layout_weight="1"
         android:maxLines="1"
         android:text=""
-        android:textColor="@color/onSurface"
+        android:textColor="@color/foreground"
         android:textSize="17px" />
 
     <TextView
@@ -25,7 +25,7 @@
         android:gravity="end"
         android:maxLines="1"
         android:text=""
-        android:textColor="@color/onSurfaceVariant"
+        android:textColor="@color/foreground_secondary"
         android:textSize="17px" />
 
     <com.android.launcher37.NumberPickerView

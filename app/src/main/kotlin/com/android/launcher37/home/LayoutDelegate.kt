@@ -88,12 +88,12 @@ class LayoutDelegate(
         views.cardSpeed.background = GradientDrawable().apply { setColor(card) }
         views.cardMusic.background = GradientDrawable().apply { setColor(card) }
         views.pipPlaceholder.background = GradientDrawable().apply {
-            setColor(activity.resources.getColor(R.color.scrim, activity.theme))
-            setStroke(2, activity.resources.getColor(R.color.outlineVariant))
+            setColor(activity.resources.getColor(android.R.color.black, activity.theme))
+            setStroke(2, activity.resources.getColor(R.color.divider))
         }
 
-        val primary = activity.resources.getColor(R.color.onSurface, activity.theme)
-        val secondary = activity.resources.getColor(R.color.onSurfaceVariant, activity.theme)
+        val primary = activity.resources.getColor(R.color.foreground, activity.theme)
+        val secondary = activity.resources.getColor(R.color.foreground_secondary, activity.theme)
         val tint = ColorStateList.valueOf(primary)
         views.btnPrev.imageTintList = tint
         views.btnPlayPause.imageTintList = tint

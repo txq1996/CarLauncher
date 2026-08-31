@@ -85,6 +85,15 @@ class NaviPanelDelegate(
                 val iconRes = NaviTextClient.turnIconRes(info.icon)
                 if (iconRes != 0) {
                     views.ivTurnIcon.setImageResource(iconRes)
+                    // navinfo_icon{N}_white.png 是白底位图（alpha 透明 + 白色像素）；
+                    // 用 PorterDuff.SRC_IN 把白色像素替换成当前主题 foreground，
+                    // 实现日夜自动变色（day 黑、night 浅）。
+                    views.ivTurnIcon.setColorFilter(
+                        android.graphics.PorterDuffColorFilter(
+                            activity.resources.getColor(R.color.foreground, activity.theme),
+                            android.graphics.PorterDuff.Mode.SRC_IN
+                        )
+                    )
                     views.ivTurnIcon.scaleX = if (NaviTextClient.turnIconMirrored(info.icon)) -1f else 1f
                 }
                 views.tvNaviDist.text = formatDis(info.segRemainDis)
@@ -239,7 +248,7 @@ class NaviPanelDelegate(
     private fun applyFont(v: android.view.View, px: Int, recursive: Boolean) {
         if (v is android.widget.TextView) {
             v.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px.toFloat())
-            v.setTextColor(activity.resources.getColor(R.color.onSurfaceVariant, activity.theme))
+            v.setTextColor(activity.resources.getColor(R.color.foreground_secondary, activity.theme))
         }
         if (recursive && v is android.view.ViewGroup) {
             for (i in 0 until v.childCount) applyFont(v.getChildAt(i), px, true)
