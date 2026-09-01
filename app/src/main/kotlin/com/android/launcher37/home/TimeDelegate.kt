@@ -21,6 +21,11 @@ class TimeDelegate(
         }
     }
 
+    private val fmtHms = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    private val fmtDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private val fmtDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val fmtHm = SimpleDateFormat("HH:mm", Locale.getDefault())
+
     fun start() {
         applyLayout()
         updateTime()
@@ -56,10 +61,10 @@ class TimeDelegate(
         val fmtIdx = Prefs.of(ctx).getInt(SettingsActivity.KEY_TIME_FORMAT, 1)
         val now = Date()
         val text = when (fmtIdx) {
-            1 -> SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(now)
-            2 -> SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(now)
-            3 -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(now) + "\n" + SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(now)
-            else -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
+            1 -> fmtHms.format(now)
+            2 -> fmtDateTime.format(now)
+            3 -> fmtDate.format(now) + "\n" + fmtHms.format(now)
+            else -> fmtHm.format(now)
         }
         views.tvTime.text = text
     }

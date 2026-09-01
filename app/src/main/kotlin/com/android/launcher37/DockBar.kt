@@ -104,24 +104,25 @@ class DockBar(
     fun refresh() {
         val btns = Store.v2Buttons(mActivity)
         val token = mRefreshToken.incrementAndGet()
+        val appCtx = mActivity.applicationContext
         SharedExecutor.io().execute {
             for (b in btns) {
                 when (b.type) {
-                    "map" -> Store.normalizedEmoji(mActivity, mapEmoji(b.action))
+                    "map" -> Store.normalizedEmoji(appCtx, mapEmoji(b.action))
                     "app" -> {
-                        Store.label(mActivity, b.id)
-                        Store.normalizedIcon(mActivity, b.id)
+                        Store.label(appCtx, b.id)
+                        Store.normalizedIcon(appCtx, b.id)
                     }
-                    "clean" -> Store.normalizedEmoji(mActivity, MapFeature.CLEAN_EMOJI)
-                    "settings" -> Store.normalizedEmoji(mActivity, MapFeature.SETTINGS_EMOJI)
+                    "clean" -> Store.normalizedEmoji(appCtx, MapFeature.CLEAN_EMOJI)
+                    "settings" -> Store.normalizedEmoji(appCtx, MapFeature.SETTINGS_EMOJI)
                     else -> {
-                        Store.label(mActivity, b.left)
-                        Store.label(mActivity, b.right)
-                        Store.normalizedSplitIcon(mActivity, b.left, b.right)
+                        Store.label(appCtx, b.left)
+                        Store.label(appCtx, b.right)
+                        Store.normalizedSplitIcon(appCtx, b.left, b.right)
                     }
                 }
             }
-            Store.normalizedGlyphIcon(mActivity, R.drawable.ic_drawer)
+            Store.normalizedGlyphIcon(appCtx, R.drawable.ic_drawer)
             mActivity.runOnUiThread {
                 // Skip UI update if a newer refresh has been queued or activity is gone
                 if (token != mRefreshToken.get()) return@runOnUiThread

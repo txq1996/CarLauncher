@@ -188,8 +188,8 @@ object AppDrawer {
             true
         }
 
-        val adapter = DrawerAdapter(activity, loadApps(activity), dockBtns, pickCallback != null)
         SharedExecutor.io().execute {
+            val adapter = DrawerAdapter(activity.applicationContext, loadApps(activity.applicationContext), dockBtns, pickCallback != null)
             grid.post {
                 if (!activity.isDestroyed && !activity.isFinishing) grid.adapter = adapter
             }
@@ -257,9 +257,10 @@ object AppDrawer {
         val themed: Context = HoloPopup.themedContext(activity)
         val list = ListView(themed)
         val popup = HoloPopup.showWithWidth(activity, HoloPopup.titledPanel(themed, title, list), HoloPopup.WIDTH_SMALL)
+        val appCtx = activity.applicationContext
         SharedExecutor.io().execute {
-            val entries = ids.map { it to Store.label(activity, it) }
-            val icons = ids.map { Store.normalizedIcon(activity, it) }
+            val entries = ids.map { it to Store.label(appCtx, it) }
+            val icons = ids.map { Store.normalizedIcon(appCtx, it) }
             list.post {
                 if (!activity.isDestroyed && !activity.isFinishing) {
                     list.adapter = object : BaseAdapter() {
@@ -273,15 +274,15 @@ object AppDrawer {
                             return v
                         }
                     }
-                }
-            }
-            list.onItemClickListener = AdapterView.OnItemClickListener { _, _, pos, _ ->
-                popup.dismiss()
-                if (leftId == null) {
-                    onPicked(ids[pos])
-                } else {
-                    onPicked(ids[pos])
-                    drawer.dismiss()
+                    list.onItemClickListener = AdapterView.OnItemClickListener { _, _, pos, _ ->
+                        popup.dismiss()
+                        if (leftId == null) {
+                            onPicked(ids[pos])
+                        } else {
+                            onPicked(ids[pos])
+                            drawer.dismiss()
+                        }
+                    }
                 }
             }
         }

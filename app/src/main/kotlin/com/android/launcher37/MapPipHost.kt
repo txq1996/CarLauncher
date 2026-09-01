@@ -38,6 +38,7 @@ internal class MapPipHost private constructor(private val mContext: Context) {
     }
     private var mService: IPipService? = null
     private var mBound = false
+    private var mBinding = false
     private var mAttached = false
     private var mSurfaceWidth = 0
     private var mSurfaceHeight = 0
@@ -77,6 +78,7 @@ internal class MapPipHost private constructor(private val mContext: Context) {
             Log.i(TAG, "onServiceConnected")
             mService = IPipService.Stub.asInterface(service)
             mBound = true
+            mBinding = false
             // service 刚连上时 surfaceChanged 早已发生过，service 不会自己知道 surface，
             // 主动把最近一次的 surface 推过去。
             val s = mLastSurface
@@ -98,6 +100,7 @@ internal class MapPipHost private constructor(private val mContext: Context) {
             Log.i(TAG, "onServiceDisconnected")
             mService = null
             mBound = false
+            mBinding = false
         }
     }
 
@@ -126,10 +129,11 @@ internal class MapPipHost private constructor(private val mContext: Context) {
     }
 
     private fun bindServiceIfNeeded() {
-        if (mBound) return
+        if (mBound || mBinding) return
         val i = Intent(mContext, PipService::class.java)
         try {
-            mContext.bindService(i, mConnection, Context.BIND_AUTO_CREATE)
+            val ok = mContext.bindService(i, mConnection, Context.BIND_AUTO_CREATE)
+            if (ok) mBinding = true
         } catch (t: Throwable) {
             Log.e(TAG, "bindService failed", t)
         }
@@ -187,9 +191,10 @@ internal class MapPipHost private constructor(private val mContext: Context) {
     fun release() {
         Log.i(TAG, "release")
         releaseTransient()
-        if (mBound) {
+        if (mBound || mBinding) {
             try { mContext.unbindService(mConnection) } catch (ignored: Throwable) {}
             mBound = false
+            mBinding = false
         }
         mService = null
         try { mContext.stopService(Intent(mContext, PipService::class.java)) }

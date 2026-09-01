@@ -26,17 +26,15 @@ object MemoryCleaner {
 
     private val forceStopMethod: Method? by lazy {
         val amClass = ActivityManager::class.java
-        // SDK 32+ 改名为 forceStopPackageAsUser；旧版本保留 forceStopPackage(String, int)
-        // getMethod 抛 NoSuchMethodException 而非返回 null，所以 try/catch 必须嵌套而非 ?:
-        try {
-            amClass.getMethod("forceStopPackageAsUser", String::class.java, Int::class.javaPrimitiveType)
-        } catch (_: NoSuchMethodException) {
-            try {
-                amClass.getMethod("forceStopPackage", String::class.java, Int::class.javaPrimitiveType)
-            } catch (_: NoSuchMethodException) {
-                null
-            }
-        }
+        resolveForceStop(amClass, "forceStopPackageAsUser")
+            ?: resolveForceStop(amClass, "forceStopPackage")
+    }
+
+    private fun resolveForceStop(cls: Class<*>, name: String): Method? {
+        try { return cls.getMethod(name, String::class.java, Int::class.javaPrimitiveType) } catch (_: Throwable) {}
+        return try {
+            cls.getDeclaredMethod(name, String::class.java, Int::class.javaPrimitiveType).apply { isAccessible = true }
+        } catch (_: Throwable) { null }
     }
 
     /**

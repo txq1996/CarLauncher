@@ -46,9 +46,7 @@ class PipService : Service() {
         } catch (t: Throwable) { null }
         private val sSetDisplayIdField: java.lang.reflect.Field? = try {
             MotionEvent::class.java.getDeclaredField("mDisplayId").apply { isAccessible = true }
-        } catch (t: Throwable) {
-            try { MotionEvent::class.java.getDeclaredField("mDisplayId").apply { isAccessible = true } } catch (_: Throwable) { null }
-        }
+        } catch (_: Throwable) { null }
 
         private val sGetInputManager: Method? = try {
             android.hardware.input.InputManager::class.java.getMethod("getInstance")
@@ -170,7 +168,7 @@ class PipService : Service() {
     override fun onBind(intent: Intent?): IBinder = LocalBinder()
 
     inner class LocalBinder : IPipService.Stub() {
-        override fun getDisplayId(): Int = displayId()
+        override fun getDisplayId(): Int = synchronized(this@PipService) { displayId() }
 
         override fun attachSurface(surface: Surface?, width: Int, height: Int): Boolean {
             Log.i(TAG, "attachSurface: w=$width h=$height valid=${surface?.isValid}")
@@ -179,17 +177,19 @@ class PipService : Service() {
                 return false
             }
             if (width <= 0 || height <= 0) return false
-            // 释放旧 surface（防重复 attach 泄漏）；detachSurface 也会走这里
-            val old = mSurface
-            if (old != null && old !== surface) {
-                try { old.release() } catch (t: RuntimeException) {
-                    Log.w(TAG, "release old surface failed", t)
+            synchronized(this@PipService) {
+                // 释放旧 surface（防重复 attach 泄漏）；detachSurface 也会走这里
+                val old = mSurface
+                if (old != null && old !== surface) {
+                    try { old.release() } catch (t: RuntimeException) {
+                        Log.w(TAG, "release old surface failed", t)
+                    }
                 }
+                mSurface = surface
+                mSurfaceWidth = width
+                mSurfaceHeight = height
+                ensureDisplay(surface, width, height)
             }
-            mSurface = surface
-            mSurfaceWidth = width
-            mSurfaceHeight = height
-            ensureDisplay(surface, width, height)
             if (mCurrentPkg != null) {
                 mPendingLaunch = mCurrentPkg
                 mHandler.removeCallbacks(mLaunchRunnable)
@@ -201,18 +201,20 @@ class PipService : Service() {
         override fun detachSurface() {
             Log.i(TAG, "detachSurface")
             mHandler.removeCallbacks(mLaunchRunnable)
-            val s = mSurface
-            if (s != null) {
-                try { s.release() } catch (ignored: Throwable) {}
-            }
-            mSurface = null
-            mVd?.let {
-                try { it.surface = null } catch (t: Throwable) {
-                    Log.w(TAG, "detach VD surface failed", t)
+            synchronized(this@PipService) {
+                val s = mSurface
+                if (s != null) {
+                    try { s.release() } catch (ignored: Throwable) {}
                 }
+                mSurface = null
+                mVd?.let {
+                    try { it.surface = null } catch (t: Throwable) {
+                        Log.w(TAG, "detach VD surface failed", t)
+                    }
+                }
+                mInputForwarder = null
+                mForwardEvent = null
             }
-            mInputForwarder = null
-            mForwardEvent = null
         }
 
         override fun launch(packageName: String?) {
@@ -416,21 +418,23 @@ class PipService : Service() {
     }
 
     private fun releaseDisplay() {
-        mInputForwarder = null
-        mForwardEvent = null
-        val s = mSurface
-        if (s != null) {
-            try { s.release() } catch (ignored: Throwable) {}
-            mSurface = null
-        }
-        val vd = mVd ?: return
-        try {
-            Log.i(TAG, "release VD: id=${displayId()}")
-            vd.release()
-        } catch (t: Throwable) {
-            Log.w(TAG, "release VD failed", t)
-        } finally {
-            mVd = null
+        synchronized(this) {
+            mInputForwarder = null
+            mForwardEvent = null
+            val s = mSurface
+            if (s != null) {
+                try { s.release() } catch (ignored: Throwable) {}
+                mSurface = null
+            }
+            val vd = mVd ?: return
+            try {
+                Log.i(TAG, "release VD: id=${displayId()}")
+                vd.release()
+            } catch (t: Throwable) {
+                Log.w(TAG, "release VD failed", t)
+            } finally {
+                mVd = null
+            }
         }
     }
 }

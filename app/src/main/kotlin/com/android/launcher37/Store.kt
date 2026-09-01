@@ -108,10 +108,7 @@ object Store {
      */
     @JvmStatic
     fun v2Buttons(c: Context): MutableList<V2Button> {
-        // 命中缓存：返不可变 List<V2Button>，但 MutableList 是协变类型，
-        // 调用方仍可迭代/读取，修改请走 [saveV2Buttons] + 重新调用。
-        @Suppress("UNCHECKED_CAST")
-        V2BUTTONS_CACHE[c]?.let { return (it as MutableList<V2Button>).also { /* 缓存命中 */ } }
+        V2BUTTONS_CACHE[c]?.let { return ArrayList(it) }
         val sp = prefs(c)
         val out = ArrayList<V2Button>()
         if (!sp.contains(KEY_CUSTOM_BUTTONS)) {

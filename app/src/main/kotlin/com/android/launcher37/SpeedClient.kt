@@ -131,11 +131,6 @@ class SpeedClient(
 
     override fun onServiceDisconnected(name: ComponentName?) {
         mBound = false
-        try {
-            mContext.unbindService(this)
-        } catch (e: Exception) {
-            // 静默
-        }
         scheduleRebind()
     }
 }

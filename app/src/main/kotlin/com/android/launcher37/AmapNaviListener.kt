@@ -243,6 +243,7 @@ object AmapNaviListener {
             // 静默
         }
         mRegistered = false
+        resetTrafficLight()
     }
 
     @JvmStatic

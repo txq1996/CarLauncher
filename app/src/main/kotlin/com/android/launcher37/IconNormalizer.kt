@@ -151,7 +151,8 @@ object IconNormalizer {
         var avgG = if (n > 0) g / n else 0x6B
         var avgB = if (n > 0) b / n else 0x78
         // 提亮并混入主题 surface 避免过艳
-        val max = maxOf(avgR, avgG, avgB)
+        var max = maxOf(avgR, avgG, avgB)
+        if (max == 0) max = 1
         if (max < 120) {
             val k = 120 / max.toFloat()
             avgR = minOf(255, (avgR * k).toInt()); avgG = minOf(255, (avgG * k).toInt()); avgB = minOf(255, (avgB * k).toInt())
@@ -213,7 +214,8 @@ object IconNormalizer {
         var avgR = if (n > 0) r / n else 230
         var avgG = if (n > 0) g / n else 232
         var avgB = if (n > 0) b / n else 237
-        val max = maxOf(avgR, avgG, avgB)
+        var max = maxOf(avgR, avgG, avgB)
+        if (max == 0) max = 1
         if (max < BACKDROP_MIN_BRIGHTNESS) {
             val k = BACKDROP_MIN_BRIGHTNESS / max.toFloat()
             avgR = minOf(255, (avgR * k).toInt())
