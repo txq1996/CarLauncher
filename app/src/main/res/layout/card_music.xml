@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/card_music"
     android:layout_width="match_parent"
-    android:layout_height="200px"
+    android:layout_height="180px"
     android:orientation="vertical"
     android:padding="12px">
 
@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="0px"
         android:layout_weight="1"
-        android:gravity="bottom"
+        android:gravity="center"
         android:clickable="true"
         android:orientation="vertical">
 
@@ -46,8 +46,8 @@
         android:id="@+id/music_time_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="9px"
-        android:layout_marginBottom="8px">
+        android:layout_marginTop="6px"
+        android:layout_marginBottom="6px">
 
         <TextView
             android:id="@+id/music_cur_time"

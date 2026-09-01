@@ -47,6 +47,9 @@ object AppDrawer {
     private const val SPLIT_PREFIX = "split:"
 
     private var sPopup: PopupWindow? = null
+    private var sStatsRunnable: Runnable? = null
+    private var sPrevIdle: Long = 0
+    private var sPrevTotal: Long = 0
 
     // 弹窗尺寸常量（与 HoloPopup.WIDTH=400 区分；本弹窗是 1000×620 大窗口）
     private const val POPUP_W = 1000
@@ -89,11 +92,18 @@ object AppDrawer {
             )
             isOutsideTouchable = true
             showAtLocation(activity.window.decorView, Gravity.CENTER, 0, 0)
-            setOnDismissListener { if (sPopup === this) sPopup = null }
         }
         sPopup = popup
         val tvTitle = content.findViewById<TextView>(R.id.tv_drawer_title)
         tvTitle.text = dockTitle ?: "全部应用"
+        val tvStats = content.findViewById<TextView>(R.id.tv_drawer_stats)
+        // 标题栏系统状态：仅全部应用模式显示，dock选择模式隐藏
+        tvStats.visibility = if (dockCallback == null) View.VISIBLE else View.GONE
+        if (dockCallback == null) startStatsTicker(activity, tvStats, popup)
+        popup.setOnDismissListener {
+            if (sPopup === popup) sPopup = null
+            stopStatsTicker()
+        }
         val grid = content.findViewById<GridView>(R.id.drawer_grid)
         content.findViewById<View>(R.id.btn_drawer_close).setOnClickListener { popup.dismiss() }
         val dockBtns = Store.v2Buttons(activity)
@@ -351,5 +361,72 @@ object AppDrawer {
             cell.tag = tags[position]
             return cell
         }
+    }
+
+    private fun startStatsTicker(activity: Activity, tv: TextView, popup: PopupWindow) {
+        stopStatsTicker()
+        val handler = MainThread.handler
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!popup.isShowing || activity.isDestroyed || activity.isFinishing) { stopStatsTicker(); return }
+                tv.text = buildStatsText(activity)
+                handler.postDelayed(this, 1000)
+            }
+        }
+        sStatsRunnable = runnable
+        tv.text = buildStatsText(activity)
+        handler.postDelayed(runnable, 1000)
+    }
+
+    private fun stopStatsTicker() {
+        sStatsRunnable?.let { MainThread.handler.removeCallbacks(it) }
+        sStatsRunnable = null
+    }
+
+    private fun buildStatsText(c: Context): String {
+        val cpu = readCpuPercent()
+        val temp = readCpuTemp()
+        val mem = readMemPercent(c)
+        val cpuStr = if (cpu >= 0) String.format("%4s", "$cpu%") else String.format("%4s", "--%")
+        val tempStr = if (temp >= 0) String.format("%4s", "${temp}°C") else String.format("%4s", "--°C")
+        val memStr = if (mem >= 0) String.format("%4s", "$mem%") else String.format("%4s", "--%")
+        return "CPU:$cpuStr  $tempStr  MEM:$memStr"
+    }
+
+    private fun readCpuPercent(): Int {
+        return try {
+            val stat = java.io.File("/proc/stat").bufferedReader().use { it.readLine() } ?: return -1
+            val t = stat.trim().split(Regex("\\s+"))
+            if (t.size < 8 || t[0] != "cpu") return -1
+            val user = t[1].toLongOrNull() ?: 0L; val nice = t[2].toLongOrNull() ?: 0L
+            val sys = t[3].toLongOrNull() ?: 0L; val idle = t[4].toLongOrNull() ?: 0L
+            val iow = t[5].toLongOrNull() ?: 0L; val irq = t[6].toLongOrNull() ?: 0L; val sirq = t[7].toLongOrNull() ?: 0L
+            val total = user + nice + sys + idle + iow + irq + sirq
+            val idleAll = idle + iow
+            val diffIdle = idleAll - sPrevIdle
+            val diffTotal = total - sPrevTotal
+            sPrevIdle = idleAll; sPrevTotal = total
+            if (diffTotal <= 0) return -1
+            ((diffTotal - diffIdle) * 100 / diffTotal).toInt().coerceIn(0, 100)
+        } catch (_: Exception) { -1 }
+    }
+
+    private fun readCpuTemp(): Int {
+        return try {
+            val f = java.io.File("/sys/class/thermal/thermal_zone0/temp")
+            if (!f.exists()) return -1
+            val v = f.bufferedReader().use { it.readLine() }?.trim()?.toLongOrNull() ?: return -1
+            val c = if (v > 1000) (v / 1000).toInt() else v.toInt()
+            if (c in 0..150) c else -1
+        } catch (_: Exception) { -1 }
+    }
+
+    private fun readMemPercent(c: Context): Int {
+        return try {
+            val am = c.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val mi = android.app.ActivityManager.MemoryInfo()
+            am.getMemoryInfo(mi)
+            ((mi.totalMem - mi.availMem) * 100 / mi.totalMem).toInt().coerceIn(0, 100)
+        } catch (_: Exception) { -1 }
     }
 }

@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="52px"
     android:background="@drawable/bg_grid_line"
     android:gravity="center_vertical"
-    android:minHeight="52px"
     android:orientation="horizontal"
-    android:paddingStart="8px"
-    android:paddingEnd="8px"
-    android:paddingTop="6px"
-    android:paddingBottom="6px">
+    android:padding="8px">
 
     <TextView
         android:id="@+id/item_label"

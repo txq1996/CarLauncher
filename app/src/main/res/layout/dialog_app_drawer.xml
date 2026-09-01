@@ -16,13 +16,29 @@
 
         <TextView
             android:id="@+id/tv_drawer_title"
-            android:layout_width="0px"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="全部应用"
             android:textColor="@color/foreground"
             android:textSize="27px"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_drawer_stats"
+            android:layout_width="0px"
+            android:layout_height="40px"
+            android:layout_weight="1"
+            android:layout_marginStart="16px"
+            android:layout_marginEnd="12px"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:gravity="end|center_vertical"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="CPU: --%  --°C  MEM: --%"
+            android:textColor="@color/foreground_secondary"
+            android:textSize="17px"
+            android:typeface="monospace" />
 
         <ImageView
             android:id="@+id/btn_drawer_close"

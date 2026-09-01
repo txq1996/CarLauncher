@@ -341,6 +341,57 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:text="绑定应用"
+                            android:textColor="@color/foreground"
+                            android:textSize="23px"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:id="@+id/row_music_app"
+                            android:layout_width="match_parent"
+                            android:layout_height="52px"
+                            android:layout_marginTop="8px"
+                            android:background="@drawable/bg_grid_line"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="8px">
+
+                            <ImageView
+                                android:id="@+id/iv_music_app_icon"
+                                android:layout_width="32px"
+                                android:layout_height="32px"
+                                android:scaleType="fitCenter" />
+
+                            <TextView
+                                android:id="@+id/tv_music_app_name"
+                                android:layout_width="0px"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="10px"
+                                android:ellipsize="end"
+                                android:includeFontPadding="false"
+                                android:maxLines="1"
+                                android:text="未绑定"
+                                android:textColor="@color/foreground"
+                                android:textSize="17px" />
+
+                            <Button
+                                android:id="@+id/btn_pick_music_app"
+                                android:layout_width="wrap_content"
+                                android:layout_height="36px"
+                                android:layout_marginStart="8px"
+                                android:minWidth="72px"
+                                android:paddingStart="12px"
+                                android:paddingEnd="12px"
+                                android:text="选择"
+                                android:textColor="@color/foreground"
+                                android:textSize="15px" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="24px"
                             android:text="字体大小 (px)"
                             android:textColor="@color/foreground"
                             android:textSize="23px"

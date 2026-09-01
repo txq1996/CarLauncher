@@ -477,6 +477,56 @@ class SettingsActivity : Activity() {
         bindCheck(R.id.cb_music_artist, KEY_SHOW_MUSIC_ARTIST)
         bindCheck(R.id.cb_music_time, KEY_SHOW_MUSIC_TIME)
         bindCheck(R.id.cb_music_bar, KEY_SHOW_MUSIC_BAR)
+
+        refreshMusicAppRow()
+        findViewById<Button>(R.id.btn_pick_music_app).setOnClickListener { pickMusicApp() }
+    }
+
+    private fun refreshMusicAppRow() {
+        val iv = findViewById<android.widget.ImageView>(R.id.iv_music_app_icon)
+        val tv = findViewById<TextView>(R.id.tv_music_app_name)
+        val btn = findViewById<Button>(R.id.btn_pick_music_app)
+        val id = prefs().getString("music_app_pkg", null)
+        if (id.isNullOrEmpty()) {
+            iv.setImageDrawable(null)
+            tv.text = "未绑定"
+            btn.text = "选择"
+        } else {
+            val icon = Store.normalizedIcon(this, id) ?: try { packageManager.getApplicationIcon(Store.pkgOf(id)) } catch (_: Exception) { null }
+            if (icon != null) iv.setImageDrawable(icon) else iv.setImageDrawable(null)
+            tv.text = Store.label(this, id)
+            btn.text = "更换"
+        }
+    }
+
+    private fun pickMusicApp() {
+        val themed = HoloPopup.themedContext(this)
+        val list = android.widget.ListView(themed)
+        val popup = HoloPopup.showWithWidth(this, HoloPopup.titledPanel(themed, "选择音乐应用", list), HoloPopup.WIDTH_SMALL)
+        val entries = AppQuery.launcherEntries(this, null)
+        SharedExecutor.io().execute {
+            val adapter = object : android.widget.BaseAdapter() {
+                val labels = entries.map { Store.label(this@SettingsActivity, AppQuery.appId(it)) }
+                val icons = entries.map { Store.normalizedIcon(this@SettingsActivity, AppQuery.appId(it)) }
+                override fun getCount() = entries.size
+                override fun getItem(p: Int) = entries[p]
+                override fun getItemId(p: Int) = p.toLong()
+                override fun getView(pos: Int, cv: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                    val v = cv ?: LayoutInflater.from(this@SettingsActivity).inflate(R.layout.item_app, parent, false)
+                    v.findViewById<android.widget.ImageView>(R.id.app_icon).setImageDrawable(icons[pos])
+                    v.findViewById<TextView>(R.id.app_name).text = labels[pos]
+                    return v
+                }
+            }
+            list.post { if (!isDestroyed && !isFinishing) list.adapter = adapter }
+        }
+        list.onItemClickListener = android.widget.AdapterView.OnItemClickListener { _, _, pos, _ ->
+            popup.dismiss()
+            val ri = entries[pos]
+            val pkgCls = AppQuery.appId(ri)
+            prefs().edit().putString("music_app_pkg", pkgCls).apply()
+            refreshMusicAppRow()
+        }
     }
 
     private fun bindTimeTab() {
