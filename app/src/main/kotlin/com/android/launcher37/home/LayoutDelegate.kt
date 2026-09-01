@@ -38,12 +38,28 @@ class LayoutDelegate(
         val pad = snapshot.size(SettingsActivity.KEY_PAGE_PADDING, 10)
         views.pageContent.setPadding(pad, pad, pad, pad)
         val gap = snapshot.size(SettingsActivity.KEY_CARD_GAP, 10)
+        views.gapTimeSpeed.updateLp(matchH = gap)
         views.gapSpeedMusic.updateLp(matchH = gap)
         views.gapDock.updateLp(matchH = gap)
         views.gapCol.updateLp(matchW = gap)
         views.leftCol.layoutParams.width = snapshot.size(SettingsActivity.KEY_SPEED_CARD_W, 260)
-        views.cardMusic.layoutParams.height = snapshot.size(SettingsActivity.KEY_MUSIC_CARD_H, 200)
-        views.dockGrid.layoutParams.height = DOCK_GRID_HEIGHT_PX
+        views.cardTime.layoutParams.height = snapshot.size(SettingsActivity.KEY_TIME_CARD_H, 60)
+        views.cardMusic.layoutParams.height = snapshot.size(SettingsActivity.KEY_MUSIC_CARD_H, 180)
+        val dockH = snapshot.size(SettingsActivity.KEY_DOCK_HEIGHT, 80)
+        views.dockGrid.layoutParams.height = dockH
+        // 卡片显隐
+        val showTime = snapshot.show(SettingsActivity.KEY_SHOW_TIME, false)
+        val showSpeed = snapshot.show(SettingsActivity.KEY_SHOW_SPEED_CARD, true)
+        val showMusic = snapshot.show(SettingsActivity.KEY_SHOW_MUSIC_CARD, true)
+        val showDock = snapshot.show(SettingsActivity.KEY_SHOW_DOCK, true)
+        views.cardTime.visibility = if (showTime) View.VISIBLE else View.GONE
+        views.cardSpeed.visibility = if (showSpeed) View.VISIBLE else View.GONE
+        views.cardMusic.visibility = if (showMusic) View.VISIBLE else View.GONE
+        views.gapTimeSpeed.visibility = if (showTime && showSpeed) View.VISIBLE else View.GONE
+        views.gapSpeedMusic.visibility = if (showSpeed && showMusic) View.VISIBLE else if (!showSpeed && showTime && showMusic) View.VISIBLE else View.GONE
+        views.dockGrid.visibility = if (showDock) View.VISIBLE else View.GONE
+        views.gapDock.visibility = if (showDock) View.VISIBLE else View.GONE
+        views.tvTime.setTextSize(TypedValue.COMPLEX_UNIT_PX, snapshot.size(SettingsActivity.KEY_TS_TIME, 28).toFloat())
     }
 
     fun applyTextSizes(snapshot: SettingsSnapshot) {
@@ -84,6 +100,7 @@ class LayoutDelegate(
         }
         views.contentRoot.setBackgroundColor(bg)
         val card = activity.resources.getColor(R.color.surface, activity.theme)
+        views.cardTime.background = GradientDrawable().apply { setColor(card) }
         views.cardSpeed.background = GradientDrawable().apply { setColor(card) }
         views.cardMusic.background = GradientDrawable().apply { setColor(card) }
         views.pipPlaceholder.background = GradientDrawable().apply {

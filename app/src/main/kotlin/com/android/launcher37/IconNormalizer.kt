@@ -114,18 +114,59 @@ object IconNormalizer {
         val scale = NORM_SIZE * EMOJI_FILL / maxOf(bounds.width(), bounds.height()).toFloat()
         p.textSize = 100f * scale
         p.getTextBounds(emoji, 0, emoji.length, bounds)
+        // 先离屏渲染 emoji 采样主色，用于背景渐变（避免单调 surface_variant）
+        val tmp = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
+        Canvas(tmp).drawText(
+            emoji,
+            (NORM_SIZE - bounds.width()) / 2f - bounds.left,
+            (NORM_SIZE - bounds.height()) / 2f - bounds.top,
+            p
+        )
+        val sampledBg = sampledGradientPaint(c, tmp)
+        tmp.recycle()
         val out = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
         val cv = Canvas(out)
-        drawBgGradient(c, cv)
+        cv.drawRoundRect(RectF(0f, 0f, NORM_SIZE.toFloat(), NORM_SIZE.toFloat()), CORNER_RADIUS, CORNER_RADIUS, sampledBg)
         cv.drawText(
             emoji,
             (NORM_SIZE - bounds.width()) / 2f - bounds.left,
             (NORM_SIZE - bounds.height()) / 2f - bounds.top,
             p
         )
-        val d = BitmapDrawable(c.resources, out)
+        val d = BitmapDrawable(c.resources, rounded(out).also { out.recycle() })
         IconCache.normalizedCache().put(key, d)
         return d
+    }
+
+    private fun sampledGradientPaint(c: Context, src: Bitmap): Paint {
+        var r = 0; var g = 0; var b = 0; var n = 0
+        val px = IntArray(src.width * src.height)
+        src.getPixels(px, 0, src.width, 0, 0, src.width, src.height)
+        var i = 0
+        while (i < px.size) {
+            if ((px[i] ushr 24) >= 24) { r += (px[i] shr 16) and 0xFF; g += (px[i] shr 8) and 0xFF; b += px[i] and 0xFF; n++ }
+            i += 7
+        }
+        var avgR = if (n > 0) r / n else 0x5F
+        var avgG = if (n > 0) g / n else 0x6B
+        var avgB = if (n > 0) b / n else 0x78
+        // 提亮并混入主题 surface 避免过艳
+        val max = maxOf(avgR, avgG, avgB)
+        if (max < 120) {
+            val k = 120 / max.toFloat()
+            avgR = minOf(255, (avgR * k).toInt()); avgG = minOf(255, (avgG * k).toInt()); avgB = minOf(255, (avgB * k).toInt())
+        }
+        // 与 surface_variant 混合 30% 保持主题一致性
+        val themeBg = c.resources.getColor(R.color.surface_variant)
+        val tr = (themeBg shr 16) and 0xFF; val tg = (themeBg shr 8) and 0xFF; val tb = themeBg and 0xFF
+        avgR = (avgR * 0.7f + tr * 0.3f).toInt(); avgG = (avgG * 0.7f + tg * 0.3f).toInt(); avgB = (avgB * 0.7f + tb * 0.3f).toInt()
+        val topR = minOf(255, (avgR * 1.15f + 8).toInt()); val topG = minOf(255, (avgG * 1.15f + 8).toInt()); val topB = minOf(255, (avgB * 1.15f + 8).toInt())
+        val botR = (avgR * 0.82f).toInt(); val botG = (avgG * 0.82f).toInt(); val botB = (avgB * 0.82f).toInt()
+        val topColor = 0xFF000000.toInt() or (topR shl 16) or (topG shl 8) or topB
+        val botColor = 0xFF000000.toInt() or (botR shl 16) or (botG shl 8) or botB
+        return Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, 0f, 0f, NORM_SIZE.toFloat(), topColor, botColor, Shader.TileMode.CLAMP)
+        }
     }
 
     internal fun normalizeDrawable(c: Context, d: Drawable?): Drawable? {

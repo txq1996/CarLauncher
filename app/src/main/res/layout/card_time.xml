@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/card_time"
+    android:layout_width="match_parent"
+    android:layout_height="60px"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8px">
+
+    <TextView
+        android:id="@+id/tv_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:maxLines="2"
+        android:text="00:00"
+        android:textColor="@color/foreground"
+        android:textSize="28px"
+        android:textStyle="bold" />
+</LinearLayout>

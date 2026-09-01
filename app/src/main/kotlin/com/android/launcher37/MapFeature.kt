@@ -15,6 +15,6 @@ internal object MapFeature {
 
     /** standalone (no map action) */
     val CLEAN_EMOJI = "\uD83E\uDDF9"       // mop
-    val SETTINGS_EMOJI = "\u2699"          // gear
-    val SPLIT_EMOJI = "\u229E"             // squared plus
+    val SETTINGS_EMOJI = "\u2699\uFE0F"     // gear ⚙️
+    val SPLIT_EMOJI = "\uD83E\uDDE9"       // puzzle 🧩
 }

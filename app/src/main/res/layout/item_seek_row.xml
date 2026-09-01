@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="48px"
+    android:layout_height="52px"
     android:background="@drawable/bg_grid_line"
     android:gravity="center_vertical"
     android:orientation="horizontal"
@@ -16,7 +16,7 @@
         android:maxLines="1"
         android:text=""
         android:textColor="@color/foreground"
-        android:textSize="17px" />
+        android:textSize="19px" />
 
     <TextView
         android:id="@+id/seek_value"
@@ -26,7 +26,7 @@
         android:maxLines="1"
         android:text=""
         android:textColor="@color/foreground_secondary"
-        android:textSize="17px" />
+        android:textSize="15px" />
 
     <com.android.launcher37.NumberPickerView
         android:id="@+id/seek_picker"

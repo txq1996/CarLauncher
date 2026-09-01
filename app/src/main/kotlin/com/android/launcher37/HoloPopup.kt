@@ -24,21 +24,14 @@ object HoloPopup {
 
     /** 弹窗默认宽度（px） */
     const val WIDTH = 400
+    const val WIDTH_SMALL = 300
 
     /**
-     * 跟随 Activity 日/夜模式返回主题化 Context。
-     *
-     * 日间：`Theme.Holo.Light`；夜间：`Theme.Holo`。
-     * 弹窗内控件继承该 Context 的主题。
+     * 跟随 Activity 日/夜模式返回主题化 Context，使用本项目 `Theme.Launcher37` 以复用 `colors.xml` 配色。
      */
     @JvmStatic
     fun themedContext(a: Activity): Context {
-        val mask = a.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val theme = if (mask == Configuration.UI_MODE_NIGHT_YES)
-            android.R.style.Theme_Holo
-        else
-            android.R.style.Theme_Holo_Light
-        return ContextThemeWrapper(a, theme)
+        return ContextThemeWrapper(a, com.android.launcher37.R.style.Theme_Launcher37)
     }
 
     /**
@@ -49,8 +42,11 @@ object HoloPopup {
      * @return 弹窗实例（调用方在 dismiss 后无需再释放，PopupWindow 自管）
      */
     @JvmStatic
-    fun show(a: Activity, content: View): PopupWindow {
-        val popup = PopupWindow(content, WIDTH, ViewGroup.LayoutParams.WRAP_CONTENT, true)
+    fun show(a: Activity, content: View): PopupWindow = showWithWidth(a, content, WIDTH)
+
+    @JvmStatic
+    fun showWithWidth(a: Activity, content: View, width: Int): PopupWindow {
+        val popup = PopupWindow(content, width, ViewGroup.LayoutParams.WRAP_CONTENT, true)
         popup.setBackgroundDrawable(content.context.getDrawable(R.drawable.bg_holo_dialog))
         popup.isOutsideTouchable = true
         popup.showAtLocation(a.window.decorView, Gravity.CENTER, 0, 0)

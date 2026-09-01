@@ -28,7 +28,7 @@ internal class MapPipHost private constructor(private val mContext: Context) {
 
     companion object {
         private const val TAG = "MapPipLocal"
-        fun available(): Boolean = android.os.Build.VERSION.SDK_INT in 29..35
+        fun available(): Boolean = android.os.Build.VERSION.SDK_INT in 28..35
         fun create(context: Context): MapPipHost = MapPipHost(context.applicationContext)
     }
 

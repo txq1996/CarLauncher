@@ -40,10 +40,15 @@ class PipService : Service() {
         private const val LAUNCH_DELAY_MS = 500L
         private const val VD_NAME = "MyActivityViewVirtualDisplay"
 
-        // InputManager hidden API
+        // InputManager hidden API — 9 上无 setDisplayId 方法，退化到 mDisplayId 字段反射
         private val sSetDisplayId: Method? = try {
             MotionEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
         } catch (t: Throwable) { null }
+        private val sSetDisplayIdField: java.lang.reflect.Field? = try {
+            MotionEvent::class.java.getDeclaredField("mDisplayId").apply { isAccessible = true }
+        } catch (t: Throwable) {
+            try { MotionEvent::class.java.getDeclaredField("mDisplayId").apply { isAccessible = true } } catch (_: Throwable) { null }
+        }
 
         private val sGetInputManager: Method? = try {
             android.hardware.input.InputManager::class.java.getMethod("getInstance")
@@ -83,6 +88,22 @@ class PipService : Service() {
             } catch (t: Throwable) {
                 Log.w(TAG, "resolve ActivityTaskManager failed", t)
             }
+            // 9 兼容：ActivityManagerNative.getDefault().moveTaskToDisplay
+            if (service == null) {
+                try {
+                    val amn = Class.forName("android.app.ActivityManagerNative")
+                    service = amn.getMethod("getDefault").invoke(null)
+                    if (service != null) {
+                        val cls = service.javaClass
+                        val intClass = Int::class.javaPrimitiveType!!
+                        moveTask = findMethod(cls, "moveTaskToDisplay", intClass, intClass)
+                        if (moveTask == null) moveTask = findMethod(cls, "moveTaskToStack", intClass, intClass, Boolean::class.javaPrimitiveType!!)
+                        moveRoot = moveTask // 9 无 moveRoot，复用 moveTask
+                    }
+                } catch (t: Throwable) {
+                    Log.w(TAG, "resolve ActivityManagerNative failed", t)
+                }
+            }
             sActivityTaskManagerService = service
             sMoveRootTaskToDisplay = moveRoot
             sMoveTaskToDisplay = moveTask
@@ -91,6 +112,7 @@ class PipService : Service() {
                 TAG,
                 "API: sdk=${Build.VERSION.SDK_INT}" +
                     " setDisplayId=${sSetDisplayId != null}" +
+                    " setDisplayIdField=${sSetDisplayIdField != null}" +
                     " inject=${sInjectInputEvent != null}" +
                     " forwarder=${sCreateInputForwarder != null}" +
                     " moveRoot=${sMoveRootTaskToDisplay != null}" +
@@ -287,10 +309,11 @@ class PipService : Service() {
     private fun injectTouch(event: MotionEvent): Boolean {
         val display = displayId()
         if (display < 0) return false
-        if (sSetDisplayId != null && sGetInputManager != null && sInjectInputEvent != null) {
+        if ((sSetDisplayId != null || sSetDisplayIdField != null) && sGetInputManager != null && sInjectInputEvent != null) {
             val copy = MotionEvent.obtain(event)
             try {
-                sSetDisplayId.invoke(copy, display)
+                if (sSetDisplayId != null) sSetDisplayId.invoke(copy, display)
+                else sSetDisplayIdField?.setInt(copy, display)
                 val im = sGetInputManager.invoke(null)
                 val r = sInjectInputEvent.invoke(im, copy, 0)
                 return true == r

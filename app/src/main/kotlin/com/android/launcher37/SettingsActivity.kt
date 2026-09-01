@@ -33,6 +33,7 @@ class SettingsActivity : Activity() {
         const val KEY_CARD_GAP = "layout_card_gap"
         const val KEY_SPEED_CARD_W = "layout_speed_card_w"
         const val KEY_MUSIC_CARD_H = "layout_music_card_h"
+        const val KEY_DOCK_HEIGHT = "dock_height"
 
         // ── 车速区域显隐（导航模式） ────────────────
         const val KEY_SHOW_NAVI_SPEED = "show_navi_speed"
@@ -62,6 +63,16 @@ class SettingsActivity : Activity() {
         const val KEY_SHOW_MUSIC_ARTIST = "show_music_artist"
         const val KEY_SHOW_MUSIC_TIME = "show_music_time"
         const val KEY_SHOW_MUSIC_BAR = "show_music_bar"
+        // 卡片显隐
+        const val KEY_SHOW_SPEED_CARD = "show_speed_card"
+        const val KEY_SHOW_MUSIC_CARD = "show_music_card"
+        const val KEY_SHOW_TIME = "show_time"
+        const val KEY_SHOW_DOCK = "show_dock"
+        const val KEY_SHOW_DOCK_LABEL = "show_dock_label"
+        // 时间
+        const val KEY_TIME_CARD_H = "time_card_h"
+        const val KEY_TS_TIME = "ts_time"
+        const val KEY_TIME_FORMAT = "time_format"
 
         /** bool 开关全集（LauncherActivity.loadSettings 按 key=true 缺省快照） */
         val SHOW_KEYS = arrayOf(
@@ -72,7 +83,9 @@ class SettingsActivity : Activity() {
             KEY_SHOW_NAVI_EXIT, KEY_SHOW_NAVI_DIRECTION, KEY_SHOW_NAVI_ALERT,
             KEY_SHOW_CRUISE_ROAD, KEY_SHOW_CRUISE_DIRECTION, KEY_SHOW_CRUISE_ALERT,
             KEY_SHOW_MUSIC_TITLE, KEY_SHOW_MUSIC_ARTIST, KEY_SHOW_MUSIC_TIME,
-            KEY_SHOW_MUSIC_BAR
+            KEY_SHOW_MUSIC_BAR,
+            KEY_SHOW_SPEED_CARD, KEY_SHOW_MUSIC_CARD, KEY_SHOW_TIME,
+            KEY_SHOW_DOCK, KEY_SHOW_DOCK_LABEL
         )
 
         /** 首次安装无 SP 值时的默认显隐（其余未列出项默认 true） */
@@ -82,7 +95,8 @@ class SettingsActivity : Activity() {
             KEY_SHOW_NAVI_LIGHT_COUNT to false,
             KEY_SHOW_NAVI_EXIT to false,
             KEY_SHOW_NAVI_DIRECTION to false,
-            KEY_SHOW_CRUISE_DIRECTION to false
+            KEY_SHOW_CRUISE_DIRECTION to false,
+            KEY_SHOW_TIME to false
         )
 
         // ── 字号/尺寸（px，int）──────────────────
@@ -118,23 +132,25 @@ class SettingsActivity : Activity() {
         /** int 尺寸快照表（key 顺序与默认值一一对应） */
         val INT_KEYS = arrayOf(
             KEY_PAGE_PADDING, KEY_CARD_GAP,
-            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H,
+            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H, KEY_DOCK_HEIGHT,
             KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
             KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC,
             KEY_TS_NAVI_TURN, KEY_TS_NAVI_ROAD, KEY_TS_NAVI_DEST,
             KEY_TS_NAVI_ETA, KEY_TS_NAVI_ETA_TEXT, KEY_TS_NAVI_LIGHT_COUNT,
             KEY_TS_NAVI_EXIT, KEY_TS_NAVI_DIRECTION, KEY_TS_NAVI_ALERT,
             KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
-            KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME
+            KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME,
+            KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT
         )
 
         val INT_DEFAULTS = intArrayOf(
-            10, 10, 260, 200,
+            10, 10, 260, 180, 80,
             110, 20, 17, 36,
             110, 20, 17, 36,
             36, 26, 15, 17, 17, 17, 17, 17, 17,
             26, 17, 17,
-            24, 15, 15
+            24, 15, 15,
+            60, 28, 1
         )
 
         // ── 行序键（持久化到 SP）─────────────────
@@ -191,8 +207,8 @@ class SettingsActivity : Activity() {
         SettingItem("navi_turn",     "转向图标与距离", KEY_TS_NAVI_TURN,         36,  KEY_SHOW_NAVI_TURN,         true, true),
         SettingItem("navi_road",     "路名",          KEY_TS_NAVI_ROAD,         26,  KEY_SHOW_NAVI_ROAD,         true, true),
         SettingItem("navi_dest",     "终点名称",      KEY_TS_NAVI_DEST,         15,  KEY_SHOW_NAVI_DEST,         false, true),
-        SettingItem("navi_eta",      "剩余距离时间",  KEY_TS_NAVI_ETA,          17,  KEY_SHOW_NAVI_ETA,          true, true),
-        SettingItem("navi_eta_text", "ETA预计到达",   KEY_TS_NAVI_ETA_TEXT,     17,  KEY_SHOW_NAVI_ETA_TEXT,     false, true),
+        SettingItem("navi_eta",      "剩余距离与时间",  KEY_TS_NAVI_ETA,          17,  KEY_SHOW_NAVI_ETA,          true, true),
+        SettingItem("navi_eta_text", "预计到达时间",   KEY_TS_NAVI_ETA_TEXT,     17,  KEY_SHOW_NAVI_ETA_TEXT,     false, true),
         SettingItem("navi_light_count","剩余红绿灯数", KEY_TS_NAVI_LIGHT_COUNT,  17,  KEY_SHOW_NAVI_LIGHT_COUNT,  false, true),
         SettingItem("navi_exit",     "出口信息",      KEY_TS_NAVI_EXIT,         17,  KEY_SHOW_NAVI_EXIT,         false, true),
         SettingItem("navi_direction","车头方向",      KEY_TS_NAVI_DIRECTION,    17,  KEY_SHOW_NAVI_DIRECTION,    false, true),
@@ -228,12 +244,16 @@ class SettingsActivity : Activity() {
             findViewById(R.id.tab_layout),
             findViewById(R.id.tab_speed),
             findViewById(R.id.tab_music),
+            findViewById(R.id.tab_time),
+            findViewById(R.id.tab_dock),
             findViewById(R.id.tab_general)
         )
         mPanels = arrayOf(
             findViewById(R.id.panel_layout),
             findViewById(R.id.panel_speed),
             findViewById(R.id.panel_music),
+            findViewById(R.id.panel_time),
+            findViewById(R.id.panel_dock),
             findViewById(R.id.panel_general)
         )
         for (i in mTabs.indices) {
@@ -245,6 +265,8 @@ class SettingsActivity : Activity() {
         bindLayoutTab()
         bindSpeedTab()
         bindMusicTab()
+        bindTimeTab()
+        bindDockTab()
         bindGeneralTab()
         findViewById<Button>(R.id.btn_restart_launcher).setOnClickListener { restartLauncher() }
     }
@@ -298,8 +320,27 @@ class SettingsActivity : Activity() {
         val box = findViewById<LinearLayout>(R.id.box_layout_seeks)
         bindSeek(box, "页面边距", KEY_PAGE_PADDING, 10, 0, 40)
         bindSeek(box, "部件间距", KEY_CARD_GAP, 10, 0, 40)
-        bindSeek(box, "车速卡宽度", KEY_SPEED_CARD_W, 260, 220, 400)
-        bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 200, 140, 300)
+        bindSeek(box, "左侧栏宽度", KEY_SPEED_CARD_W, 260, 220, 400)
+        bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 180, 140, 300)
+        bindSeek(box, "时间卡高度", KEY_TIME_CARD_H, 60, 40, 200)
+        // 卡片显隐（布局内统一，显示时间在车速上方）
+        val cbStatus = findViewById<CheckBox>(R.id.cb_hide_status_bar)
+        val hide = prefs().getBoolean(KEY_HIDE_STATUS_BAR, false)
+        cbStatus.isChecked = !hide
+        cbStatus.setOnCheckedChangeListener { _, isChecked ->
+            prefs().edit().putBoolean(KEY_HIDE_STATUS_BAR, !isChecked).apply()
+        }
+        bindCheck(R.id.cb_show_time, KEY_SHOW_TIME)
+        bindCheck(R.id.cb_show_speed_card, KEY_SHOW_SPEED_CARD)
+        bindCheck(R.id.cb_show_music_card, KEY_SHOW_MUSIC_CARD)
+        bindCheck(R.id.cb_show_dock, KEY_SHOW_DOCK)
+    }
+
+    private fun bindDockTab() {
+        bindCheck(R.id.cb_show_dock_label, KEY_SHOW_DOCK_LABEL)
+        val box = findViewById<LinearLayout>(R.id.box_dock_seeks)
+        box.removeAllViews()
+        bindSeek(box, "底栏高度", KEY_DOCK_HEIGHT, 80, 60, 120)
     }
 
     private fun bindSpeedTab() {
@@ -326,14 +367,14 @@ class SettingsActivity : Activity() {
     private fun rebuildSpeedPanel(box: LinearLayout) {
         box.removeAllViews()
         // ── 导航区 ──
-        renderSectionHeader(box, "[ 导航 ]")
+        renderSectionHeader(box, "导航")
         for (i in mNaviOrder.indices) {
             val key = mNaviOrder[i]
             val item = naviAllItems.firstOrNull { it.key == key } ?: continue
             renderSettingRow(box, item, i, isNavi = true)
         }
         // ── 巡航区 ──
-        renderSectionHeader(box, "[ 巡航 ]")
+        renderSectionHeader(box, "巡航")
         for (i in mCruiseOrder.indices) {
             val key = mCruiseOrder[i]
             val item = cruiseAllItems.firstOrNull { it.key == key } ?: continue
@@ -341,11 +382,18 @@ class SettingsActivity : Activity() {
         }
     }
 
-    /** 渲染分区子标题：粗体 + 上分隔线 + 内边距 */
+    /** 渲染分区子标题：统一样式 23px 粗体 + 上分隔线 1px divider */
     private fun renderSectionHeader(box: LinearLayout, title: String) {
+        if (box.childCount > 0) {
+            val div = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1)).apply { topMargin = dpToPx(24) }
+                setBackgroundColor(resources.getColor(R.color.divider, theme))
+            }
+            box.addView(div)
+        }
         val tv = TextView(this).apply {
             text = title
-            textSize = 16f
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dpToPx(23).toFloat())
             setTextColor(resources.getColor(R.color.foreground, theme))
             paint.isFakeBoldText = true
             setPadding(0, dpToPx(16), 0, dpToPx(8))
@@ -431,11 +479,36 @@ class SettingsActivity : Activity() {
         bindCheck(R.id.cb_music_bar, KEY_SHOW_MUSIC_BAR)
     }
 
+    private fun bindTimeTab() {
+        val box = findViewById<LinearLayout>(R.id.box_time_seeks)
+        box.removeAllViews()
+        bindSeek(box, "时间字号", KEY_TS_TIME, 28, 14, 60)
+        val tvFormat = findViewById<TextView>(R.id.tv_time_format)
+        fun refreshFormatLabel() {
+            val fmt = prefs().getInt(KEY_TIME_FORMAT, 1)
+            val label = when (fmt) {
+                0 -> "HH:mm"
+                1 -> "HH:mm:ss"
+                2 -> "yyyy-MM-dd HH:mm"
+                3 -> "yyyy-MM-dd\\nHH:mm:ss (换行)"
+                else -> "HH:mm:ss"
+            }
+            tvFormat.text = "时间格式：$label（点击切换）"
+        }
+        refreshFormatLabel()
+        tvFormat.setOnClickListener {
+            val cur = prefs().getInt(KEY_TIME_FORMAT, 1)
+            val next = (cur + 1) % 4
+            prefs().edit().putInt(KEY_TIME_FORMAT, next).apply()
+            refreshFormatLabel()
+        }
+    }
+
     private fun prefs(): SharedPreferences = Prefs.of(this)
 
     private fun bindCheck(viewId: Int, key: String) {
         val cb = findViewById<CheckBox>(viewId)
-        cb.isChecked = prefs().getBoolean(key, true)
+        cb.isChecked = prefs().getBoolean(key, SHOW_DEFAULTS[key] ?: true)
         cb.setOnCheckedChangeListener { _, isChecked ->
             prefs().edit().putBoolean(key, isChecked).apply()
         }
@@ -461,7 +534,6 @@ class SettingsActivity : Activity() {
     // 颜色设置页已移除：主题色改由 values/colors.xml + values-night/colors.xml 自动切换
 
     private fun bindGeneralTab() {
-        bindCheck(R.id.cb_hide_status_bar, KEY_HIDE_STATUS_BAR)
         bindAdbDebugToggle()
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()

@@ -32,6 +32,7 @@ class LauncherActivity : Activity() {
     private lateinit var speed: SpeedDelegate
     private lateinit var navi: NaviPanelDelegate
     private lateinit var music: MusicDelegate
+    private lateinit var time: com.android.launcher37.home.TimeDelegate
     private lateinit var update: UpdateDelegate
 
     // Exposed to sibling modules (AppDrawer / MemoryCleaner) via cast.
@@ -54,9 +55,11 @@ class LauncherActivity : Activity() {
             contentRoot = findViewById(R.id.content_root),
             pageContent = findViewById(R.id.page_content),
             leftCol = findViewById(R.id.left_col),
+            gapTimeSpeed = findViewById(R.id.gap_time_speed),
             gapSpeedMusic = findViewById(R.id.gap_speed_music),
             gapDock = findViewById(R.id.gap_dock),
             gapCol = findViewById(R.id.gap_col),
+            cardTime = findViewById(R.id.card_time),
             cardSpeed = findViewById(R.id.card_speed),
             cardMusic = findViewById(R.id.card_music),
             musicInfo = findViewById(R.id.music_info),
@@ -84,10 +87,12 @@ class LauncherActivity : Activity() {
             tvNaviEtaText = findViewById(R.id.tv_navi_eta_text),
             tvNaviLightCount = findViewById(R.id.tv_navi_light_count),
             tvNaviExit = findViewById(R.id.tv_navi_exit),
-            tvNaviDirection = findViewById(R.id.tv_navi_direction)
+            tvNaviDirection = findViewById(R.id.tv_navi_direction),
+            tvTime = findViewById(R.id.tv_time)
         )
 
         layout = LayoutDelegate(this, views).also { it.apply(snapshot) }
+        time = com.android.launcher37.home.TimeDelegate(views).also { it.applyLayout() }
         speed = SpeedDelegate(this, views)
         music = MusicDelegate(
             this, views,
@@ -111,7 +116,8 @@ class LauncherActivity : Activity() {
         pip.setPlaceholder(views.pipPlaceholder)
         dockBar = DockBar(this, views.dockGrid)
         dockBar.setCleanAction { cleanMemory() }
-        dockBar.setCellStyle(showIcon = true, showLabel = true, iconSize = 44, labelSize = 14)
+        val showLabel = snapshot.show(SettingsActivity.KEY_SHOW_DOCK_LABEL, true)
+        dockBar.setCellStyle(showIcon = true, showLabel = showLabel, iconSize = 44, labelSize = 14)
 
         applyStatusBarVisibility()
         layout.applyTheme()
@@ -119,6 +125,7 @@ class LauncherActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        time.start()
         music.start()
         navi.start()
         update.checkOnLaunch()
@@ -130,6 +137,7 @@ class LauncherActivity : Activity() {
     }
 
     override fun onStop() {
+        time.stop()
         music.stop()
         navi.stop()
         super.onStop()
@@ -195,6 +203,6 @@ class LauncherActivity : Activity() {
 
     companion object {
         private const val PIP_START_DELAY_MS = 250L
-        private const val SELECT_MUSIC_TITLE = "select music app"
+        private const val SELECT_MUSIC_TITLE = "选择音乐应用"
     }
 }

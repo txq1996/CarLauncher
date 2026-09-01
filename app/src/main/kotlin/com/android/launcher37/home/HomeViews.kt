@@ -18,9 +18,11 @@ class HomeViews(
     val contentRoot: View,
     val pageContent: View,
     val leftCol: View,
+    val gapTimeSpeed: View,
     val gapSpeedMusic: View,
     val gapDock: View,
     val gapCol: View,
+    val cardTime: View,
     val cardSpeed: View,
     val cardMusic: View,
     val musicInfo: View,
@@ -48,5 +50,6 @@ class HomeViews(
     val tvNaviEtaText: TextView,
     val tvNaviLightCount: TextView,
     val tvNaviExit: TextView,
-    val tvNaviDirection: TextView
+    val tvNaviDirection: TextView,
+    val tvTime: TextView
 )

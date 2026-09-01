@@ -145,7 +145,7 @@ class DockBar(
     fun pickApp(title: String, exclude: Set<String>?, onPicked: (String) -> Unit) {
         val themed: Context = HoloPopup.themedContext(mActivity)
         val list = ListView(themed)
-        val popup: PopupWindow = HoloPopup.show(mActivity, HoloPopup.titledPanel(themed, title, list))
+        val popup: PopupWindow = HoloPopup.showWithWidth(mActivity, HoloPopup.titledPanel(themed, title, list), HoloPopup.WIDTH_SMALL)
         list.onItemClickListener = AdapterView.OnItemClickListener { parent, _, position, _ ->
             popup.dismiss()
             val ri = parent.adapter.getItem(position) as? ResolveInfo ?: return@OnItemClickListener

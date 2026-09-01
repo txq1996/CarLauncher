@@ -31,6 +31,13 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
+                <include layout="@layout/card_time" />
+
+                <Space
+                    android:id="@+id/gap_time_speed"
+                    android:layout_width="match_parent"
+                    android:layout_height="10px" />
+
                 <include layout="@layout/card_speed" />
 
                 <Space

@@ -246,12 +246,23 @@ object AppDrawer {
     ) {
         val themed: Context = HoloPopup.themedContext(activity)
         val list = ListView(themed)
-        val popup = HoloPopup.show(activity, HoloPopup.titledPanel(themed, title, list))
+        val popup = HoloPopup.showWithWidth(activity, HoloPopup.titledPanel(themed, title, list), HoloPopup.WIDTH_SMALL)
         SharedExecutor.io().execute {
-            val labels = ids.map { Store.label(activity, it) }
+            val entries = ids.map { it to Store.label(activity, it) }
+            val icons = ids.map { Store.normalizedIcon(activity, it) }
             list.post {
                 if (!activity.isDestroyed && !activity.isFinishing) {
-                    list.adapter = ArrayAdapter(activity, android.R.layout.simple_list_item_1, labels)
+                    list.adapter = object : BaseAdapter() {
+                        override fun getCount(): Int = entries.size
+                        override fun getItem(p: Int): Any = entries[p].first
+                        override fun getItemId(p: Int): Long = p.toLong()
+                        override fun getView(pos: Int, cv: View?, parent: ViewGroup): View {
+                            val v = cv ?: LayoutInflater.from(activity).inflate(R.layout.item_app, parent, false)
+                            v.findViewById<ImageView>(R.id.app_icon).setImageDrawable(icons[pos])
+                            v.findViewById<TextView>(R.id.app_name).text = entries[pos].second
+                            return v
+                        }
+                    }
                 }
             }
             list.onItemClickListener = AdapterView.OnItemClickListener { _, _, pos, _ ->
