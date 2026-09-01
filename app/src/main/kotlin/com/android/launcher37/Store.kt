@@ -289,6 +289,15 @@ object Store {
     /** 按应用标识启动 */
     @JvmStatic
     fun launchApp(c: Context, id: String) {
+        // Android 9 兼容：若启动的是当前 PIP 地图且任务在 VD 上，优先搬移到主屏全屏
+        try {
+            val pkg = pkgOf(id)
+            val app = c.applicationContext as? LauncherApp
+            val pipPkg = app?.pipController?.resolvePkg()
+            if (pipPkg != null && pipPkg == pkg) {
+                if (app.pipController?.expandToFullscreen() == true) return
+            }
+        } catch (_: Throwable) {}
         try {
             entryIntent(c, id)?.let {
                 it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

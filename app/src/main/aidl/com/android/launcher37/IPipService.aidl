@@ -29,4 +29,7 @@ interface IPipService {
 
     /** 从 launcher 端转发触摸事件到 VD（service 进程内注入） */
     boolean forwardTouch(in MotionEvent event);
+
+    /** 将指定包的任务搬移到目标 display（用于全屏展开/收回） */
+    boolean moveTaskToDisplay(String packageName, int displayId);
 }

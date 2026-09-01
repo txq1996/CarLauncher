@@ -68,11 +68,18 @@ class PipService : Service() {
         private val sActivityTaskManagerService: Any?
         private val sMoveRootTaskToDisplay: Method?
         private val sMoveTaskToDisplay: Method?
+        private val sMoveTaskToBack: Method?
+        // Android 9: IActivityTaskManager.moveStackToDisplay(stackId, displayId)
+        private val sTaskManager: Any?
+        private val sMoveStackToDisplay: Method?
 
         init {
             var service: Any? = null
             var moveRoot: Method? = null
             var moveTask: Method? = null
+            var moveBack: Method? = null
+            var taskManager: Any? = null
+            var moveStack: Method? = null
             try {
                 val atm = Class.forName("android.app.ActivityTaskManager")
                 val getService = atm.getMethod("getService")
@@ -86,7 +93,7 @@ class PipService : Service() {
             } catch (t: Throwable) {
                 Log.w(TAG, "resolve ActivityTaskManager failed", t)
             }
-            // 9 兼容：ActivityManagerNative.getDefault().moveTaskToDisplay
+            // 9 兼容：ActivityManagerNative.getDefault() → IActivityManager.getTaskManager() → moveStackToDisplay
             if (service == null) {
                 try {
                     val amn = Class.forName("android.app.ActivityManagerNative")
@@ -97,6 +104,9 @@ class PipService : Service() {
                         moveTask = findMethod(cls, "moveTaskToDisplay", intClass, intClass)
                         if (moveTask == null) moveTask = findMethod(cls, "moveTaskToStack", intClass, intClass, Boolean::class.javaPrimitiveType!!)
                         moveRoot = moveTask // 9 无 moveRoot，复用 moveTask
+                        moveBack = findMethod(cls, "moveTaskToBack", intClass)
+                        // Android 9: IActivityManager 直接有 moveStackToDisplay(stackId, displayId)
+                        moveStack = findMethod(cls, "moveStackToDisplay", intClass, intClass)
                     }
                 } catch (t: Throwable) {
                     Log.w(TAG, "resolve ActivityManagerNative failed", t)
@@ -105,6 +115,9 @@ class PipService : Service() {
             sActivityTaskManagerService = service
             sMoveRootTaskToDisplay = moveRoot
             sMoveTaskToDisplay = moveTask
+            sMoveTaskToBack = moveBack
+            sTaskManager = taskManager
+            sMoveStackToDisplay = moveStack
 
             Log.i(
                 TAG,
@@ -114,7 +127,9 @@ class PipService : Service() {
                     " inject=${sInjectInputEvent != null}" +
                     " forwarder=${sCreateInputForwarder != null}" +
                     " moveRoot=${sMoveRootTaskToDisplay != null}" +
-                    " moveTask=${sMoveTaskToDisplay != null}"
+                    " moveTask=${sMoveTaskToDisplay != null}" +
+                    " moveStack=${sMoveStackToDisplay != null}" +
+                    " moveBack=${sMoveTaskToBack != null}"
             )
         }
 
@@ -237,6 +252,11 @@ class PipService : Service() {
             if (event == null) return false
             return injectTouch(event)
         }
+
+        override fun moveTaskToDisplay(packageName: String?, displayId: Int): Boolean {
+            if (packageName.isNullOrEmpty()) return false
+            return moveTaskToTargetDisplay(packageName, displayId)
+        }
     }
 
     private fun displayId(): Int {
@@ -265,12 +285,9 @@ class PipService : Service() {
             }
         }
         val dm = getSystemService(DisplayManager::class.java) ?: return
-        // API 29+ 才有 TRUSTED + OWN_CONTENT_ONLY；minSdk=28 时降级到 0
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val flags = if (Build.VERSION.SDK_INT >= 29)
             VIRTUAL_DISPLAY_FLAG_TRUSTED or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY
-        } else {
-            0
-        }
+        else 0
         mVd = try {
             dm.createVirtualDisplay(VD_NAME, width, height, densityDpi, surface, flags)
         } catch (t: SecurityException) {
@@ -353,36 +370,144 @@ class PipService : Service() {
                 if (taskPkg != packageName) continue
                 val taskId = task.id
                 if (taskId < 0) continue
+                var detected = false
                 val currentDisplay = try {
                     val f = findMethod(task.javaClass, "getDisplayId")
                         ?: try { task.javaClass.getField("displayId") } catch (ignored: Throwable) { null }
-                    if (f is java.lang.reflect.Field) f.getInt(task) else Display.DEFAULT_DISPLAY
-                } catch (t: Throwable) { Display.DEFAULT_DISPLAY }
-                Log.i(TAG, "found task: id=$taskId pkg=$taskPkg display=$currentDisplay target=$targetDisplay")
-                if (currentDisplay == targetDisplay) return true
-                if (currentDisplay >= 0 && currentDisplay != Display.DEFAULT_DISPLAY) continue
-                if (sMoveRootTaskToDisplay != null) {
-                    try {
-                        sMoveRootTaskToDisplay.invoke(sActivityTaskManagerService, taskId, targetDisplay)
-                        Log.i(TAG, "moveRootTaskToDisplay ok: task=$taskId display=$targetDisplay")
-                        return true
-                    } catch (t: Throwable) {
-                        Log.w(TAG, "moveRootTaskToDisplay failed", t)
+                    when (f) {
+                        is Method -> { detected = true; (f.invoke(task) as? Int) ?: Display.DEFAULT_DISPLAY }
+                        is java.lang.reflect.Field -> { detected = true; f.getInt(task) }
+                        else -> Display.DEFAULT_DISPLAY
                     }
+                } catch (t: Throwable) { Display.DEFAULT_DISPLAY }
+                Log.i(TAG, "found task: id=$taskId pkg=$taskPkg display=$currentDisplay(target=$targetDisplay) detected=$detected")
+                if (detected && currentDisplay == targetDisplay) return true
+                if (detected && currentDisplay >= 0 && currentDisplay != Display.DEFAULT_DISPLAY && targetDisplay != Display.DEFAULT_DISPLAY) continue
+                if (invokeMove(sMoveRootTaskToDisplay, taskId, targetDisplay)) {
+                    Log.i(TAG, "moveRootTaskToDisplay ok: task=$taskId display=$targetDisplay")
+                    return true
                 }
-                if (sMoveTaskToDisplay != null) {
+                if (invokeMove(sMoveTaskToDisplay, taskId, targetDisplay)) {
+                    Log.i(TAG, "moveTaskToDisplay ok: task=$taskId display=$targetDisplay")
+                    return true
+                }
+                // Android 9: IActivityManager.moveStackToDisplay(stackId, displayId)
+                // 注意：仅在搬到主屏时使用（VD→主屏正常），搬到 VD 时跳过
+                // （Android 9 上跨 display 移动到 VD 会触发部分 app force-finish）
+                if (sMoveStackToDisplay != null && targetDisplay == Display.DEFAULT_DISPLAY) {
                     try {
-                        sMoveTaskToDisplay.invoke(sActivityTaskManagerService, taskId, targetDisplay)
-                        Log.i(TAG, "moveTaskToDisplay ok: task=$taskId display=$targetDisplay")
+                        val stackIdField = task.javaClass.getField("stackId")
+                        val stackId = stackIdField.getInt(task)
+                        sMoveStackToDisplay.invoke(sActivityTaskManagerService, stackId, targetDisplay)
+                        Log.i(TAG, "moveStackToDisplay ok: task=$taskId stack=$stackId display=$targetDisplay")
                         return true
+                    } catch (t: InvocationTargetException) {
+                        val cause = t.cause
+                        if (cause is IllegalArgumentException && cause.message?.contains("current display") == true) {
+                            Log.i(TAG, "moveStackToDisplay: already on target display, task=$taskId")
+                            return true
+                        }
+                        Log.w(TAG, "moveStackToDisplay failed", t)
                     } catch (t: Throwable) {
-                        Log.w(TAG, "moveTaskToDisplay failed", t)
+                        Log.w(TAG, "moveStackToDisplay failed", t)
                     }
                 }
             }
             false
         } catch (t: Throwable) {
             Log.w(TAG, "moveStaleTask failed", t)
+            false
+        }
+    }
+
+    private fun moveTaskToTargetDisplay(packageName: String, targetDisplay: Int): Boolean {
+        if (sActivityTaskManagerService == null) return false
+        if (targetDisplay < 0) return false
+        return try {
+            val am = getSystemService(ActivityManager::class.java) ?: return false
+            val tasks = am.getRunningTasks(100) ?: return false
+            for (task in tasks) {
+                if (task == null) continue
+                val taskPkg = task.baseActivity?.packageName?.takeIf { it.isNotEmpty() }
+                    ?: task.topActivity?.packageName
+                if (taskPkg != packageName) continue
+                val taskId = task.id
+                if (taskId < 0) continue
+                var detected = false
+                val currentDisplay = try {
+                    val f = findMethod(task.javaClass, "getDisplayId")
+                        ?: try { task.javaClass.getField("displayId") } catch (ignored: Throwable) { null }
+                    when (f) {
+                        is Method -> { detected = true; (f.invoke(task) as? Int) ?: Display.DEFAULT_DISPLAY }
+                        is java.lang.reflect.Field -> { detected = true; f.getInt(task) }
+                        else -> Display.DEFAULT_DISPLAY
+                    }
+                } catch (t: Throwable) { Display.DEFAULT_DISPLAY }
+                Log.i(TAG, "moveTaskToTarget: id=$taskId pkg=$taskPkg display=$currentDisplay(target=$targetDisplay) detected=$detected")
+                if (detected && currentDisplay == targetDisplay) return true
+                if (invokeMove(sMoveTaskToDisplay, taskId, targetDisplay)) {
+                    Log.i(TAG, "moveTaskToDisplay ok: task=$taskId display=$targetDisplay")
+                    return true
+                }
+                if (sMoveRootTaskToDisplay !== sMoveTaskToDisplay && invokeMove(sMoveRootTaskToDisplay, taskId, targetDisplay)) {
+                    Log.i(TAG, "moveRootTaskToDisplay ok: task=$taskId display=$targetDisplay")
+                    return true
+                }
+                // Android 9: IActivityManager.moveStackToDisplay(stackId, displayId)
+                if (sMoveStackToDisplay != null) {
+                    try {
+                        val stackIdField = task.javaClass.getField("stackId")
+                        val stackId = stackIdField.getInt(task)
+                        sMoveStackToDisplay.invoke(sActivityTaskManagerService, stackId, targetDisplay)
+                        Log.i(TAG, "moveStackToDisplay ok: task=$taskId stack=$stackId display=$targetDisplay")
+                        return true
+                    } catch (t: InvocationTargetException) {
+                        val cause = t.cause
+                        if (cause is IllegalArgumentException && cause.message?.contains("current display") == true) {
+                            Log.i(TAG, "moveStackToDisplay: already on target display, task=$taskId")
+                            return true
+                        }
+                        Log.w(TAG, "moveStackToDisplay failed", t)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "moveStackToDisplay failed", t)
+                    }
+                }
+                // 先把 VD 上的任务移到后台，调用方再 startActivity 到主屏时不会复用 VD 旧 task
+                if (targetDisplay == Display.DEFAULT_DISPLAY && sMoveTaskToBack != null) {
+                    try {
+                        sMoveTaskToBack.invoke(sActivityTaskManagerService, taskId)
+                        Log.i(TAG, "moveTaskToBack fallback: task=$taskId")
+                        return false
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "moveTaskToBack failed", t)
+                    }
+                }
+            }
+            false
+        } catch (t: Throwable) {
+            Log.w(TAG, "moveTaskToTarget failed", t)
+            false
+        }
+    }
+
+    private fun invokeMove(method: Method?, taskId: Int, targetDisplay: Int): Boolean {
+        if (method == null || sActivityTaskManagerService == null) return false
+        return try {
+            when (method.parameterTypes.size) {
+                2 -> {
+                    method.invoke(sActivityTaskManagerService, taskId, targetDisplay)
+                    true
+                }
+                3 -> {
+                    // Android 9: moveTaskToStack(taskId, stackId, toTop)
+                    // For targetDisplay==0, stackId 0 is home; for VD, try displayId as stackId
+                    method.invoke(sActivityTaskManagerService, taskId, targetDisplay, true)
+                    true
+                }
+                else -> false
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "invokeMove failed: ${method.name} display=$targetDisplay", t)
             false
         }
     }

@@ -1,6 +1,7 @@
 package com.android.launcher37
 
 import android.content.Context
+import android.content.Intent
 import android.view.View
 
 /**
@@ -57,6 +58,36 @@ class PipController(
         mHost?.releaseTransient()
         // mHost 保留：mVd 仍持有 VirtualDisplay 句柄；下次 ensureStd 时
         // 复用同 VD、只需 attach 新 surface。
+    }
+
+    /**
+     * 将 PIP 中的任务搬移到主屏全屏（Android 9 兼容：VD→DEFAULT_DISPLAY）。
+     * 返回是否成功搬移（已在主屏则返回 true）。
+     */
+    fun expandToFullscreen(): Boolean {
+        val pkg = resolvePkg() ?: return false
+        val host = mHost ?: return false
+        // 优先尝试通过 service 搬移已在 VD 上的任务到主屏
+        if (host.moveTaskToDefault(pkg)) return true
+        // 兜底：任务不在 VD 或搬移失败，显式指定 display 0 启动到主屏
+        // FLAG_ACTIVITY_MULTIPLE_TASK：强制创建新 task，避免复用 VD 上的旧 task（Android 9 无跨 display 搬移）
+        return try {
+            val intent = mContext.packageManager.getLaunchIntentForPackage(pkg)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            } ?: return false
+            val opts = android.app.ActivityOptions.makeBasic().apply {
+                setLaunchDisplayId(0)
+            }
+            mContext.startActivity(intent, opts.toBundle())
+            true
+        } catch (t: Throwable) {
+            try {
+                val intent2 = mContext.packageManager.getLaunchIntentForPackage(pkg) ?: return false
+                intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                mContext.startActivity(intent2)
+                true
+            } catch (_: Throwable) { false }
+        }
     }
 
     /**

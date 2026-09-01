@@ -167,6 +167,14 @@ internal class MapPipHost private constructor(private val mContext: Context) {
         }
     }
 
+    fun moveTaskToDefault(packageName: String): Boolean {
+        val svc = mService ?: return false
+        return try { svc.moveTaskToDisplay(packageName, 0) } catch (t: RemoteException) {
+            Log.w(TAG, "moveTaskToDefault failed", t)
+            false
+        }
+    }
+
     private fun forwardTouch(event: MotionEvent): Boolean {
         val svc = mService ?: return false
         return try { svc.forwardTouch(event) } catch (t: RemoteException) {
