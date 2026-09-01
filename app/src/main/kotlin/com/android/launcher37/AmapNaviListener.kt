@@ -66,88 +66,88 @@ object AmapNaviListener {
      * 下游可直接照搬原 Receiver 解析逻辑而不必做字段映射。
      */
     data class NaviInfo(
-        /** 转向图标：NEW_ICON 优先，缺失回落 ICON；0 = 巡航（无转向） */
+        /** 转向图标：NEW_ICON 优先缺失回落 ICON；0=巡航 【已用】NaviPanelDelegate:renderKey navi_turn */
         var icon: Int = 0,
-        /** 段剩余距离数字部分（去掉了"公里"/"米"后缀） */
+        /** 段剩余距离数字部分（去"公里"/"米"）【未用】UI改用 NaviTextClient.segRemainDis，冗余 */
         var segRemainDisNum: String? = null,
-        /** 段剩余距离单位："米" / "公里" */
+        /** 段剩余距离单位"米"/"公里"【未用】同上 */
         var segRemainDisUnit: String? = null,
-        /** 当前道路名（来自 CUR_ROAD_NAME） */
+        /** 当前道路名 CUR_ROAD_NAME【未用】UI以 NaviTextClient.cur/nextRoadName 为主，冗余备份 */
         var curRoadName: String? = null,
-        /** 下一道路名（来自 NEXT_ROAD_NAME，缺失回落 CUR_ROAD_NAME） */
+        /** 下一道路名 NEXT_ROAD_NAME【未用】同上，UI取 NaviTextClient.nextRoadName */
         var nextRoadName: String? = null,
-        /** 全程剩余距离（含单位原始字符串，如"5.2公里"） */
+        /** 全程剩余距离带单位"5.2公里" ROUTE_REMAIN_DIS_AUTO【未用】UI以 NaviTextClient.remainDis 为主 */
         var routeRemainDis: String? = null,
-        /** 全程剩余时间（含单位原始字符串，如"12分钟"） */
+        /** 全程剩余时间带单位"12分钟" ROUTE_REMAIN_TIME_AUTO【未用】同上 */
         var routeRemainTime: String? = null,
-        /** 全程总距离（米，ROUTE_ALL_DIS） */
+        /** 全程总距离(米) ROUTE_ALL_DIS【未用】仅用于 progressPercent 计算，无直接UI */
         var routeAllDis: Int = 0,
-        /** 全程剩余距离（米，ROUTE_REMAIN_DIS） */
+        /** 全程剩余距离(米) ROUTE_REMAIN_DIS【未用】同上 */
         var routeRemainDisMeters: Int = 0,
-        /** 行程进度 0~100，由 routeRemainDis/routeAllDis 推算 */
+        /** 行程进度0~100 已计算【未用】预留，未上UI */
         var progressPercent: Int = 0,
-        /** 当前车速 km/h（CUR_SPEED） */
+        /** 当前车速km/h CUR_SPEED【已用】SpeedDelegate:onNaviInfo 回退(IPC不可用时) */
         var curSpeed: Int = 0,
-        /** 道路限速 km/h（LIMITED_SPEED，恒 -1 见 12110 来源） */
+        /** 道路限速km/h LIMITED_SPEED(恒-1需看12110)【未用】UI限速来自 NaviTextClient.limitedSpeed/cameraSpeed，可切换此源 */
         var limitedSpeed: Int = -1,
-        /** 电子眼类型 0=测速 1=监控 2=闯红灯 3=违章拍照 4=公交道 5=应急车道 */
+        /** 电子眼类型0测速1监控2闯红灯3违章4公交5应急【已用】NaviPanelDelegate:renderAlert(巡航/导航) */
         var cameraType: Int = -1,
-        /** 电子眼距离（米，缺失为 -1） */
+        /** 电子眼距离(米) CAMERA_DIST【已用】同上 */
         var cameraDist: Int = -1,
-        /** 电子眼限速 km/h（缺失为 -1） */
+        /** 电子眼限速km/h CAMERA_SPEED【已用】同上 */
         var cameraSpeed: Int = -1,
-        /** 终点名称 */
+        /** 终点名称 endPOIName【未用】UI以 NaviTextClient.endPoiName 显示 navi_dest，冗余 */
         var endPoiName: String? = null,
-        /** 全程红绿灯总数 */
+        /** 全程红绿灯总数 TRAFFIC_LIGHT_NUM【未用】仅 remainLightNum 上UI */
         var totalLightNum: Int = 0,
-        /** 剩余红绿灯数 */
+        /** 剩余红绿灯数 routeRemainTrafficLightNum【已用】NaviPanelDelegate:navi_light_count */
         var remainLightNum: Int = 0,
-        /** 车头方向角度（0~360，-1 表示无） */
+        /** 车头方向角度0~360 -1无 CAR_DIRECTION【已用】navi_direction/cruise_direction */
         var carDirection: Int = -1,
-        /** 出口名称 */
+        /** 出口名称 EXIT_NAME_INFO【已用】navi_exit */
         var exitName: String? = null,
-        /** 出口方向描述 */
+        /** 出口方向描述 EXIT_DIRECTION_INFO【已用】同上拼接 */
         var exitDirection: String? = null,
-        /** 最近服务区名称 */
+        /** 最近服务区名称 SAPA_NAME【未用】UI沿用 NaviTextClient.sapaName，可切换此源(带距离字符串) */
         var sapaName: String? = null,
-        /** 最近服务区距离（含单位） */
+        /** 最近服务区距离带单位 SAPA_DIST_AUTO【未用】同上 */
         var sapaDist: String? = null,
-        /** 服务区类型（0/1） */
+        /** 服务区类型0/1 SAPA_TYPE【未用】无UI */
         var sapaType: Int = 0,
-        /** 下一服务区名称 */
+        /** 下一服务区名称 NEXT_SAPA_NAME【未用】预留未上UI */
         var nextSapaName: String? = null,
-        /** 下一服务区距离（含单位） */
+        /** 下一服务区距离带单位 NEXT_SAPA_DIST_AUTO【未用】同上 */
         var nextSapaDist: String? = null,
-        /** 下一服务区类型 */
+        /** 下一服务区类型 NEXT_SAPA_TYPE【未用】无UI */
         var nextSapaType: Int = 0,
-        /** 预计到达文本（"18:06" / "明天18:06"） */
+        /** 预计到达文本"18:06"/"明天18:06" ETA_TEXT【已用】navi_eta_text */
         var etaText: String? = null
     )
 
-    /** 巡航专用数据（来自 10001 ICON=0 时的解析，结构与 [NaviInfo] 子集重叠但单独缓存） */
+    /** 巡航专用数据（10001 ICON=0）【全部已用】cruise_road/cruise_alert/cruise_direction + SpeedDelegate车速回退 */
     data class CruiseInfo(
-        var curSpeed: Int = 0,
-        var curRoadName: String? = null,
-        var cameraType: Int = 0,
-        var cameraSpeed: Int = -1,
-        var cameraDist: Int = -1,
-        var carDirection: Int = -1
+        var curSpeed: Int = 0, // 【已用】SpeedDelegate:onCruiseInfo + cruise_alert
+        var curRoadName: String? = null, // 【已用】cruise_road
+        var cameraType: Int = 0, // 【已用】cruise_alert
+        var cameraSpeed: Int = -1, // 【已用】同上
+        var cameraDist: Int = -1, // 【已用】同上
+        var carDirection: Int = -1 // 【已用】cruise_direction
     )
 
-    /** 60073 导航单灯红绿灯（cruiseLights 缺失时） */
+    /** 60073 导航单灯红绿灯（cruiseLights缺失时）【已用】SpeedDelegate:traffic 倒计时与颜色 */
     data class TrafficLightInfo(
-        var status: Int = 0,
-        var dir: Int = 4,
-        var countdown: Int = 0
+        var status: Int = 0, // 1红/4绿/其它黄【已用】
+        var dir: Int = 4, // 方向【已用】仅取色，UI未显文字
+        var countdown: Int = 0 // 倒计时秒【已用】traffic
     )
 
-    /** 12110 区间测速 */
+    /** 12110 区间测速【未用】已解析缓存lastIntervalSpeed，无UI绑定，可用于限速提示 */
     data class IntervalSpeed(
-        var startDist: Int = -1,
-        var startDistText: String? = null,
-        var avgSpeed: Int = 0,
-        var endDistText: String? = null,
-        var limitSpeed: Int = 0
+        var startDist: Int = -1, // START_DISTANCE【未用】
+        var startDistText: String? = null, // START_DISTANCE_TEXT【未用】
+        var avgSpeed: Int = 0, // AVERAGE_SPEED【未用】
+        var endDistText: String? = null, // END_DISTANCE_TEXT【未用】
+        var limitSpeed: Int = 0 // LIMITED_SPEED区间限速【未用】可替代NaviInfo.limitedSpeed
     )
 
     /**
@@ -174,22 +174,21 @@ object AmapNaviListener {
         fun onTrafficLightHidden() {}
     }
 
-    // ── 缓存：原子引用写，最后值读取无锁 ─────────────────────────────
-
-    @Volatile @JvmField var lastNaviInfo: NaviInfo? = null
-    @Volatile @JvmField var lastCruiseInfo: CruiseInfo? = null
-    @Volatile @JvmField var lastTrafficLight: TrafficLightInfo? = null
-    /** 60073 lightsData 的原始 JSON 字符串（巡航多灯）；null 表示无 */
+    // ── 缓存：原子引用写，最后值读取无锁（AdbDebug /dump 可看） ─────
+    @Volatile @JvmField var lastNaviInfo: NaviInfo? = null // 【部分已用】见NaviInfo各字段标注
+    @Volatile @JvmField var lastCruiseInfo: CruiseInfo? = null // 【已用】巡航全量
+    @Volatile @JvmField var lastTrafficLight: TrafficLightInfo? = null // 【已用】单灯
+    /** 60073 lightsData 原始JSON（巡航多灯）【未用】已缓存未上UI，可渲染多灯列表 */
     @Volatile @JvmField var lastCruiseTrafficLights: String? = null
-    @Volatile @JvmField var lastTmcJson: String? = null
-    @Volatile @JvmField var lastLaneJson: String? = null
-    @Volatile @JvmField var lastIntervalSpeed: IntervalSpeed? = null
+    @Volatile @JvmField var lastTmcJson: String? = null // 【未用】EXTRA_TMC_SEGMENT 未上UI
+    @Volatile @JvmField var lastLaneJson: String? = null // 【未用】EXTRA_DRIVE_WAY 未上UI
+    @Volatile @JvmField var lastIntervalSpeed: IntervalSpeed? = null // 【未用】同上
 
-    /** -1=未知；0=白天 1=夜晚 2=前台 3=后台（最后一次 10019 EXTRA_STATE 缓存） */
+    /** -1未知 0白天1夜晚2前台3后台 最后10019 EXTRA_STATE【未用】仅存档 */
     @Volatile @JvmField var dayNightState: Int = -1
-    @Volatile @JvmField var isNightMode: Boolean = true
-    @Volatile @JvmField var isAmapForeground: Boolean = false
-    /** 路口放大图状态：true=有（EXTRA_CROSS_MAP=1） */
+    @Volatile @JvmField var isNightMode: Boolean = true // 【未用】昼夜切换未接UI
+    @Volatile @JvmField var isAmapForeground: Boolean = false // 【未用】前台判断未接UI
+    /** 路口放大图1=有 EXTRA_CROSS_MAP【未用】已存档未上UI */
     @Volatile @JvmField var crossMapActive: Boolean = false
 
     /** 收包总数（包含所有 KEY_TYPE），用于 AdbDebug 健康检查 */
@@ -466,6 +465,8 @@ object AmapNaviListener {
     private fun resetTrafficLight() {
         mTrafficLightLastUpdate = 0
         mHandler.removeCallbacks(mTrafficLightStale)
+        lastTrafficLight = null
+        lastCruiseTrafficLights = null
     }
 
     /**

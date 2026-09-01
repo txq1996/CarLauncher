@@ -77,7 +77,7 @@ class LayoutDelegate(
         views.cardSpeed.background = GradientDrawable().apply { setColor(card) }
         views.cardMusic.background = GradientDrawable().apply { setColor(card) }
         views.pipPlaceholder.background = GradientDrawable().apply {
-            setColor(activity.resources.getColor(android.R.color.black, activity.theme))
+            setColor(activity.resources.getColor(R.color.surface_variant, activity.theme))
             setStroke(2, activity.resources.getColor(R.color.divider))
         }
 

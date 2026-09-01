@@ -157,6 +157,8 @@ class NaviPanelDelegate(
                     SettingsActivity.KEY_SHOW_NAVI_DEST, defaultPx = 15)
             }
             "navi_eta" -> if (!cruise) {
+                // 巡航误入导航模式时 remainTime/remainDis 为 0，避免仅显示“剩”字
+                if (info.remainTime <= 0 && info.remainDis <= 0) return
                 views.tvNaviTime.text = "剩${formatDuration(info.remainTime)}"
                 views.tvNaviRemain.text = formatRemain(info.remainDis)
                 applyRow(views.naviRowEta, snapshot,
