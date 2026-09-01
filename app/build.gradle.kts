@@ -11,6 +11,7 @@ plugins {
 android {
     namespace = "com.android.launcher37"
     compileSdk = 34
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "com.android.launcher37"
