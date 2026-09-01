@@ -77,7 +77,7 @@ class SpeedDelegate(
         val snapshot = SettingsSnapshot.load(activity)
         val orderKey = if (mCruise) SettingsActivity.KEY_CRUISE_ORDER else SettingsActivity.KEY_NAVI_ORDER
         val defaultOrder = if (mCruise) {
-            "speed,speed_unit,limit,traffic,cruise_road,cruise_eta_text,cruise_light_count,cruise_direction,cruise_alert"
+            "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
         } else {
             "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
         }

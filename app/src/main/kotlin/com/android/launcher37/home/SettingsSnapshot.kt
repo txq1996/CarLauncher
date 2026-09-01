@@ -23,7 +23,8 @@ class SettingsSnapshot private constructor(
         fun load(context: android.content.Context): SettingsSnapshot {
             val p = Prefs.of(context)
             val show = HashMap<String, Boolean>(SettingsActivity.SHOW_KEYS.size)
-            for (key in SettingsActivity.SHOW_KEYS) show[key] = p.getBoolean(key, true)
+            for (key in SettingsActivity.SHOW_KEYS)
+                show[key] = p.getBoolean(key, SettingsActivity.SHOW_DEFAULTS[key] ?: true)
             val intMap = HashMap<String, Int>(SettingsActivity.INT_KEYS.size)
             for (i in SettingsActivity.INT_KEYS.indices) {
                 intMap[SettingsActivity.INT_KEYS[i]] =

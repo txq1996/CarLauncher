@@ -72,10 +72,19 @@ class SettingsActivity : Activity() {
             KEY_SHOW_NAVI_TURN, KEY_SHOW_NAVI_ROAD, KEY_SHOW_NAVI_DEST,
             KEY_SHOW_NAVI_ETA, KEY_SHOW_NAVI_ETA_TEXT, KEY_SHOW_NAVI_LIGHT_COUNT,
             KEY_SHOW_NAVI_EXIT, KEY_SHOW_NAVI_DIRECTION, KEY_SHOW_NAVI_ALERT,
-            KEY_SHOW_CRUISE_ROAD, KEY_SHOW_CRUISE_ETA_TEXT, KEY_SHOW_CRUISE_LIGHT_COUNT,
-            KEY_SHOW_CRUISE_DIRECTION, KEY_SHOW_CRUISE_ALERT,
+            KEY_SHOW_CRUISE_ROAD, KEY_SHOW_CRUISE_DIRECTION, KEY_SHOW_CRUISE_ALERT,
             KEY_SHOW_MUSIC_TITLE, KEY_SHOW_MUSIC_ARTIST, KEY_SHOW_MUSIC_TIME,
             KEY_SHOW_MUSIC_BAR
+        )
+
+        /** 首次安装无 SP 值时的默认显隐（其余未列出项默认 true） */
+        val SHOW_DEFAULTS: Map<String, Boolean> = mapOf(
+            KEY_SHOW_NAVI_DEST to false,
+            KEY_SHOW_NAVI_ETA_TEXT to false,
+            KEY_SHOW_NAVI_LIGHT_COUNT to false,
+            KEY_SHOW_NAVI_EXIT to false,
+            KEY_SHOW_NAVI_DIRECTION to false,
+            KEY_SHOW_CRUISE_DIRECTION to false
         )
 
         // ── 字号/尺寸（px，int）──────────────────

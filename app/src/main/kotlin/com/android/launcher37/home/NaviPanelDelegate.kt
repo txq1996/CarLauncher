@@ -164,26 +164,24 @@ class NaviPanelDelegate(
                     SettingsActivity.KEY_SHOW_NAVI_ETA, defaultPx = 17,
                     applyFontToChildren = true)
             }
-            "navi_eta_text", "cruise_eta_text" -> {
-                val text = (ext as? AmapNaviListener.NaviInfo)?.etaText
-                    ?: (ext as? AmapNaviListener.CruiseInfo)?.let { null } // 巡航通常没有 ETA
-                    ?: ""
+            "navi_eta_text" -> if (!cruise) {
+                val text = (ext as? AmapNaviListener.NaviInfo)?.etaText ?: ""
                 val text2 = text?.takeIf { it.isNotBlank() } ?: ""
                 applyRow(
                     views.tvNaviEtaText, snapshot,
-                    if (cruise) SettingsActivity.KEY_TS_CRUISE_ETA_TEXT else SettingsActivity.KEY_TS_NAVI_ETA_TEXT,
-                    if (cruise) SettingsActivity.KEY_SHOW_CRUISE_ETA_TEXT else SettingsActivity.KEY_SHOW_NAVI_ETA_TEXT,
+                    SettingsActivity.KEY_TS_NAVI_ETA_TEXT,
+                    SettingsActivity.KEY_SHOW_NAVI_ETA_TEXT,
                     defaultPx = 17,
                     forceText = text2
                 )
             }
-            "navi_light_count", "cruise_light_count" -> {
+            "navi_light_count" -> if (!cruise) {
                 val n = (ext as? AmapNaviListener.NaviInfo)?.remainLightNum ?: 0
                 val text = if (n > 0) "剩${n}个红绿灯" else ""
                 applyRow(
                     views.tvNaviLightCount, snapshot,
-                    if (cruise) SettingsActivity.KEY_TS_CRUISE_LIGHT_COUNT else SettingsActivity.KEY_TS_NAVI_LIGHT_COUNT,
-                    if (cruise) SettingsActivity.KEY_SHOW_CRUISE_LIGHT_COUNT else SettingsActivity.KEY_SHOW_NAVI_LIGHT_COUNT,
+                    SettingsActivity.KEY_TS_NAVI_LIGHT_COUNT,
+                    SettingsActivity.KEY_SHOW_NAVI_LIGHT_COUNT,
                     defaultPx = 17,
                     forceText = text
                 )
