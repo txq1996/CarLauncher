@@ -162,8 +162,10 @@ object AppDrawer {
             if (tagStr != null) {
                 if (tagStr.startsWith(SPLIT_PREFIX)) {
                     val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
-                    removeSplitItem(activity, idx)
-                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null)
+                    if (pickCallback == null) {
+                        removeSplitItem(activity, idx)
+                        grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null)
+                    }
                 } else if (!isFeatureTag(tagStr)) {
                     showDockActionMenu(activity, tagStr, popup)
                 }
@@ -378,14 +380,13 @@ object AppDrawer {
                 icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI))
                 tags.add(TAG_SPLIT_NEW)
             }
-            if (!dockMode) {
-                val splits = SplitRepository.load(context)
-                for (i in splits.indices) {
-                    val pair = splits[i]
-                    labels.add("${Store.label(context, pair[0])}|${Store.label(context, pair[1])}")
-                    icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1]))
-                    tags.add("$SPLIT_PREFIX$i")
-                }
+            val splits = SplitRepository.load(context)
+            for (i in splits.indices) {
+                val pair = splits[i]
+                if (dockMode && dockBtns.any { it == Store.V2Button.split(pair[0], pair[1]) }) continue
+                labels.add("${Store.label(context, pair[0])}|${Store.label(context, pair[1])}")
+                icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1]))
+                tags.add("$SPLIT_PREFIX$i")
             }
             for (ri in apps) {
                 val id = "${ri.activityInfo.packageName}/${ri.activityInfo.name}"
