@@ -5,6 +5,7 @@
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
 
         <!--
             framework 原生 Material 属性映射到 A_深灰蓝 palette：

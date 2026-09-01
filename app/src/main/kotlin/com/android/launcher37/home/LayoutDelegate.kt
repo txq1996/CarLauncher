@@ -72,6 +72,16 @@ class LayoutDelegate(
         // 状态栏跟随日/夜主题切换：configChanges=uiMode 不会重建 Activity，
         // 因此仅在 onCreate 设置一次会卡在初始配色，必须在 applyTheme 同步。
         activity.window.statusBarColor = bg
+        // 同步状态栏前景（图标/文字）深浅：日间深色图标/夜间浅色图标
+        val isLightBar = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_NO
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val ctrl = activity.window.insetsController
+            if (isLightBar) ctrl?.setSystemBarsAppearance(android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+            else ctrl?.setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+        } else {
+            @Suppress("DEPRECATION")
+            activity.window.decorView.systemUiVisibility = if (isLightBar) android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR else 0
+        }
         views.contentRoot.setBackgroundColor(bg)
         val card = activity.resources.getColor(R.color.surface, activity.theme)
         views.cardSpeed.background = GradientDrawable().apply { setColor(card) }

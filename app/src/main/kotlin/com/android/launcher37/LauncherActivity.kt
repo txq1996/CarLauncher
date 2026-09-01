@@ -113,9 +113,7 @@ class LauncherActivity : Activity() {
         dockBar.setCleanAction { cleanMemory() }
         dockBar.setCellStyle(showIcon = true, showLabel = true, iconSize = 44, labelSize = 14)
 
-        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-
+        applyStatusBarVisibility()
         layout.applyTheme()
     }
 
@@ -167,9 +165,20 @@ class LauncherActivity : Activity() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        applyStatusBarVisibility()
         layout.applyTheme()
         layout.reapplyNightDrawables()
         dockBar.refresh()
+    }
+
+    private fun applyStatusBarVisibility() {
+        val hide = Prefs.of(this).getBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, false)
+        if (hide) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

@@ -16,7 +16,7 @@ import com.android.launcher37.SettingsActivity
  * - 模式/限速来源：`NaviTextClient`（仍提供 IDLE/NAV/CRUISE 与 limitedSpeed）
  * - 全字段来源：`AmapNaviListener.lastNaviInfo/lastCruiseInfo`（ETA/出口/红绿灯数等
  *   NaviTextClient 未覆盖的字段）
- * - 行序/字号/显隐：`SettingsSnapshot` 驱动，顺序由 `KEY_ALL_ROW_ORDER` 持久化
+ * - 行序/字号/显隐：`SettingsSnapshot` 驱动，顺序由 `KEY_NAVI_ORDER/KEY_CRUISE_ORDER` 持久化
  *
  * 持有 Activity 强引用 + NaviTextClient 强引用；
  * 渲染期间通过 [speed] 写限速到车速委派。

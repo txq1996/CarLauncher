@@ -303,6 +303,23 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:text="通用设置"
+                            android:textColor="@color/foreground"
+                            android:textSize="23px"
+                            android:textStyle="bold" />
+
+                        <CheckBox
+                            android:id="@+id/cb_hide_status_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="52px"
+                            android:text="隐藏状态栏"
+                            android:textColor="@color/foreground"
+                            android:textSize="21px" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
                             android:text="ADB 调试入口"
                             android:textColor="@color/foreground"
                             android:textSize="23px"

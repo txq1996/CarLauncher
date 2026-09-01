@@ -56,8 +56,6 @@ class SettingsActivity : Activity() {
         const val KEY_SHOW_NAVI_ALERT = "show_navi_alert"
         // 巡航行显隐（每个字段独立）
         const val KEY_SHOW_CRUISE_ROAD = "show_cruise_road"
-        const val KEY_SHOW_CRUISE_ETA_TEXT = "show_cruise_eta_text"
-        const val KEY_SHOW_CRUISE_LIGHT_COUNT = "show_cruise_light_count"
         const val KEY_SHOW_CRUISE_DIRECTION = "show_cruise_direction"
         const val KEY_SHOW_CRUISE_ALERT = "show_cruise_alert"
         const val KEY_SHOW_MUSIC_TITLE = "show_music_title"
@@ -110,8 +108,6 @@ class SettingsActivity : Activity() {
         const val KEY_TS_NAVI_ALERT = "ts_navi_alert"
         // 巡航行字号
         const val KEY_TS_CRUISE_ROAD = "ts_cruise_road"
-        const val KEY_TS_CRUISE_ETA_TEXT = "ts_cruise_eta_text"
-        const val KEY_TS_CRUISE_LIGHT_COUNT = "ts_cruise_light_count"
         const val KEY_TS_CRUISE_DIRECTION = "ts_cruise_direction"
         const val KEY_TS_CRUISE_ALERT = "ts_cruise_alert"
         // 音乐
@@ -128,8 +124,7 @@ class SettingsActivity : Activity() {
             KEY_TS_NAVI_TURN, KEY_TS_NAVI_ROAD, KEY_TS_NAVI_DEST,
             KEY_TS_NAVI_ETA, KEY_TS_NAVI_ETA_TEXT, KEY_TS_NAVI_LIGHT_COUNT,
             KEY_TS_NAVI_EXIT, KEY_TS_NAVI_DIRECTION, KEY_TS_NAVI_ALERT,
-            KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_ETA_TEXT, KEY_TS_CRUISE_LIGHT_COUNT,
-            KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
+            KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
             KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME
         )
 
@@ -138,15 +133,16 @@ class SettingsActivity : Activity() {
             110, 20, 17, 36,
             110, 20, 17, 36,
             36, 26, 15, 17, 17, 17, 17, 17, 17,
-            26, 17, 17, 17, 17,
+            26, 17, 17,
             24, 15, 15
         )
 
         // ── 行序键（持久化到 SP）─────────────────
         const val KEY_NAVI_ORDER = "navi_row_order"
         const val KEY_CRUISE_ORDER = "cruise_row_order"
-        // 历史遗留键，保留只读兼容（新版不再写入）
-        const val KEY_ALL_ROW_ORDER = "all_row_order"
+
+        // ── 通用 ───────────────────────
+        const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
 
         // ── ADB 调试入口 ───────────────────────
         const val KEY_ADB_DEBUG = "adb_debug_enabled"
@@ -216,7 +212,6 @@ class SettingsActivity : Activity() {
         SettingItem("cruise_alert",      "电子眼/服务区", KEY_TS_CRUISE_ALERT,        17,  KEY_SHOW_CRUISE_ALERT,        true, true)
     )
 
-    /** 向后兼容：settingItems 旧接口 */
     private val allItems: List<SettingItem> by lazy {
         naviAllItems + cruiseAllItems
     }
@@ -466,6 +461,7 @@ class SettingsActivity : Activity() {
     // 颜色设置页已移除：主题色改由 values/colors.xml + values-night/colors.xml 自动切换
 
     private fun bindGeneralTab() {
+        bindCheck(R.id.cb_hide_status_bar, KEY_HIDE_STATUS_BAR)
         bindAdbDebugToggle()
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()
