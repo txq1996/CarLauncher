@@ -168,15 +168,11 @@ object AppDrawer {
 
         grid.onItemLongClickListener = AdapterView.OnItemLongClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String
-            if (tagStr != null) {
-                if (tagStr.startsWith(SPLIT_PREFIX)) {
-                    val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
-                    if (pickCallback == null) {
-                        removeSplitItem(activity, idx)
-                        grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null)
-                    }
-                } else if (!isFeatureTag(tagStr)) {
-                    showDockActionMenu(activity, tagStr, popup)
+            if (tagStr != null && tagStr.startsWith(SPLIT_PREFIX)) {
+                val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
+                if (pickCallback == null) {
+                    removeSplitItem(activity, idx)
+                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null)
                 }
             }
             true
@@ -273,80 +269,6 @@ object AppDrawer {
     /** 解析当前可启动应用为 `pkg/cls` 列表（按用户优先 + 字典序） */
     private fun resolveAppIds(activity: Activity): List<String> =
         loadApps(activity).map { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
-
-    // ── 底栏操作（长按/添加模式） ──────────────────────────
-
-    private fun showDockActionMenu(activity: Activity, appId: String, drawer: PopupWindow) {
-        val dockBtns = Store.v2Buttons(activity)
-        var alreadyInDock = false
-        var foundIndex = -1
-        for (i in dockBtns.indices) {
-            val b = dockBtns[i]
-            if (b.type == "app" && appId == b.id) { alreadyInDock = true; foundIndex = i; break }
-        }
-        val dockIndex = foundIndex
-        if (!alreadyInDock && dockBtns.size >= DockBar.MAX_DOCK_BUTTONS) {
-            Toast.makeText(activity, "底栏已满（最多${DockBar.MAX_DOCK_BUTTONS}个）", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val appName = Store.label(activity, appId)
-        val options = ArrayList<String>()
-        val kinds = ArrayList<Int>()
-        if (!alreadyInDock) { options.add("添加到底栏"); kinds.add(0) }
-        options.add("替换底栏按钮"); kinds.add(1)
-        if (alreadyInDock) { options.add("从底栏移除"); kinds.add(2) }
-        val themed: Context = HoloPopup.themedContext(activity)
-        val list = ListView(themed)
-        val popup = HoloPopup.show(activity, HoloPopup.titledPanel(themed, appName, list))
-        list.adapter = ArrayAdapter(activity, android.R.layout.simple_list_item_1, options)
-        list.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
-            popup.dismiss()
-            when (kinds[position]) {
-                0 -> addToDock(activity, Store.V2Button.app(appId))
-                1 -> showReplaceDockPicker(activity, appId)
-                2 -> removeDockItem(activity, dockIndex)
-            }
-        }
-    }
-
-    private fun addToDock(activity: Activity, btn: Store.V2Button) {
-        val before = Store.v2Buttons(activity).size
-        (activity as? LauncherActivity)?.dockBar?.applyButton(btn, replaceIndex = null)
-        // applyButton 内部已 Toast"该快捷方式已存在"或成功；成功后需要"已添加"提示
-        if (Store.v2Buttons(activity).size == before + 1) {
-            Toast.makeText(activity, "已添加到底栏", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun showReplaceDockPicker(activity: Activity, newAppId: String) {
-        val dockBtns = Store.v2Buttons(activity)
-        val titles = Array(dockBtns.size) { i ->
-            val b = dockBtns[i]
-            when (b.type) {
-                "map" -> "地图·" + if (b.action == "home") "回家" else "公司"
-                "app" -> Store.label(activity, b.id)
-                "clean" -> "内存清理"
-                "settings" -> "桌面设置"
-                else -> "${Store.label(activity, b.left)}|${Store.label(activity, b.right)}"
-            }
-        }
-        val themed: Context = HoloPopup.themedContext(activity)
-        val list = ListView(themed)
-        val popup = HoloPopup.show(activity, HoloPopup.titledPanel(themed, "替换为", list))
-        list.adapter = ArrayAdapter(activity, android.R.layout.simple_list_item_1, titles)
-        list.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
-            popup.dismiss()
-            (activity as? LauncherActivity)?.dockBar?.applyButton(
-                Store.V2Button.app(newAppId), replaceIndex = position
-            )
-            Toast.makeText(activity, "已替换", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun removeDockItem(activity: Activity, index: Int) {
-        (activity as? LauncherActivity)?.dockBar?.removeButton(index)
-        Toast.makeText(activity, "已从底栏移除", Toast.LENGTH_SHORT).show()
-    }
 
     private fun loadApps(context: Context): List<ResolveInfo> = AppQuery.launcherEntriesSorted(context)
 
