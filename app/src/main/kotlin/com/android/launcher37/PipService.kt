@@ -84,13 +84,14 @@ class PipService : Service() {
                         .getMethod("getDefault").invoke(null)
                 } catch (_: Throwable) {}
             }
-            // 统一从 service 对象解析 moveStackToDisplay(stackId, displayId)
-            // API 28: IActivityManager.moveStackToDisplay
-            // API 29+: IActivityTaskManager.moveStackToDisplay
             if (service != null) {
                 val cls = service.javaClass
                 val intClass = Int::class.javaPrimitiveType!!
+                // 统一搬移接口：API 28 IActivityManager.moveStackToDisplay
+                //               API 29-30 IActivityTaskManager.moveStackToDisplay
+                //               API 31+ IActivityTaskManager.moveRootTaskToDisplay
                 moveStack = findMethod(cls, "moveStackToDisplay", intClass, intClass)
+                    ?: findMethod(cls, "moveRootTaskToDisplay", intClass, intClass)
                 moveBack = findMethod(cls, "moveTaskToBack", intClass)
             }
             sActivityTaskManagerService = service
@@ -363,10 +364,11 @@ class PipService : Service() {
                 // 搬到 VD 时跳过（Android 9 上跨 display 移到 VD 会触发部分 app force-finish）
                 if (sMoveStackToDisplay != null && targetDisplay == Display.DEFAULT_DISPLAY) {
                     try {
-                        val stackIdField = task.javaClass.getField("stackId")
-                        val stackId = stackIdField.getInt(task)
-                        sMoveStackToDisplay.invoke(sActivityTaskManagerService, stackId, targetDisplay)
-                        Log.i(TAG, "moveStackToDisplay ok: task=$taskId stack=$stackId display=$targetDisplay")
+                        val rootTaskId = try {
+                            task.javaClass.getField("stackId").getInt(task)
+                        } catch (_: Throwable) { taskId }
+                        sMoveStackToDisplay.invoke(sActivityTaskManagerService, rootTaskId, targetDisplay)
+                        Log.i(TAG, "moveStackToDisplay ok: task=$taskId rootTask=$rootTaskId display=$targetDisplay")
                         return true
                     } catch (t: InvocationTargetException) {
                         val cause = t.cause
@@ -413,12 +415,14 @@ class PipService : Service() {
                 Log.i(TAG, "moveTaskToTarget: id=$taskId pkg=$taskPkg display=$currentDisplay(target=$targetDisplay) detected=$detected")
                 if (detected && currentDisplay == targetDisplay) return true
                 // moveStackToDisplay(stackId, displayId): API 28+ 统一接口
+                // stackId 字段在 API 31+ 被移除，回退到 task.id（moveRootTaskToDisplay 使用）
                 if (sMoveStackToDisplay != null) {
                     try {
-                        val stackIdField = task.javaClass.getField("stackId")
-                        val stackId = stackIdField.getInt(task)
-                        sMoveStackToDisplay.invoke(sActivityTaskManagerService, stackId, targetDisplay)
-                        Log.i(TAG, "moveStackToDisplay ok: task=$taskId stack=$stackId display=$targetDisplay")
+                        val rootTaskId = try {
+                            task.javaClass.getField("stackId").getInt(task)
+                        } catch (_: Throwable) { taskId }
+                        sMoveStackToDisplay.invoke(sActivityTaskManagerService, rootTaskId, targetDisplay)
+                        Log.i(TAG, "moveStackToDisplay ok: task=$taskId rootTask=$rootTaskId display=$targetDisplay")
                         return true
                     } catch (t: InvocationTargetException) {
                         val cause = t.cause
