@@ -42,6 +42,7 @@ class LauncherActivity : Activity() {
     internal val mediaHelper: MediaHelper get() = music.mediaHelper()
 
     private var mNeedPipSync: Boolean = false
+    private var mHasFocus: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -146,7 +147,13 @@ class LauncherActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         mNeedPipSync = true
-        AppDrawer.dismissIfShowing()
+        if (mHasFocus) {
+            // 用户按 Home 键而桌面已在前台：切换全部应用抽屉
+            AppDrawer.toggle(this)
+        } else {
+            // 后台唤回（如 MusicLauncher 回到桌面）：不打开抽屉，仅取消已有抽屉
+            AppDrawer.dismissIfShowing()
+        }
     }
 
     override fun onDestroy() {
@@ -174,6 +181,7 @@ class LauncherActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        mHasFocus = hasFocus
         if (!hasFocus) return
         if (mNeedPipSync) {
             mNeedPipSync = false

@@ -64,6 +64,15 @@ object AppDrawer {
         sPopup?.takeIf { it.isShowing }?.dismiss()
     }
 
+    /** 切换全部应用抽屉：已显示时关闭，否则打开 */
+    fun toggle(activity: Activity) {
+        if (sPopup?.isShowing == true) {
+            dismissIfShowing()
+        } else {
+            show(activity)
+        }
+    }
+
     /** dock 模式：选中后回调 + 关弹窗（消除 6 处 pickCallback != null 重复） */
     private fun pickAndClose(cb: OnDockPick, btn: Store.V2Button) {
         cb.onPicked(btn)
