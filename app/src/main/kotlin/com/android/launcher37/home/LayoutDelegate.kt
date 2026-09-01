@@ -22,12 +22,6 @@ class LayoutDelegate(
     private val views: HomeViews
 ) {
     private val textSizers: Array<TextSizer> = arrayOf(
-        TextSizer(views.tvSpeed, SettingsActivity.KEY_TS_SPEED, 110),
-        TextSizer(views.tvKm, SettingsActivity.KEY_TS_KMH, 20),
-        TextSizer(views.tvLimit, SettingsActivity.KEY_TS_LIMIT, 17),
-        TextSizer(views.tvTrafficSec, SettingsActivity.KEY_TS_TRAFFIC_SEC, 36),
-        // 顶部"车速/kmh/限速/红绿灯"是固定行；以下 navi/cruise 各 view 的字号
-        // 由 NaviPanelDelegate 在 addView 时按当前模式 key 应用，故此处不再预设。
         TextSizer(views.tvMusicName, SettingsActivity.KEY_TS_MUSIC_TITLE, 24),
         TextSizer(views.tvArtist, SettingsActivity.KEY_TS_MUSIC_ARTIST, 15),
         TextSizer(views.curTime, SettingsActivity.KEY_TS_MUSIC_TIME, 15),
@@ -37,14 +31,13 @@ class LayoutDelegate(
     fun apply(snapshot: SettingsSnapshot) {
         applyLayout(snapshot)
         applyTextSizes(snapshot)
-        applySpeedVisibility(snapshot)
         applyMusicVisibility(snapshot)
     }
 
     fun applyLayout(snapshot: SettingsSnapshot) {
-        val pad = snapshot.size(SettingsActivity.KEY_PAGE_PADDING, 0)
+        val pad = snapshot.size(SettingsActivity.KEY_PAGE_PADDING, 10)
         views.pageContent.setPadding(pad, pad, pad, pad)
-        val gap = snapshot.size(SettingsActivity.KEY_CARD_GAP, 0)
+        val gap = snapshot.size(SettingsActivity.KEY_CARD_GAP, 10)
         views.gapSpeedMusic.updateLp(matchH = gap)
         views.gapDock.updateLp(matchH = gap)
         views.gapCol.updateLp(matchW = gap)
@@ -57,14 +50,6 @@ class LayoutDelegate(
         for ((view, key, def) in textSizers) {
             view.setTextSize(TypedValue.COMPLEX_UNIT_PX, snapshot.size(key, def).toFloat())
         }
-    }
-
-    fun applySpeedVisibility(snapshot: SettingsSnapshot) {
-        setVis(views.tvSpeed, SettingsActivity.KEY_SHOW_SPEED, snapshot)
-        setVis(views.tvKm, SettingsActivity.KEY_SHOW_KMH, snapshot)
-        setVis(views.tvLimit, SettingsActivity.KEY_SHOW_LIMIT, snapshot)
-        setVis(views.tvTraffic, SettingsActivity.KEY_SHOW_TRAFFIC, snapshot)
-        setVis(views.tvTrafficSec, SettingsActivity.KEY_SHOW_TRAFFIC, snapshot)
     }
 
     fun applyMusicVisibility(snapshot: SettingsSnapshot) {
@@ -127,10 +112,10 @@ class LayoutDelegate(
     }
 
     private val PRIMARY_TEXT_VIEWS get() = arrayOf(
-        views.tvSpeed, views.tvMusicName, views.tvNaviDist, views.tvNaviRoad
+        views.tvMusicName, views.tvNaviDist, views.tvNaviRoad
     )
     private val SECONDARY_TEXT_VIEWS get() = arrayOf(
-        views.tvKm, views.tvLimit, views.tvArtist, views.curTime, views.totalTime,
+        views.tvArtist, views.curTime, views.totalTime,
         views.tvNaviDest, views.tvNaviRemain, views.tvNaviTime, views.tvNaviAlert
     )
 

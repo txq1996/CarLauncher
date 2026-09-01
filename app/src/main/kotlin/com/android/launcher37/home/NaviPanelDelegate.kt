@@ -29,12 +29,23 @@ class NaviPanelDelegate(
 ) : NaviTextClient.Listener {
     private val mClient: NaviTextClient = NaviTextClient(activity, this)
 
-    fun start() = mClient.start()
+    fun start() {
+        mClient.start()
+        // 启动时默认显示巡航区域（包含车速）
+        speed.setCruise(true)
+        views.naviPanel.visibility = View.VISIBLE
+        val mockInfo = NaviTextClient.NaviInfo().apply {
+            mode = NaviTextClient.Mode.CRUISE
+        }
+        val cruiseInfo = AmapNaviListener.lastCruiseInfo
+        applyNaviOrder(true, mockInfo, cruiseInfo)
+    }
     fun stop() = mClient.stop()
 
     override fun onNaviInfo(info: NaviTextClient.NaviInfo) {
         speed.setLimit(if (info.limitedSpeed > 0) info.limitedSpeed else info.cameraSpeed)
         val cruise = info.mode == NaviTextClient.Mode.CRUISE
+        speed.setCruise(cruise)
         views.naviPanel.visibility = View.VISIBLE
         // 合并 AmapNaviListener 全字段（ETA/出口/红绿灯数/车头方向/服务区等）
         val ext = if (cruise) AmapNaviListener.lastCruiseInfo else AmapNaviListener.lastNaviInfo
@@ -42,8 +53,25 @@ class NaviPanelDelegate(
     }
 
     override fun onNaviStopped() {
-        views.naviPanel.visibility = View.GONE
+        // 导航停止后回到巡航模式（显示巡航信息 + IPC 车速）
+        speed.setCruise(true)
         speed.setLimit(-1)
+        // 使用缓存的巡航数据渲染
+        val cruiseInfo = AmapNaviListener.lastCruiseInfo
+        if (cruiseInfo != null) {
+            views.naviPanel.visibility = View.VISIBLE
+            val mockInfo = NaviTextClient.NaviInfo().apply {
+                mode = NaviTextClient.Mode.CRUISE
+            }
+            applyNaviOrder(true, mockInfo, cruiseInfo)
+        } else {
+            // 无巡航数据时只显示车速区域
+            views.naviPanel.visibility = View.VISIBLE
+            val mockInfo = NaviTextClient.NaviInfo().apply {
+                mode = NaviTextClient.Mode.CRUISE
+            }
+            applyNaviOrder(true, mockInfo, null)
+        }
     }
 
     /**
@@ -63,7 +91,12 @@ class NaviPanelDelegate(
         val order = Prefs.getString(activity, orderKey, defaultOrder)!!
         val keys = order.split(",").filter { it.isNotBlank() }
         views.naviPanel.removeAllViews()
-        for (key in keys) renderKey(key, cruise, info, ext)
+        // 先渲染车速区域（动态排序）
+        speed.renderSpeedRow()
+        // 再渲染导航行序（跳过已由 SpeedDelegate 渲染的车速 key）
+        for (key in keys) {
+            if (key !in SPEED_KEYS) renderKey(key, cruise, info, ext)
+        }
     }
 
     /**
@@ -292,7 +325,8 @@ class NaviPanelDelegate(
     companion object {
         private const val KEY_NAVI_ORDER = "navi_row_order"
         private const val KEY_CRUISE_ORDER = "cruise_row_order"
-        private const val DEFAULT_NAVI_ORDER = "navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
-        private const val DEFAULT_CRUISE_ORDER = "cruise_road,cruise_eta_text,cruise_light_count,cruise_direction,cruise_alert"
+        private val SPEED_KEYS = setOf("speed", "speed_unit", "limit", "traffic")
+        private const val DEFAULT_NAVI_ORDER = "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
+        private const val DEFAULT_CRUISE_ORDER = "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
     }
 }

@@ -34,11 +34,16 @@ class SettingsActivity : Activity() {
         const val KEY_SPEED_CARD_W = "layout_speed_card_w"
         const val KEY_MUSIC_CARD_H = "layout_music_card_h"
 
-        // ── 车速卡显示开关 ────────────────────
-        const val KEY_SHOW_SPEED = "show_speed"
-        const val KEY_SHOW_KMH = "show_kmh"
-        const val KEY_SHOW_LIMIT = "show_limit"
-        const val KEY_SHOW_TRAFFIC = "show_traffic"
+        // ── 车速区域显隐（导航模式） ────────────────
+        const val KEY_SHOW_NAVI_SPEED = "show_navi_speed"
+        const val KEY_SHOW_NAVI_KMH = "show_navi_kmh"
+        const val KEY_SHOW_NAVI_LIMIT = "show_navi_limit"
+        const val KEY_SHOW_NAVI_TRAFFIC = "show_navi_traffic"
+        // ── 车速区域显隐（巡航模式） ────────────────
+        const val KEY_SHOW_CRUISE_SPEED = "show_cruise_speed"
+        const val KEY_SHOW_CRUISE_KMH = "show_cruise_kmh"
+        const val KEY_SHOW_CRUISE_LIMIT = "show_cruise_limit"
+        const val KEY_SHOW_CRUISE_TRAFFIC = "show_cruise_traffic"
         // 导航行显隐（每个字段独立）
         const val KEY_SHOW_NAVI_TURN = "show_navi_turn"
         const val KEY_SHOW_NAVI_ROAD = "show_navi_road"
@@ -62,7 +67,8 @@ class SettingsActivity : Activity() {
 
         /** bool 开关全集（LauncherActivity.loadSettings 按 key=true 缺省快照） */
         val SHOW_KEYS = arrayOf(
-            KEY_SHOW_SPEED, KEY_SHOW_KMH, KEY_SHOW_LIMIT, KEY_SHOW_TRAFFIC,
+            KEY_SHOW_NAVI_SPEED, KEY_SHOW_NAVI_KMH, KEY_SHOW_NAVI_LIMIT, KEY_SHOW_NAVI_TRAFFIC,
+            KEY_SHOW_CRUISE_SPEED, KEY_SHOW_CRUISE_KMH, KEY_SHOW_CRUISE_LIMIT, KEY_SHOW_CRUISE_TRAFFIC,
             KEY_SHOW_NAVI_TURN, KEY_SHOW_NAVI_ROAD, KEY_SHOW_NAVI_DEST,
             KEY_SHOW_NAVI_ETA, KEY_SHOW_NAVI_ETA_TEXT, KEY_SHOW_NAVI_LIGHT_COUNT,
             KEY_SHOW_NAVI_EXIT, KEY_SHOW_NAVI_DIRECTION, KEY_SHOW_NAVI_ALERT,
@@ -73,10 +79,16 @@ class SettingsActivity : Activity() {
         )
 
         // ── 字号/尺寸（px，int）──────────────────
-        const val KEY_TS_SPEED = "ts_speed"
-        const val KEY_TS_KMH = "ts_kmh"
-        const val KEY_TS_LIMIT = "ts_limit"
-        const val KEY_TS_TRAFFIC_SEC = "ts_traffic_sec"
+        // 车速区域字号（导航模式）
+        const val KEY_TS_NAVI_SPEED = "ts_navi_speed"
+        const val KEY_TS_NAVI_KMH = "ts_navi_kmh"
+        const val KEY_TS_NAVI_LIMIT = "ts_navi_limit"
+        const val KEY_TS_NAVI_TRAFFIC_SEC = "ts_navi_traffic_sec"
+        // 车速区域字号（巡航模式）
+        const val KEY_TS_CRUISE_SPEED = "ts_cruise_speed"
+        const val KEY_TS_CRUISE_KMH = "ts_cruise_kmh"
+        const val KEY_TS_CRUISE_LIMIT = "ts_cruise_limit"
+        const val KEY_TS_CRUISE_TRAFFIC_SEC = "ts_cruise_traffic_sec"
         // 导航行字号
         const val KEY_TS_NAVI_TURN = "ts_navi_turn"
         const val KEY_TS_NAVI_ROAD = "ts_navi_road"
@@ -102,8 +114,8 @@ class SettingsActivity : Activity() {
         val INT_KEYS = arrayOf(
             KEY_PAGE_PADDING, KEY_CARD_GAP,
             KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H,
-            KEY_TS_SPEED, KEY_TS_KMH, KEY_TS_LIMIT,
-            KEY_TS_TRAFFIC_SEC,
+            KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
+            KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC,
             KEY_TS_NAVI_TURN, KEY_TS_NAVI_ROAD, KEY_TS_NAVI_DEST,
             KEY_TS_NAVI_ETA, KEY_TS_NAVI_ETA_TEXT, KEY_TS_NAVI_LIGHT_COUNT,
             KEY_TS_NAVI_EXIT, KEY_TS_NAVI_DIRECTION, KEY_TS_NAVI_ALERT,
@@ -113,8 +125,9 @@ class SettingsActivity : Activity() {
         )
 
         val INT_DEFAULTS = intArrayOf(
-            0, 0, 260, 200,
-            110, 20, 17, 20,
+            10, 10, 260, 200,
+            110, 20, 17, 36,
+            110, 20, 17, 36,
             36, 26, 15, 17, 17, 17, 17, 17, 17,
             26, 17, 17, 17, 17,
             24, 15, 15
@@ -133,9 +146,9 @@ class SettingsActivity : Activity() {
     private lateinit var mTabs: Array<TextView>
     private lateinit var mPanels: Array<View>
     private lateinit var mTabActiveBg: GradientDrawable
-    /** 导航行序（持久化 navi_row_order） */
+    /** 导航全部行序（车速 + 行序，持久化 navi_row_order） */
     private val mNaviOrder: ArrayList<String> = ArrayList()
-    /** 巡航行序（持久化 cruise_row_order） */
+    /** 巡航全部行序（车速 + 行序，持久化 cruise_row_order） */
     private val mCruiseOrder: ArrayList<String> = ArrayList()
     private var mUpdater: UpdateChecker? = null
     private var mTvUpdateStatus: TextView? = null
@@ -145,60 +158,58 @@ class SettingsActivity : Activity() {
     /** 设置页巡航分区子标题 */
     private var mTvCruiseHeader: TextView? = null
 
-    // ── 设置项定义：key, 显示名, 字号 key, 默认字号, 显示开关 key（空=无开关）, 是否可排序 ──
+    // ── 设置项定义：key, 显示名, 字号 key, 默认字号, 显示开关 key（空=无开关）, 默认显隐, 是否可排序 ──
     private data class SettingItem(
         val key: String,
         val label: String,
         val fontKey: String,
         val fontDefault: Int,
         val showKey: String,
+        val showDefault: Boolean,
         val orderable: Boolean
     )
 
-    /** 车速卡 4 个字号 key：范围 [0,150]；其余 [0,250] */
+    /** 车速卡字号 key：范围 [0,150]；其余 [0,250] */
     private val FONT_RANGE_SMALL = setOf(
-        KEY_TS_SPEED, KEY_TS_KMH, KEY_TS_LIMIT, KEY_TS_TRAFFIC_SEC
-    )
-
-    /** 固定行（车速卡顶部）：无排序控件 */
-    private val fixedItems: List<SettingItem> = listOf(
-        SettingItem("speed",   "[车速]车速数字",     KEY_TS_SPEED,       110, KEY_SHOW_SPEED,      false),
-        SettingItem("km",      "[车速]km/h 单位",   KEY_TS_KMH,         20,  KEY_SHOW_KMH,        false),
-        SettingItem("limit",   "[车速]道路限速",    KEY_TS_LIMIT,       17,  KEY_SHOW_LIMIT,      false),
-        SettingItem("traffic", "[车速]红绿灯倒计时", KEY_TS_TRAFFIC_SEC, 36,  KEY_SHOW_TRAFFIC,    false)
+        KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
+        KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC
     )
 
     /**
-     * 导航模式行序设置项。**每条都有独立的 showKey**，允许关闭某个导航字段
-     * （如关闭 navi_exit 后即使高德广播带 EXIT_NAME_INFO 也不渲染）。
+     * 导航模式全部设置项（车速 + 行序），统一排序。
      */
-    private val naviItems: List<SettingItem> = listOf(
-        SettingItem("navi_turn",       "转向图标与距离", KEY_TS_NAVI_TURN,         36, KEY_SHOW_NAVI_TURN,        true),
-        SettingItem("navi_road",       "路名",          KEY_TS_NAVI_ROAD,         26, KEY_SHOW_NAVI_ROAD,        true),
-        SettingItem("navi_dest",       "终点名称",      KEY_TS_NAVI_DEST,         15, KEY_SHOW_NAVI_DEST,        true),
-        SettingItem("navi_eta",        "剩余距离时间",  KEY_TS_NAVI_ETA,          17, KEY_SHOW_NAVI_ETA,         true),
-        SettingItem("navi_eta_text",   "ETA预计到达",   KEY_TS_NAVI_ETA_TEXT,     17, KEY_SHOW_NAVI_ETA_TEXT,    true),
-        SettingItem("navi_light_count","剩余红绿灯数",  KEY_TS_NAVI_LIGHT_COUNT,  17, KEY_SHOW_NAVI_LIGHT_COUNT, true),
-        SettingItem("navi_exit",       "出口信息",      KEY_TS_NAVI_EXIT,         17, KEY_SHOW_NAVI_EXIT,        true),
-        SettingItem("navi_direction",  "车头方向",      KEY_TS_NAVI_DIRECTION,    17, KEY_SHOW_NAVI_DIRECTION,   true),
-        SettingItem("navi_alert",      "电子眼/服务区", KEY_TS_NAVI_ALERT,        17, KEY_SHOW_NAVI_ALERT,       true)
+    private val naviAllItems: List<SettingItem> = listOf(
+        SettingItem("speed",         "车速数字",      KEY_TS_NAVI_SPEED,        110, KEY_SHOW_NAVI_SPEED,        true, true),
+        SettingItem("speed_unit",    "车速单位",      KEY_TS_NAVI_KMH,          20,  KEY_SHOW_NAVI_KMH,          true, true),
+        SettingItem("limit",         "道路限速",      KEY_TS_NAVI_LIMIT,        17,  KEY_SHOW_NAVI_LIMIT,        true, true),
+        SettingItem("traffic",       "红绿灯倒计时",  KEY_TS_NAVI_TRAFFIC_SEC,  36,  KEY_SHOW_NAVI_TRAFFIC,      true, true),
+        SettingItem("navi_turn",     "转向图标与距离", KEY_TS_NAVI_TURN,         36,  KEY_SHOW_NAVI_TURN,         true, true),
+        SettingItem("navi_road",     "路名",          KEY_TS_NAVI_ROAD,         26,  KEY_SHOW_NAVI_ROAD,         true, true),
+        SettingItem("navi_dest",     "终点名称",      KEY_TS_NAVI_DEST,         15,  KEY_SHOW_NAVI_DEST,         false, true),
+        SettingItem("navi_eta",      "剩余距离时间",  KEY_TS_NAVI_ETA,          17,  KEY_SHOW_NAVI_ETA,          true, true),
+        SettingItem("navi_eta_text", "ETA预计到达",   KEY_TS_NAVI_ETA_TEXT,     17,  KEY_SHOW_NAVI_ETA_TEXT,     false, true),
+        SettingItem("navi_light_count","剩余红绿灯数", KEY_TS_NAVI_LIGHT_COUNT,  17,  KEY_SHOW_NAVI_LIGHT_COUNT,  false, true),
+        SettingItem("navi_exit",     "出口信息",      KEY_TS_NAVI_EXIT,         17,  KEY_SHOW_NAVI_EXIT,         false, true),
+        SettingItem("navi_direction","车头方向",      KEY_TS_NAVI_DIRECTION,    17,  KEY_SHOW_NAVI_DIRECTION,    false, true),
+        SettingItem("navi_alert",    "电子眼/服务区", KEY_TS_NAVI_ALERT,        17,  KEY_SHOW_NAVI_ALERT,        true, true)
     )
 
     /**
-     * 巡航模式行序设置项。**每条都有独立的 showKey**；导航专用字段（转向/终点/出口）
-     * 不出现在巡航里——巡航不渲染。
+     * 巡航模式全部设置项（车速 + 行序），统一排序。
      */
-    private val cruiseItems: List<SettingItem> = listOf(
-        SettingItem("cruise_road",        "当前路名",      KEY_TS_CRUISE_ROAD,         26, KEY_SHOW_CRUISE_ROAD,        true),
-        SettingItem("cruise_eta_text",    "ETA预计到达",   KEY_TS_CRUISE_ETA_TEXT,     17, KEY_SHOW_CRUISE_ETA_TEXT,    true),
-        SettingItem("cruise_light_count", "剩余红绿灯数",  KEY_TS_CRUISE_LIGHT_COUNT,  17, KEY_SHOW_CRUISE_LIGHT_COUNT, true),
-        SettingItem("cruise_direction",   "车头方向",      KEY_TS_CRUISE_DIRECTION,    17, KEY_SHOW_CRUISE_DIRECTION,   true),
-        SettingItem("cruise_alert",       "电子眼/服务区", KEY_TS_CRUISE_ALERT,        17, KEY_SHOW_CRUISE_ALERT,       true)
+    private val cruiseAllItems: List<SettingItem> = listOf(
+        SettingItem("speed",             "车速数字",      KEY_TS_CRUISE_SPEED,        110, KEY_SHOW_CRUISE_SPEED,        true, true),
+        SettingItem("speed_unit",        "车速单位",      KEY_TS_CRUISE_KMH,          20,  KEY_SHOW_CRUISE_KMH,          true, true),
+        SettingItem("limit",             "道路限速",      KEY_TS_CRUISE_LIMIT,        17,  KEY_SHOW_CRUISE_LIMIT,        true, true),
+        SettingItem("traffic",           "红绿灯倒计时",  KEY_TS_CRUISE_TRAFFIC_SEC,  36,  KEY_SHOW_CRUISE_TRAFFIC,      true, true),
+        SettingItem("cruise_road",       "当前路名",      KEY_TS_CRUISE_ROAD,         26,  KEY_SHOW_CRUISE_ROAD,         true, true),
+        SettingItem("cruise_direction",  "车头方向",      KEY_TS_CRUISE_DIRECTION,    17,  KEY_SHOW_CRUISE_DIRECTION,    false, true),
+        SettingItem("cruise_alert",      "电子眼/服务区", KEY_TS_CRUISE_ALERT,        17,  KEY_SHOW_CRUISE_ALERT,        true, true)
     )
 
-    /** 向后兼容：settingItems 旧接口，给 item_speed_setting 渲染器统一用 */
+    /** 向后兼容：settingItems 旧接口 */
     private val allItems: List<SettingItem> by lazy {
-        fixedItems + naviItems + cruiseItems
+        naviAllItems + cruiseAllItems
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -281,8 +292,8 @@ class SettingsActivity : Activity() {
 
     private fun bindLayoutTab() {
         val box = findViewById<LinearLayout>(R.id.box_layout_seeks)
-        bindSeek(box, "页面边距", KEY_PAGE_PADDING, 0, 0, 40)
-        bindSeek(box, "部件间距", KEY_CARD_GAP, 0, 0, 40)
+        bindSeek(box, "页面边距", KEY_PAGE_PADDING, 10, 0, 40)
+        bindSeek(box, "部件间距", KEY_CARD_GAP, 10, 0, 40)
         bindSeek(box, "车速卡宽度", KEY_SPEED_CARD_W, 260, 220, 400)
         bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 200, 140, 300)
     }
@@ -290,19 +301,15 @@ class SettingsActivity : Activity() {
     private fun bindSpeedTab() {
         val box = findViewById<LinearLayout>(R.id.box_all_settings)
 
-        // 导航行序（持久化 navi_row_order）
-        val naviSaved = prefs().getString(
-            KEY_NAVI_ORDER,
-            "navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
-        )!!
+        // 导航全部行序（车速 + 行序）
+        val naviDefaultOrder = "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
+        val naviSaved = prefs().getString(KEY_NAVI_ORDER, naviDefaultOrder)!!
         mNaviOrder.clear()
         mNaviOrder.addAll(naviSaved.split(",").filter { it.isNotBlank() })
 
-        // 巡航行序（持久化 cruise_row_order）
-        val cruiseSaved = prefs().getString(
-            KEY_CRUISE_ORDER,
-            "cruise_road,cruise_eta_text,cruise_light_count,cruise_direction,cruise_alert"
-        )!!
+        // 巡航全部行序（车速 + 行序）
+        val cruiseDefaultOrder = "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
+        val cruiseSaved = prefs().getString(KEY_CRUISE_ORDER, cruiseDefaultOrder)!!
         mCruiseOrder.clear()
         mCruiseOrder.addAll(cruiseSaved.split(",").filter { it.isNotBlank() })
 
@@ -310,27 +317,22 @@ class SettingsActivity : Activity() {
     }
 
     /**
-     * 整屏渲染：固定行 → [导航] 子标题 → 导航排序行 → [巡航] 子标题 → 巡航排序行。
-     * 用 section label 视觉切分两个区域，互不干扰。
+     * 整屏渲染：[ 导航 ] → 全部设置项（车速+行序） → [ 巡航 ] → 全部设置项（车速+行序）。
      */
     private fun rebuildSpeedPanel(box: LinearLayout) {
         box.removeAllViews()
-        // 固定行（车速卡顶部）
-        for (item in fixedItems) {
-            renderSettingRow(box, item, null)
-        }
-        // 导航分区
+        // ── 导航区 ──
         renderSectionHeader(box, "[ 导航 ]")
         for (i in mNaviOrder.indices) {
             val key = mNaviOrder[i]
-            val item = naviItems.firstOrNull { it.key == key } ?: continue
+            val item = naviAllItems.firstOrNull { it.key == key } ?: continue
             renderSettingRow(box, item, i, isNavi = true)
         }
-        // 巡航分区
+        // ── 巡航区 ──
         renderSectionHeader(box, "[ 巡航 ]")
         for (i in mCruiseOrder.indices) {
             val key = mCruiseOrder[i]
-            val item = cruiseItems.firstOrNull { it.key == key } ?: continue
+            val item = cruiseAllItems.firstOrNull { it.key == key } ?: continue
             renderSettingRow(box, item, i, isNavi = false)
         }
     }
@@ -360,7 +362,7 @@ class SettingsActivity : Activity() {
         val check = view.findViewById<CheckBox>(R.id.item_check)
         if (item.showKey.isNotEmpty()) {
             check.visibility = View.VISIBLE
-            check.isChecked = prefs().getBoolean(item.showKey, true)
+            check.isChecked = prefs().getBoolean(item.showKey, item.showDefault)
             check.setOnCheckedChangeListener { _, checked ->
                 prefs().edit().putBoolean(item.showKey, checked).apply()
             }

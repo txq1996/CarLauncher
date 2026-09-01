@@ -63,11 +63,6 @@ class LauncherActivity : Activity() {
             musicTimeRow = findViewById(R.id.music_time_row),
             dockGrid = findViewById(R.id.dock_grid) as GridView,
             pipPlaceholder = findViewById(R.id.pip_placeholder),
-            tvSpeed = findViewById(R.id.tv_speed),
-            tvKm = findViewById(R.id.tv_km),
-            tvLimit = findViewById(R.id.tv_limit),
-            tvTraffic = findViewById(R.id.tv_traffic),
-            tvTrafficSec = findViewById(R.id.tv_traffic_sec),
             tvMusicName = findViewById(R.id.tv_music_name),
             tvArtist = findViewById(R.id.tv_artist),
             curTime = findViewById(R.id.music_cur_time),
@@ -92,8 +87,6 @@ class LauncherActivity : Activity() {
             tvNaviDirection = findViewById(R.id.tv_navi_direction)
         )
 
-        views.tvSpeed.text = "0"
-        views.tvKm.text = if (SpeedDelegate.isMiles(this)) "mph" else "km/h"
         layout = LayoutDelegate(this, views).also { it.apply(snapshot) }
         speed = SpeedDelegate(this, views)
         music = MusicDelegate(
