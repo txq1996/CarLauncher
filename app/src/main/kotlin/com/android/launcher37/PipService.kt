@@ -64,60 +64,38 @@ class PipService : Service() {
             )
         } catch (t: Throwable) { null }
 
-        // ActivityTaskManager hidden API
+        // ActivityManager hidden API（跨 display 任务搬移）
         private val sActivityTaskManagerService: Any?
-        private val sMoveRootTaskToDisplay: Method?
-        private val sMoveTaskToDisplay: Method?
-        private val sMoveTaskToBack: Method?
-        // Android 9: IActivityTaskManager.moveStackToDisplay(stackId, displayId)
-        private val sTaskManager: Any?
         private val sMoveStackToDisplay: Method?
+        private val sMoveTaskToBack: Method?
 
         init {
             var service: Any? = null
-            var moveRoot: Method? = null
-            var moveTask: Method? = null
-            var moveBack: Method? = null
-            var taskManager: Any? = null
             var moveStack: Method? = null
+            var moveBack: Method? = null
+            // 优先 ActivityTaskManager（API 29+），回退 ActivityManagerNative（API 28）
             try {
                 val atm = Class.forName("android.app.ActivityTaskManager")
-                val getService = atm.getMethod("getService")
-                service = getService.invoke(null)
-                if (service != null) {
-                    val cls = service.javaClass
-                    val intClass = Int::class.javaPrimitiveType!!
-                    moveRoot = findMethod(cls, "moveRootTaskToDisplay", intClass, intClass)
-                    moveTask = findMethod(cls, "moveTaskToDisplay", intClass, intClass)
-                }
-            } catch (t: Throwable) {
-                Log.w(TAG, "resolve ActivityTaskManager failed", t)
-            }
-            // 9 兼容：ActivityManagerNative.getDefault() → IActivityManager.getTaskManager() → moveStackToDisplay
+                service = atm.getMethod("getService").invoke(null)
+            } catch (_: Throwable) {}
             if (service == null) {
                 try {
-                    val amn = Class.forName("android.app.ActivityManagerNative")
-                    service = amn.getMethod("getDefault").invoke(null)
-                    if (service != null) {
-                        val cls = service.javaClass
-                        val intClass = Int::class.javaPrimitiveType!!
-                        moveTask = findMethod(cls, "moveTaskToDisplay", intClass, intClass)
-                        if (moveTask == null) moveTask = findMethod(cls, "moveTaskToStack", intClass, intClass, Boolean::class.javaPrimitiveType!!)
-                        moveRoot = moveTask // 9 无 moveRoot，复用 moveTask
-                        moveBack = findMethod(cls, "moveTaskToBack", intClass)
-                        // Android 9: IActivityManager 直接有 moveStackToDisplay(stackId, displayId)
-                        moveStack = findMethod(cls, "moveStackToDisplay", intClass, intClass)
-                    }
-                } catch (t: Throwable) {
-                    Log.w(TAG, "resolve ActivityManagerNative failed", t)
-                }
+                    service = Class.forName("android.app.ActivityManagerNative")
+                        .getMethod("getDefault").invoke(null)
+                } catch (_: Throwable) {}
+            }
+            // 统一从 service 对象解析 moveStackToDisplay(stackId, displayId)
+            // API 28: IActivityManager.moveStackToDisplay
+            // API 29+: IActivityTaskManager.moveStackToDisplay
+            if (service != null) {
+                val cls = service.javaClass
+                val intClass = Int::class.javaPrimitiveType!!
+                moveStack = findMethod(cls, "moveStackToDisplay", intClass, intClass)
+                moveBack = findMethod(cls, "moveTaskToBack", intClass)
             }
             sActivityTaskManagerService = service
-            sMoveRootTaskToDisplay = moveRoot
-            sMoveTaskToDisplay = moveTask
-            sMoveTaskToBack = moveBack
-            sTaskManager = taskManager
             sMoveStackToDisplay = moveStack
+            sMoveTaskToBack = moveBack
 
             Log.i(
                 TAG,
@@ -126,8 +104,6 @@ class PipService : Service() {
                     " setDisplayIdField=${sSetDisplayIdField != null}" +
                     " inject=${sInjectInputEvent != null}" +
                     " forwarder=${sCreateInputForwarder != null}" +
-                    " moveRoot=${sMoveRootTaskToDisplay != null}" +
-                    " moveTask=${sMoveTaskToDisplay != null}" +
                     " moveStack=${sMoveStackToDisplay != null}" +
                     " moveBack=${sMoveTaskToBack != null}"
             )
@@ -383,17 +359,8 @@ class PipService : Service() {
                 Log.i(TAG, "found task: id=$taskId pkg=$taskPkg display=$currentDisplay(target=$targetDisplay) detected=$detected")
                 if (detected && currentDisplay == targetDisplay) return true
                 if (detected && currentDisplay >= 0 && currentDisplay != Display.DEFAULT_DISPLAY && targetDisplay != Display.DEFAULT_DISPLAY) continue
-                if (invokeMove(sMoveRootTaskToDisplay, taskId, targetDisplay)) {
-                    Log.i(TAG, "moveRootTaskToDisplay ok: task=$taskId display=$targetDisplay")
-                    return true
-                }
-                if (invokeMove(sMoveTaskToDisplay, taskId, targetDisplay)) {
-                    Log.i(TAG, "moveTaskToDisplay ok: task=$taskId display=$targetDisplay")
-                    return true
-                }
-                // Android 9: IActivityManager.moveStackToDisplay(stackId, displayId)
-                // 注意：仅在搬到主屏时使用（VD→主屏正常），搬到 VD 时跳过
-                // （Android 9 上跨 display 移动到 VD 会触发部分 app force-finish）
+                // moveStackToDisplay: 仅在搬到主屏时使用（VD→主屏正常），
+                // 搬到 VD 时跳过（Android 9 上跨 display 移到 VD 会触发部分 app force-finish）
                 if (sMoveStackToDisplay != null && targetDisplay == Display.DEFAULT_DISPLAY) {
                     try {
                         val stackIdField = task.javaClass.getField("stackId")
@@ -445,15 +412,7 @@ class PipService : Service() {
                 } catch (t: Throwable) { Display.DEFAULT_DISPLAY }
                 Log.i(TAG, "moveTaskToTarget: id=$taskId pkg=$taskPkg display=$currentDisplay(target=$targetDisplay) detected=$detected")
                 if (detected && currentDisplay == targetDisplay) return true
-                if (invokeMove(sMoveTaskToDisplay, taskId, targetDisplay)) {
-                    Log.i(TAG, "moveTaskToDisplay ok: task=$taskId display=$targetDisplay")
-                    return true
-                }
-                if (sMoveRootTaskToDisplay !== sMoveTaskToDisplay && invokeMove(sMoveRootTaskToDisplay, taskId, targetDisplay)) {
-                    Log.i(TAG, "moveRootTaskToDisplay ok: task=$taskId display=$targetDisplay")
-                    return true
-                }
-                // Android 9: IActivityManager.moveStackToDisplay(stackId, displayId)
+                // moveStackToDisplay(stackId, displayId): API 28+ 统一接口
                 if (sMoveStackToDisplay != null) {
                     try {
                         val stackIdField = task.javaClass.getField("stackId")
@@ -486,28 +445,6 @@ class PipService : Service() {
             false
         } catch (t: Throwable) {
             Log.w(TAG, "moveTaskToTarget failed", t)
-            false
-        }
-    }
-
-    private fun invokeMove(method: Method?, taskId: Int, targetDisplay: Int): Boolean {
-        if (method == null || sActivityTaskManagerService == null) return false
-        return try {
-            when (method.parameterTypes.size) {
-                2 -> {
-                    method.invoke(sActivityTaskManagerService, taskId, targetDisplay)
-                    true
-                }
-                3 -> {
-                    // Android 9: moveTaskToStack(taskId, stackId, toTop)
-                    // For targetDisplay==0, stackId 0 is home; for VD, try displayId as stackId
-                    method.invoke(sActivityTaskManagerService, taskId, targetDisplay, true)
-                    true
-                }
-                else -> false
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "invokeMove failed: ${method.name} display=$targetDisplay", t)
             false
         }
     }
