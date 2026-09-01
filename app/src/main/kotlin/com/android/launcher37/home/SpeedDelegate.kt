@@ -2,40 +2,67 @@ package com.android.launcher37.home
 
 import com.android.launcher37.AmapNaviListener
 import com.android.launcher37.R
+import com.android.launcher37.SpeedClient
 import com.android.launcher37.SysProps
 
 /**
- * 车速委派：从 [AmapNaviListener] 读取高德广播的 CUR_SPEED，渲染限速 / 超速变色 / 红绿灯。
+ * 车速委派：优先从 [SpeedClient]（com.syu.ms.toolkit IPC）取 GPS 车速，
+ * IPC 不可用时回退读 [AmapNaviListener] 高德广播的 CUR_SPEED。
  *
- * 数据源：`AmapNaviListener` 缓存的 NaviInfo.curSpeed（导航/巡航 ICON!=0 期间）与
- * CruiseInfo.curSpeed（巡航 ICON=0）。高德不在前台时不推送 CUR_SPEED，按用户决策
- * tvSpeed 维持上次显示；`AmapNaviListener.start` 后未收到 10001 时缓存为 null，
- * 监听器不会回调，tvSpeed 维持初值 "0"。
+ * 数据源优先级：
+ * 1. IPC（[SpeedClient]）：实时 GPS 车速，服务断连自动重绑
+ * 2. AmapNaviListener：导航/巡航时高德广播的 CUR_SPEED（无 IPC 环境的回退方案）
+ *
+ * 滤噪：[SpeedClient] 层已将 speed==1 归零（避免偶发 1km/h 跳变）。
+ *
+ * 红绿灯始终从 [AmapNaviListener] 获取。
  *
  * 持有 Activity 强引用；速度单位（km/h / mph）在构造时一次性读取，运行时不再变。
  */
 class SpeedDelegate(
     private val activity: android.app.Activity,
     private val views: HomeViews
-) : AmapNaviListener.Listener {
+) : AmapNaviListener.Listener, SpeedClient.Listener {
     private val mMiles: Boolean = isMiles(activity)
     private var mShownSpeed: Int = 0
     private var mLimitKmh: Int = 0
 
+    private var mSpeedClient: SpeedClient? = null
+    @Volatile private var mUseIpcSpeed: Boolean = false
+
     fun bind() {
         AmapNaviListener.addListener(this)
+        mSpeedClient = SpeedClient(activity, this).also { it.start() }
     }
 
     fun unbind() {
         AmapNaviListener.removeListener(this)
+        mSpeedClient?.stop()
+        mSpeedClient = null
     }
 
+    // ── SpeedClient 回调（IPC 优先） ──────────────────────────────
+
+    override fun onSpeedChanged(kmh: Int) {
+        mUseIpcSpeed = true
+        applySpeed(kmh)
+    }
+
+    override fun onAccOff() {
+        mUseIpcSpeed = false
+        val naviSpeed = AmapNaviListener.lastNaviInfo?.curSpeed ?: 0
+        val cruiseSpeed = AmapNaviListener.lastCruiseInfo?.curSpeed ?: 0
+        applySpeed(if (naviSpeed > 0) naviSpeed else cruiseSpeed)
+    }
+
+    // ── AmapNaviListener 回退（IPC 不可用时才处理） ──────────────
+
     override fun onNaviInfo(info: AmapNaviListener.NaviInfo) {
-        applySpeed(info.curSpeed)
+        if (!mUseIpcSpeed) applySpeed(info.curSpeed)
     }
 
     override fun onCruiseInfo(info: AmapNaviListener.CruiseInfo) {
-        applySpeed(info.curSpeed)
+        if (!mUseIpcSpeed) applySpeed(info.curSpeed)
     }
 
     private fun applySpeed(kmh: Int) {
