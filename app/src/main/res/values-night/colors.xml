@@ -13,4 +13,7 @@
     <color name="foreground_secondary">#AAB6C3</color>
     <color name="foreground_tertiary">#748291</color>
     <color name="divider">#303B47</color>
+
+    <!-- 抽屉图标格子底色（夜间默认：比 surface_variant 略亮以便区分图标） -->
+    <color name="drawer_icon_bg">#222D3A</color>
 </resources>

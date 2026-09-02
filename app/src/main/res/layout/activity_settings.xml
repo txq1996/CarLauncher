@@ -87,10 +87,8 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView style="@style/SectionHeader" android:text="布局参数" />
                         <LinearLayout android:id="@+id/box_layout_seeks" style="@style/SeekBox" />
 
-                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="卡片显示" />
                         <CheckBox android:id="@+id/cb_hide_status_bar" style="@style/CheckRow" android:text="显示状态栏" />
                         <CheckBox android:id="@+id/cb_show_time" style="@style/CheckRow" android:text="显示时间卡片" />
                         <CheckBox android:id="@+id/cb_show_speed_card" style="@style/CheckRow" android:text="显示车速卡片" />
@@ -107,20 +105,21 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView style="@style/SectionHeader" android:text="字体大小" />
                         <LinearLayout android:id="@+id/box_time_seeks" style="@style/SeekBox" />
 
                         <TextView
                             android:id="@+id/tv_time_format"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
+                            android:layout_height="64px"
+                            android:layout_marginTop="6px"
+                            android:background="@drawable/bg_app_order_row"
                             android:gravity="center_vertical"
-                            android:padding="8px"
+                            android:paddingStart="16px"
+                            android:paddingEnd="16px"
+                            android:includeFontPadding="false"
                             android:text="时间格式：HH:mm:ss"
                             android:textColor="@color/foreground"
-                            android:textSize="19px" />
+                            android:textSize="20px" />
                     </LinearLayout>
                 </ScrollView>
 
@@ -131,45 +130,6 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:padding="8px">
-
-                            <TextView
-                                android:layout_width="0px"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="名称"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="显示"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px"
-                                android:paddingStart="8px"
-                                android:paddingEnd="8px" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="12px"
-                                android:text="字号(px)"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="24px"
-                                android:text="排序"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px" />
-                        </LinearLayout>
 
                         <LinearLayout
                             android:id="@+id/box_all_settings"
@@ -188,35 +148,34 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView style="@style/SectionHeader" android:text="绑定应用" />
-
                         <LinearLayout
                             android:id="@+id/row_music_app"
                             android:layout_width="match_parent"
-                            android:layout_height="52px"
-                            android:layout_marginTop="8px"
-                            android:background="@drawable/bg_grid_line"
+                            android:layout_height="64px"
+                            android:layout_marginTop="6px"
+                            android:background="@drawable/bg_app_order_row"
                             android:gravity="center_vertical"
                             android:orientation="horizontal"
-                            android:padding="8px">
+                            android:paddingStart="16px"
+                            android:paddingEnd="16px">
 
                             <ImageView
                                 android:id="@+id/iv_music_app_icon"
-                                android:layout_width="32px"
-                                android:layout_height="32px"
+                                android:layout_width="40px"
+                                android:layout_height="40px"
                                 android:scaleType="fitCenter" />
                             <TextView
                                 android:id="@+id/tv_music_app_name"
                                 android:layout_width="0px"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:layout_marginStart="10px"
+                                android:layout_marginStart="12px"
                                 android:ellipsize="end"
                                 android:includeFontPadding="false"
                                 android:maxLines="1"
                                 android:text="未绑定"
                                 android:textColor="@color/foreground"
-                                android:textSize="17px" />
+                                android:textSize="20px" />
                             <Button
                                 android:id="@+id/btn_pick_music_app"
                                 android:layout_width="wrap_content"
@@ -230,10 +189,8 @@
                                 android:textSize="15px" />
                         </LinearLayout>
 
-                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="字体大小 (px)" />
                         <LinearLayout android:id="@+id/box_music_seeks" style="@style/SeekBox" />
 
-                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="显示项" />
                         <CheckBox android:id="@+id/cb_music_title" style="@style/CheckRow" android:text="歌曲名" />
                         <CheckBox android:id="@+id/cb_music_artist" style="@style/CheckRow" android:text="歌手名" />
                         <CheckBox android:id="@+id/cb_music_time" style="@style/CheckRow" android:text="进度时间（当前/总时长）" />
@@ -271,46 +228,14 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView style="@style/SectionHeader" android:text="全部应用" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:padding="8px">
-
-                            <TextView
-                                android:layout_width="0px"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="名称"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="隐藏"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px"
-                                android:paddingStart="8px"
-                                android:paddingEnd="8px" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="24px"
-                                android:text="排序"
-                                android:textColor="@color/foreground_secondary"
-                                android:textSize="15px" />
-                        </LinearLayout>
-
-                        <LinearLayout
+                        <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/box_apps"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:orientation="vertical" />
+                            android:layout_marginTop="2px"
+                            android:clipToPadding="false"
+                            android:nestedScrollingEnabled="false"
+                            android:overScrollMode="never" />
 
                         <TextView
                             android:layout_width="match_parent"
@@ -320,8 +245,6 @@
                             android:text="排序和隐藏在下次打开抽屉时生效，无需重启桌面；隐藏的应用仍可添加到底栏和分屏"
                             android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
-
-                        <TextView style="@style/SectionHeader" android:text="全部应用外观" />
 
                         <LinearLayout
                             android:id="@+id/box_drawer_seeks"
@@ -348,21 +271,17 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView style="@style/SectionHeader" android:text="通用设置" />
                         <CheckBox
                             android:id="@+id/cb_home_direct_drawer"
                             style="@style/CheckRow"
-                            android:layout_marginTop="8px"
                             android:text="启动直接打开全部应用" />
 
-                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="地图嵌入" />
                         <LinearLayout
                             android:id="@+id/box_general_seeks"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical" />
 
-                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="在线更新" />
                         <TextView
                             android:id="@+id/tv_update_status"
                             android:layout_width="match_parent"

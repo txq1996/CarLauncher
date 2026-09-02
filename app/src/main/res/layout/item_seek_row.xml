@@ -1,28 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 滑条行（与全部应用行同风格：64px 圆角卡片、20px 字体） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="52px"
-    android:background="@drawable/bg_grid_line"
+    android:layout_height="64px"
+    android:layout_marginTop="6px"
+    android:background="@drawable/bg_app_order_row"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="8px"
-    android:paddingEnd="8px">
+    android:paddingStart="16px"
+    android:paddingEnd="16px">
 
     <TextView
         android:id="@+id/seek_name"
         android:layout_width="0px"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:includeFontPadding="false"
         android:maxLines="1"
         android:text=""
         android:textColor="@color/foreground"
-        android:textSize="19px" />
+        android:textSize="20px" />
 
     <TextView
         android:id="@+id/seek_value"
         android:layout_width="52px"
         android:layout_height="wrap_content"
         android:gravity="end"
+        android:includeFontPadding="false"
         android:maxLines="1"
         android:text=""
         android:textColor="@color/foreground_secondary"

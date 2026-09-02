@@ -3,7 +3,7 @@
     android:color="?android:attr/colorControlHighlight">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/surface" />
+            <solid android:color="@color/drawer_icon_bg" />
             <corners android:radius="5px" />
         </shape>
     </item>

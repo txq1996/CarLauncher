@@ -27,8 +27,17 @@ object DrawerOverlay {
     private var sWindowManager: WindowManager? = null
     private var sDismissAction: Runnable? = null
 
-    private const val POPUP_W = 1000
-    private const val POPUP_H = 620
+    private fun drawerWidthPx(ctx: Context): Int {
+        val dm = ctx.resources.displayMetrics
+        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_WIDTH_PCT, 75)
+        return (dm.widthPixels * pct / 100f).toInt()
+    }
+
+    private fun drawerHeightPx(ctx: Context): Int {
+        val dm = ctx.resources.displayMetrics
+        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_HEIGHT_PCT, 75)
+        return (dm.heightPixels * pct / 100f).toInt()
+    }
 
     fun isShowing(): Boolean = sOverlayRoot != null
 
@@ -106,16 +115,8 @@ object DrawerOverlay {
 
         // 卡片直接复用 dialog 布局，保持原有直角风格，无圆角无阴影
         val content: View = LayoutInflater.from(themed).inflate(R.layout.dialog_app_drawer, root, false)
-        val cardLp = FrameLayout.LayoutParams(POPUP_W, POPUP_H, Gravity.CENTER)
-        // 按屏幕自适应，避免超出
-        try {
-            val dm = android.util.DisplayMetrics()
-            wm.defaultDisplay.getRealMetrics(dm)
-            val maxW = (dm.widthPixels * 0.88f).toInt()
-            val maxH = (dm.heightPixels * 0.78f).toInt()
-            if (cardLp.width > maxW) cardLp.width = maxW
-            if (cardLp.height > maxH) cardLp.height = maxH
-        } catch (_: Exception) {}
+        val cardLp = FrameLayout.LayoutParams(drawerWidthPx(appCtx), drawerHeightPx(appCtx), Gravity.CENTER)
+        // 不再硬限 maxW/maxH：尺寸已由百分比设置项控制（50~95%）
         root.addView(content, cardLp)
 
         val params = WindowManager.LayoutParams(

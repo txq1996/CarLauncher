@@ -83,3 +83,8 @@ android {
         checkReleaseBuilds = false
     }
 }
+
+dependencies {
+    // 设置页排序/隐藏列表：RecyclerView + ItemTouchHelper（长按拖拽），唯一第三方运行时依赖
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+}

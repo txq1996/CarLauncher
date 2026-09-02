@@ -1,21 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 车速区设置行：拖拽手柄 + 名称 + 显示勾选 + 字号 picker；长按行或手柄拖动排序 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="52px"
-    android:background="@drawable/bg_grid_line"
+    android:layout_height="64px"
+    android:layout_marginTop="6px"
+    android:background="@drawable/bg_app_order_row"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="8px">
+    android:paddingStart="10px"
+    android:paddingEnd="12px">
+
+    <TextView
+        android:id="@+id/btn_drag"
+        android:layout_width="40px"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="≡"
+        android:textColor="@color/foreground_tertiary"
+        android:textSize="26px" />
 
     <TextView
         android:id="@+id/item_label"
         android:layout_width="0px"
         android:layout_height="wrap_content"
+        android:layout_marginStart="6px"
         android:layout_weight="1"
         android:ellipsize="end"
+        android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/foreground"
-        android:textSize="19px" />
+        android:textSize="20px" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8px"
+        android:text="显示"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="15px" />
 
     <CheckBox
         android:id="@+id/item_check"
@@ -30,31 +53,5 @@
         android:id="@+id/picker_font"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12px" />
-
-    <Button
-        android:id="@+id/btn_up"
-        android:layout_width="48px"
-        android:layout_height="44px"
-        android:layout_marginStart="12px"
-        android:text="▲"
-        android:textSize="16px"
-        android:padding="0px"
-        android:minWidth="0px"
-        android:minHeight="0px"
-        android:insetTop="0px"
-        android:insetBottom="0px" />
-
-    <Button
-        android:id="@+id/btn_down"
-        android:layout_width="48px"
-        android:layout_height="44px"
-        android:layout_marginStart="6px"
-        android:text="▼"
-        android:textSize="16px"
-        android:padding="0px"
-        android:minWidth="0px"
-        android:minHeight="0px"
-        android:insetTop="0px"
-        android:insetBottom="0px" />
+        android:layout_marginStart="10px" />
 </LinearLayout>

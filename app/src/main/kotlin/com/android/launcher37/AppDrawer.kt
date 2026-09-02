@@ -40,9 +40,18 @@ object AppDrawer {
     private var sPopup: PopupWindow? = null
     private var sDismissListeners: MutableList<Runnable> = mutableListOf()
 
-    // 弹窗尺寸常量（与 HoloPopup.WIDTH=400 区分；本弹窗是 1000×620 大窗口）
-    private const val POPUP_W = 1000
-    private const val POPUP_H = 620
+    // 弹窗尺寸：按屏幕宽高百分比（设置项 KEY_DRAWER_WIDTH_PCT / KEY_DRAWER_HEIGHT_PCT，默认 75%）
+    private fun drawerWidthPx(ctx: Context): Int {
+        val dm = ctx.resources.displayMetrics
+        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_WIDTH_PCT, 75)
+        return (dm.widthPixels * pct / 100f).toInt()
+    }
+
+    private fun drawerHeightPx(ctx: Context): Int {
+        val dm = ctx.resources.displayMetrics
+        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_HEIGHT_PCT, 75)
+        return (dm.heightPixels * pct / 100f).toInt()
+    }
 
     fun showForDock(activity: Activity, title: String, callback: OnDockPick) {
         showInternal(activity, title, callback)
@@ -94,7 +103,7 @@ object AppDrawer {
         dismissIfShowing()
         val themed: Context = HoloPopup.themedContext(activity)
         val content: View = LayoutInflater.from(themed).inflate(R.layout.dialog_app_drawer, null)
-        val popup = PopupWindow(content, POPUP_W, POPUP_H, true).apply {
+        val popup = PopupWindow(content, drawerWidthPx(activity), drawerHeightPx(activity), true).apply {
             setBackgroundDrawable(themed.getDrawable(R.drawable.bg_drawer_dialog))
             isOutsideTouchable = true
             showAtLocation(activity.window.decorView, Gravity.CENTER, 0, 0)

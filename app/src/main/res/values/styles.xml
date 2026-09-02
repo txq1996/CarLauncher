@@ -28,15 +28,17 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- 带网格线的 CheckBox 行 -->
+    <!-- CheckBox 行（与全部应用行同风格：64px 圆角卡片、20px 字体） -->
     <style name="CheckRow">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:background">@drawable/bg_grid_line</item>
-        <item name="android:minHeight">52px</item>
-        <item name="android:padding">8px</item>
+        <item name="android:layout_height">64px</item>
+        <item name="android:layout_marginTop">6px</item>
+        <item name="android:background">@drawable/bg_app_order_row</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">16px</item>
+        <item name="android:paddingEnd">16px</item>
         <item name="android:textColor">@color/foreground</item>
-        <item name="android:textSize">19px</item>
+        <item name="android:textSize">20px</item>
     </style>
 
     <!-- 设置面板子容器（box_*_seeks 等） -->

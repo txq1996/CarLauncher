@@ -146,6 +146,7 @@ class SettingsActivity : Activity() {
             KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME,
             KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT,
             KEY_DRAWER_ICON_SIZE, KEY_DRAWER_ICON_GAP, KEY_DRAWER_LABEL_SIZE,
+            KEY_DRAWER_WIDTH_PCT, KEY_DRAWER_HEIGHT_PCT,
             KEY_PIP_START_DELAY, KEY_VD_LAUNCH_DELAY
         )
 
@@ -158,6 +159,7 @@ class SettingsActivity : Activity() {
             24, 15, 15,
             60, 28, 1,
             64, 8, 17,
+            75, 75,
             250, 250
         )
 
@@ -169,6 +171,10 @@ class SettingsActivity : Activity() {
         const val KEY_DRAWER_ICON_SIZE = "drawer_icon_size"
         const val KEY_DRAWER_ICON_GAP = "drawer_icon_gap"
         const val KEY_DRAWER_LABEL_SIZE = "drawer_label_size"
+        /** 全部应用弹窗宽度占屏幕百分比（50~95，默认 75） */
+        const val KEY_DRAWER_WIDTH_PCT = "drawer_width_pct"
+        /** 全部应用弹窗高度占屏幕百分比（50~95，默认 75） */
+        const val KEY_DRAWER_HEIGHT_PCT = "drawer_height_pct"
 
         // ── 通用 ───────────────────────
         const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
@@ -376,9 +382,6 @@ class SettingsActivity : Activity() {
     /** 抽屉隐藏应用集合 */
     private val mAppHidden: LinkedHashSet<String> = LinkedHashSet()
 
-    /** 当前合并后的行集合（排序交换后按 mAppOrder 重新渲染用） */
-    private var mOrderRows: List<OrderRow> = emptyList()
-
     /** IO 线程预载应用列表后合并已保存顺序，再渲染行 */
     private fun bindAppsTab() {
         mAppHidden.clear()
@@ -429,7 +432,7 @@ class SettingsActivity : Activity() {
     }
 
     private fun rebuildAppsPanel() {
-        val box = findViewById<LinearLayout>(R.id.box_apps) ?: return
+        val list = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.box_apps) ?: return
         val defaults = buildDefaultRows()
         val byTag = HashMap<String, OrderRow>(defaults.size * 2)
         for (r in defaults) byTag[r.tag] = r
@@ -440,56 +443,305 @@ class SettingsActivity : Activity() {
             byTag[tag]?.let { if (seen.add(tag)) merged.add(it) }
         }
         for (r in defaults) if (seen.add(r.tag)) merged.add(r)
-        mOrderRows = merged
         mAppOrder.clear()
         mAppOrder.addAll(merged.map { it.tag })
-        box.removeAllViews()
-        for ((i, row) in merged.withIndex()) renderOrderRow(box, row, i)
+        // 每次进入设置页重建 adapter，避免跨 Activity 实例复用
+        mOrderAdapter = OrderAdapter()
+        list.adapter = mOrderAdapter
+        list.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+        mItemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(mOrderAdapter!!.DragCallback())
+        mItemTouchHelper!!.attachToRecyclerView(list)
+        mOrderAdapter!!.setRows(merged)
     }
 
-    private fun renderOrderRow(box: LinearLayout, row: OrderRow, pos: Int) {
-        val view = layoutInflater.inflate(R.layout.item_app_order_row, box, false)
-        view.findViewById<android.widget.ImageView>(R.id.app_icon).setImageDrawable(row.icon)
-        view.findViewById<TextView>(R.id.app_label).text = row.label
-        val check = view.findViewById<CheckBox>(R.id.item_check)
-        // 所有快捷方式（功能项/分屏/应用）均可隐藏
-        check.visibility = View.VISIBLE
-        check.isChecked = row.tag in mAppHidden
-        check.setOnCheckedChangeListener { _, checked ->
-            if (checked) mAppHidden.add(row.tag) else mAppHidden.remove(row.tag)
-            Store.saveDrawerHidden(this, mAppHidden)
+    /**
+     * 排序/隐藏列表适配器：长按行（或按住 ≡ 手柄）上下拖动排序，
+     * checkbox 勾选隐藏。数据顺序 = mAppOrder 顺序。
+     */
+    private inner class OrderAdapter :
+        androidx.recyclerview.widget.RecyclerView.Adapter<OrderAdapter.VH>() {
+
+        private val rows = ArrayList<OrderRow>()
+        /** 拖动中顺序已改：松手时持久化 */
+        private var mDragDirty = false
+
+        fun setRows(list: List<OrderRow>) {
+            rows.clear()
+            rows.addAll(list)
+            mDragDirty = false
+            notifyDataSetChanged()
         }
-        view.findViewById<Button>(R.id.btn_up).setOnClickListener {
-            if (pos > 0) {
-                java.util.Collections.swap(mAppOrder, pos, pos - 1)
-                Store.saveDrawerOrder(this, mAppOrder)
-                rerenderAppsPanel()
+
+        fun move(from: Int, to: Int) {
+            java.util.Collections.swap(rows, from, to)
+            notifyItemMoved(from, to)
+            mAppOrder.clear()
+            mAppOrder.addAll(rows.map { it.tag })
+            mDragDirty = true
+        }
+
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH =
+            VH(layoutInflater.inflate(R.layout.item_app_order_row, parent, false))
+
+        override fun getItemCount(): Int = rows.size
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            val row = rows[position]
+            holder.icon.setImageDrawable(row.icon)
+            holder.label.text = row.label
+            holder.check.setOnCheckedChangeListener(null)
+            holder.check.isChecked = row.tag in mAppHidden
+            holder.check.setOnCheckedChangeListener { _, checked ->
+                if (checked) mAppHidden.add(row.tag) else mAppHidden.remove(row.tag)
+                Store.saveDrawerHidden(this@SettingsActivity, mAppHidden)
+            }
+            // 手柄拖拽（长按行也可拖：ItemTouchHelper.isLongPressDragEnabled 默认 true）
+            holder.itemView.findViewById<TextView>(R.id.btn_drag).setOnTouchListener { _, e ->
+                if (e.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+                    mItemTouchHelper?.startDrag(holder)
+                    return@setOnTouchListener true
+                }
+                false
+            }
+            // 图标底色色块：显示当前底色，点击弹颜色选择器
+            refreshSwatch(holder.swatch, row.tag, row.icon)
+            holder.swatch.setOnClickListener {
+                showIconBgPicker(row.tag, row.icon) { refreshSwatch(holder.swatch, row.tag, row.icon) }
             }
         }
-        view.findViewById<Button>(R.id.btn_down).setOnClickListener {
-            if (pos < mAppOrder.size - 1) {
-                java.util.Collections.swap(mAppOrder, pos, pos + 1)
-                Store.saveDrawerOrder(this, mAppOrder)
-                rerenderAppsPanel()
+
+        inner class VH(v: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(v) {
+            val icon: android.widget.ImageView = v.findViewById(R.id.app_icon)
+            val label: TextView = v.findViewById(R.id.app_label)
+            val check: CheckBox = v.findViewById(R.id.item_check)
+            val swatch: android.view.View = v.findViewById(R.id.icon_bg_swatch)
+        }
+
+        inner class DragCallback : androidx.recyclerview.widget.ItemTouchHelper.Callback() {
+            override fun getMovementFlags(
+                rv: androidx.recyclerview.widget.RecyclerView,
+                vh: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Int = androidx.recyclerview.widget.ItemTouchHelper.Callback.makeMovementFlags(
+                androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0)
+
+            override fun isLongPressDragEnabled(): Boolean = true
+
+            override fun onMove(
+                rv: androidx.recyclerview.widget.RecyclerView,
+                from: androidx.recyclerview.widget.RecyclerView.ViewHolder,
+                to: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Boolean {
+                move(from.bindingAdapterPosition, to.bindingAdapterPosition)
+                return true
+            }
+
+            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
+
+            override fun onSelectedChanged(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder?, action: Int) {
+                super.onSelectedChanged(vh, action)
+                // 拖起浮起：放大 + 抬升，落位还原
+                if (action == androidx.recyclerview.widget.ItemTouchHelper.ACTION_STATE_DRAG) {
+                    vh?.itemView?.animate()?.scaleX(1.04f)?.scaleY(1.04f)
+                        ?.translationZ(12f)?.setDuration(80)?.start()
+                }
+            }
+
+            override fun clearView(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
+                super.clearView(rv, vh)
+                vh.itemView.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(120).start()
+                if (mDragDirty) {
+                    mDragDirty = false
+                    Store.saveDrawerOrder(this@SettingsActivity, mAppOrder)
+                }
             }
         }
-        box.addView(view)
+
+        /** 刷新色块：自动=从图标 bitmap 采样实际底色，自定义=用户色 */
+        fun refreshSwatch(v: android.view.View, tag: String, icon: android.graphics.drawable.Drawable?) {
+            val bg = Store.iconBgOverride(this@SettingsActivity, tag)
+            val drawable = (v.background as? android.graphics.drawable.GradientDrawable)
+                ?: android.graphics.drawable.GradientDrawable().also { v.background = it }
+            val color = if (bg != null) {
+                bg
+            } else {
+                // 自动采样：从归一化图标 bitmap 取顶边中点像素作为底色
+                sampleIconBg(icon)
+            }
+            drawable.setColor(color)
+            drawable.setStroke(2, this@SettingsActivity.resources.getColor(R.color.foreground_tertiary, this@SettingsActivity.theme))
+            drawable.cornerRadius = 4f
+        }
+
+        /** 从归一化图标 bitmap 采样底色（取顶边中点像素） */
+        fun sampleIconBg(icon: android.graphics.drawable.Drawable?): Int {
+            val bmp = (icon as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: return 0xFFE9EDF2.toInt()
+            val w = bmp.width
+            return if (w > 2) bmp.getPixel(w / 2, 1) else 0xFFE9EDF2.toInt()
+        }
+
+        /** 可视化颜色选择器：日/夜切换 + RGB 滑条 + 64 色预设 + 自动采样开关 */
+        fun showIconBgPicker(tag: String, icon: android.graphics.drawable.Drawable?, onDone: () -> Unit) {
+            val ctx = this@SettingsActivity
+            val view = layoutInflater.inflate(R.layout.dialog_color_picker, null)
+
+            // 自动采样底色（从图标 bitmap 取）
+            val autoColor = sampleIconBg(icon)
+
+            // 日/夜各自的颜色值（-1 = 自动采样）
+            val dayHex = Store.iconBgDay(ctx, tag)
+            val nightHex = Store.iconBgNight(ctx, tag)
+            val colors = intArrayOf(
+                if (dayHex.isNotEmpty()) parseRgb(dayHex) else -1,
+                if (nightHex.isNotEmpty()) parseRgb(nightHex) else -1
+            )
+            var curTab = 0 // 0=日间 1=夜间
+
+            val btnDay = view.findViewById<Button>(R.id.btn_tab_day)
+            val btnNight = view.findViewById<Button>(R.id.btn_tab_night)
+            val cbAuto = view.findViewById<CheckBox>(R.id.cb_auto)
+            val preview = view.findViewById<View>(R.id.color_preview)
+            val seekR = view.findViewById<android.widget.SeekBar>(R.id.seek_r)
+            val seekG = view.findViewById<android.widget.SeekBar>(R.id.seek_g)
+            val seekB = view.findViewById<android.widget.SeekBar>(R.id.seek_b)
+            val tvR = view.findViewById<TextView>(R.id.tv_r)
+            val tvG = view.findViewById<TextView>(R.id.tv_g)
+            val tvB = view.findViewById<TextView>(R.id.tv_b)
+            val gridPresets = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.grid_presets)
+
+            val presets = intArrayOf(
+                // 行0：灰阶 8 色（白→黑）
+                0xFFFFFFFF.toInt(), 0xFFE0E0E0.toInt(), 0xFFBDBDBD.toInt(), 0xFF9E9E9E.toInt(),
+                0xFF757575.toInt(), 0xFF616161.toInt(), 0xFF424242.toInt(), 0xFF000000.toInt(),
+                // 行1：红系 8 色
+                0xFFFFEBEE.toInt(), 0xFFFFCDD2.toInt(), 0xFFEF9A9A.toInt(), 0xFFE57373.toInt(),
+                0xFFEF5350.toInt(), 0xFFE53935.toInt(), 0xFFC62828.toInt(), 0xFFB71C1C.toInt(),
+                // 行2：橙系 8 色
+                0xFFFFF3E0.toInt(), 0xFFFFE0B2.toInt(), 0xFFFFCC80.toInt(), 0xFFFFB74D.toInt(),
+                0xFFFFA726.toInt(), 0xFFFB8C00.toInt(), 0xFFEF6C00.toInt(), 0xFFE65100.toInt(),
+                // 行3：黄系 8 色
+                0xFFFFFDE7.toInt(), 0xFFFFF9C4.toInt(), 0xFFFFF176.toInt(), 0xFFFFEE58.toInt(),
+                0xFFFFEB3B.toInt(), 0xFFFDD835.toInt(), 0xFFF9A825.toInt(), 0xFFF57F17.toInt(),
+                // 行4：绿系 8 色
+                0xFFE8F5E9.toInt(), 0xFFC8E6C9.toInt(), 0xFFA5D6A7.toInt(), 0xFF81C784.toInt(),
+                0xFF66BB6A.toInt(), 0xFF43A047.toInt(), 0xFF2E7D32.toInt(), 0xFF1B5E20.toInt(),
+                // 行5：青系 8 色
+                0xFFE0F7FA.toInt(), 0xFFB2EBF2.toInt(), 0xFF80DEEA.toInt(), 0xFF4DD0E1.toInt(),
+                0xFF26C6DA.toInt(), 0xFF00ACC1.toInt(), 0xFF00838F.toInt(), 0xFF006064.toInt(),
+                // 行6：蓝系 8 色
+                0xFFE3F2FD.toInt(), 0xFFBBDEFB.toInt(), 0xFF90CAF9.toInt(), 0xFF64B5F6.toInt(),
+                0xFF42A5F5.toInt(), 0xFF1E88E5.toInt(), 0xFF1565C0.toInt(), 0xFF0D47A1.toInt(),
+                // 行7：紫/粉系 8 色
+                0xFFF3E5F5.toInt(), 0xFFE1BEE7.toInt(), 0xFFCE93D8.toInt(), 0xFFBA68C8.toInt(),
+                0xFFAB47BC.toInt(), 0xFF8E24AA.toInt(), 0xFF6A1B9A.toInt(), 0xFF4A148C.toInt()
+            )
+
+            fun updateTabHighlight() {
+                val active = 0xFF448AFF.toInt()
+                val inactive = 0xFF666666.toInt()
+                btnDay.setTextColor(if (curTab == 0) active else inactive)
+                btnNight.setTextColor(if (curTab == 1) active else inactive)
+            }
+
+            fun syncUi() {
+                val c = colors[curTab]
+                cbAuto.isChecked = (c == -1)
+                val enabled = c != -1
+                seekR.isEnabled = enabled; seekG.isEnabled = enabled; seekB.isEnabled = enabled
+                val r = if (c != -1) (c shr 16) and 0xFF else 0
+                val g = if (c != -1) (c shr 8) and 0xFF else 0
+                val b = if (c != -1) c and 0xFF else 0
+                seekR.progress = r; seekG.progress = g; seekB.progress = b
+                tvR.text = r.toString(); tvG.text = g.toString(); tvB.text = b.toString()
+                preview.setBackgroundColor(if (c != -1) (0xFF000000.toInt() or c) else autoColor)
+                updateTabHighlight()
+            }
+
+            val presetAdapter = object : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
+                override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int) =
+                    object : androidx.recyclerview.widget.RecyclerView.ViewHolder(android.view.View(ctx).apply {
+                        layoutParams = android.view.ViewGroup.LayoutParams(
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0
+                        )
+                    }) {}
+                override fun getItemCount() = presets.size
+                override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, pos: Int) {
+                    val c = presets[pos]
+                    val lp = holder.itemView.layoutParams
+                    // 用 SpanSizeLookup 保证正方形：由 GridLayoutManager + item 动态设宽
+                    holder.itemView.setBackgroundColor(c)
+                    holder.itemView.setOnClickListener {
+                        colors[curTab] = c
+                        cbAuto.isChecked = false
+                        syncUi()
+                    }
+                }
+            }
+            val grid = androidx.recyclerview.widget.GridLayoutManager(ctx, 8)
+            gridPresets.layoutManager = grid
+            gridPresets.adapter = presetAdapter
+            gridPresets.isNestedScrollingEnabled = false
+            // 8 列正方形色块，无间距：post 后按实际宽度算每格尺寸
+            gridPresets.post {
+                val colW = gridPresets.width / 8
+                for (i in 0 until gridPresets.childCount) {
+                    val child = gridPresets.getChildAt(i)
+                    val lp = child.layoutParams
+                    lp.height = colW
+                    lp.width = colW
+                    child.layoutParams = lp
+                }
+            }
+
+            val seekListener = object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(p: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (cbAuto.isChecked) cbAuto.isChecked = false
+                    val r = seekR.progress; val g = seekG.progress; val b = seekB.progress
+                    colors[curTab] = (r shl 16) or (g shl 8) or b
+                    tvR.text = r.toString(); tvG.text = g.toString(); tvB.text = b.toString()
+                    preview.setBackgroundColor(0xFF000000.toInt() or colors[curTab])
+                }
+                override fun onStartTrackingTouch(p: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(p: android.widget.SeekBar?) {}
+            }
+            seekR.setOnSeekBarChangeListener(seekListener)
+            seekG.setOnSeekBarChangeListener(seekListener)
+            seekB.setOnSeekBarChangeListener(seekListener)
+
+            cbAuto.setOnCheckedChangeListener { _, checked ->
+                if (checked) {
+                    colors[curTab] = -1
+                } else if (colors[curTab] == -1) {
+                    colors[curTab] = 0
+                }
+                syncUi()
+            }
+
+            btnDay.setOnClickListener { curTab = 0; syncUi() }
+            btnNight.setOnClickListener { curTab = 1; syncUi() }
+
+            syncUi()
+
+            AlertDialog.Builder(ctx)
+                .setTitle("图标底色 - ${Store.label(ctx, tag).ifBlank { tag }}")
+                .setView(view)
+                .setPositiveButton("确定") { _, _ ->
+                    Store.saveIconBgDay(ctx, tag, if (colors[0] == -1) "" else String.format("#%06X", colors[0]))
+                    Store.saveIconBgNight(ctx, tag, if (colors[1] == -1) "" else String.format("#%06X", colors[1]))
+                    onDone()
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
     }
 
-    /** 排序交换后按 mAppOrder + mOrderRows 重新渲染（避免重新扫描应用列表） */
-    private fun rerenderAppsPanel() {
-        val box = findViewById<LinearLayout>(R.id.box_apps) ?: return
-        val byTag = HashMap<String, OrderRow>(mOrderRows.size * 2)
-        for (r in mOrderRows) byTag[r.tag] = r
-        box.removeAllViews()
-        for ((i, tag) in mAppOrder.withIndex()) {
-            byTag[tag]?.let { renderOrderRow(box, it, i) }
-        }
-    }
+    private var mOrderAdapter: OrderAdapter? = null
+    private var mItemTouchHelper: androidx.recyclerview.widget.ItemTouchHelper? = null
 
     private fun bindDrawerLooks() {
         val box = findViewById<LinearLayout>(R.id.box_drawer_seeks)
         box.removeAllViews()
+        bindSeek(box, "窗口宽度", KEY_DRAWER_WIDTH_PCT, 75, 50, 95, unit = "%")
+        bindSeek(box, "窗口高度", KEY_DRAWER_HEIGHT_PCT, 75, 50, 95, unit = "%")
         bindSeek(box, "图标大小", KEY_DRAWER_ICON_SIZE, 64, 40, 120)
         bindSeek(box, "间距", KEY_DRAWER_ICON_GAP, 8, 0, 40)
         bindSeek(box, "字体大小", KEY_DRAWER_LABEL_SIZE, 17, 12, 40)
@@ -514,97 +766,160 @@ class SettingsActivity : Activity() {
 
     /**
      * 整屏渲染：[ 导航 ] → 全部设置项（车速+行序） → [ 巡航 ] → 全部设置项（车速+行序）。
+     * 两个分区各挂一个 RecyclerView：长按行（或 ≡ 手柄）拖拽排序。
      */
     private fun rebuildSpeedPanel(box: LinearLayout) {
         box.removeAllViews()
         // ── 导航区 ──
         renderSectionHeader(box, "导航")
-        for (i in mNaviOrder.indices) {
-            val key = mNaviOrder[i]
-            val item = naviAllItems.firstOrNull { it.key == key } ?: continue
-            renderSettingRow(box, item, i, isNavi = true)
-        }
+        addSpeedOrderList(box, naviAllItems, mNaviOrder, KEY_NAVI_ORDER)
         // ── 巡航区 ──
         renderSectionHeader(box, "巡航")
-        for (i in mCruiseOrder.indices) {
-            val key = mCruiseOrder[i]
-            val item = cruiseAllItems.firstOrNull { it.key == key } ?: continue
-            renderSettingRow(box, item, i, isNavi = false)
-        }
+        addSpeedOrderList(box, cruiseAllItems, mCruiseOrder, KEY_CRUISE_ORDER)
     }
 
-    /** 渲染分区子标题：统一样式 23px 粗体 + 上分隔线 1px divider */
+    /** 分区行列表：RecyclerView + ItemTouchHelper 长按拖拽（与"应用"tab 交互一致） */
+    private fun addSpeedOrderList(
+        box: LinearLayout,
+        all: List<SettingItem>,
+        order: ArrayList<String>,
+        persistKey: String
+    ) {
+        val rv = androidx.recyclerview.widget.RecyclerView(this).apply {
+            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
+            isNestedScrollingEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val adapter = SpeedOrderAdapter(all, order, persistKey)
+        rv.adapter = adapter
+        adapter.touchHelper = androidx.recyclerview.widget.ItemTouchHelper(adapter.DragCallback())
+        adapter.touchHelper!!.attachToRecyclerView(rv)
+        box.addView(rv, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dpToPx(2) })
+    }
+
+    /** 分区之间仅留分隔线（导航/巡航两个列表的视觉分隔，标题已按要求去掉） */
     private fun renderSectionHeader(box: LinearLayout, title: String) {
         if (box.childCount > 0) {
             val div = View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1)).apply { topMargin = dpToPx(24) }
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1)).apply { topMargin = dpToPx(12) }
                 setBackgroundColor(resources.getColor(R.color.divider, theme))
             }
             box.addView(div)
         }
-        val tv = TextView(this).apply {
-            text = title
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dpToPx(23).toFloat())
-            setTextColor(resources.getColor(R.color.foreground, theme))
-            paint.isFakeBoldText = true
-            setPadding(0, dpToPx(16), 0, dpToPx(8))
-        }
-        box.addView(tv)
     }
 
     /**
-     * 渲染一行设置：label + CheckBox(显隐) + 字号 picker +
-     * 可选上下箭头（[orderablePos] != null 时显示）。
-     *
-     * @param isNavi 当前 row 所属分区；用于上下移动时选择 [mNaviOrder] / [mCruiseOrder]
+     * 车速区行适配器：label + 显示 checkbox + 字号 picker，长按行（或 ≡ 手柄）拖拽排序。
+     * rows 顺序 = order 列表顺序；拖动交换同步 order，松手持久化 [persistKey]。
      */
-    private fun renderSettingRow(box: LinearLayout, item: SettingItem, orderablePos: Int?, isNavi: Boolean = false) {
-        val view = layoutInflater.inflate(R.layout.item_speed_setting, box, false)
-        view.findViewById<TextView>(R.id.item_label).text = item.label
+    private inner class SpeedOrderAdapter(
+        private val all: List<SettingItem>,
+        private val order: ArrayList<String>,
+        private val persistKey: String
+    ) : androidx.recyclerview.widget.RecyclerView.Adapter<SpeedOrderAdapter.VH>() {
 
-        val check = view.findViewById<CheckBox>(R.id.item_check)
-        if (item.showKey.isNotEmpty()) {
-            check.visibility = View.VISIBLE
-            check.isChecked = prefs().getBoolean(item.showKey, item.showDefault)
-            check.setOnCheckedChangeListener { _, checked ->
-                prefs().edit().putBoolean(item.showKey, checked).apply()
+        /** 各分区自己的 ItemTouchHelper（onBind 手柄 startDrag 用） */
+        var touchHelper: androidx.recyclerview.widget.ItemTouchHelper? = null
+
+        private val rows = ArrayList<SettingItem>()
+        private var mDragDirty = false
+
+        init {
+            for (key in order) all.firstOrNull { it.key == key }?.let { rows.add(it) }
+        }
+
+        fun move(from: Int, to: Int) {
+            java.util.Collections.swap(rows, from, to)
+            notifyItemMoved(from, to)
+            order.clear()
+            order.addAll(rows.map { it.key })
+            mDragDirty = true
+        }
+
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH =
+            VH(layoutInflater.inflate(R.layout.item_speed_setting, parent, false))
+
+        override fun getItemCount(): Int = rows.size
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            val item = rows[position]
+            holder.label.text = item.label
+
+            val check = holder.check
+            if (item.showKey.isNotEmpty()) {
+                check.visibility = View.VISIBLE
+                check.setOnCheckedChangeListener(null)
+                check.isChecked = prefs().getBoolean(item.showKey, item.showDefault)
+                check.setOnCheckedChangeListener { _, checked ->
+                    prefs().edit().putBoolean(item.showKey, checked).apply()
+                }
+            } else {
+                check.visibility = View.INVISIBLE
             }
-        } else {
-            check.visibility = View.INVISIBLE
+
+            // 车速卡字号上限 150（与桌面坐标系下像素硬限制一致），其余 250
+            holder.picker.setRange(0, if (item.fontKey in FONT_RANGE_SMALL) 150 else 250, 1)
+            holder.picker.setValue(prefs().getInt(item.fontKey, item.fontDefault))
+            holder.picker.setOnValueChangeListener { _, newVal ->
+                prefs().edit().putInt(item.fontKey, newVal).apply()
+            }
+
+            holder.drag.setOnTouchListener { _, e ->
+                if (e.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+                    touchHelper?.startDrag(holder)
+                    return@setOnTouchListener true
+                }
+                false
+            }
         }
 
-        val pickerFont = view.findViewById<NumberPickerView>(R.id.picker_font)
-        val curFont = prefs().getInt(item.fontKey, item.fontDefault)
-        // 车速卡字号上限 150（与桌面坐标系下像素硬限制一致），其余 250
-        pickerFont.setRange(0, if (item.fontKey in FONT_RANGE_SMALL) 150 else 250, 1)
-        pickerFont.setValue(curFont)
-        pickerFont.setOnValueChangeListener { _, newVal ->
-            prefs().edit().putInt(item.fontKey, newVal).apply()
+        inner class VH(v: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(v) {
+            val label: TextView = v.findViewById(R.id.item_label)
+            val check: CheckBox = v.findViewById(R.id.item_check)
+            val picker: NumberPickerView = v.findViewById(R.id.picker_font)
+            val drag: TextView = v.findViewById(R.id.btn_drag)
         }
 
-        if (orderablePos != null) {
-            val pos = orderablePos
-            val orderList = if (isNavi) mNaviOrder else mCruiseOrder
-            val persistKey = if (isNavi) KEY_NAVI_ORDER else KEY_CRUISE_ORDER
-            view.findViewById<Button>(R.id.btn_up).setOnClickListener {
-                if (pos > 0) {
-                    java.util.Collections.swap(orderList, pos, pos - 1)
-                    saveOrder(persistKey, orderList)
-                    rebuildSpeedPanel(box)
+        inner class DragCallback : androidx.recyclerview.widget.ItemTouchHelper.Callback() {
+            override fun getMovementFlags(
+                rv: androidx.recyclerview.widget.RecyclerView,
+                vh: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Int = androidx.recyclerview.widget.ItemTouchHelper.Callback.makeMovementFlags(
+                androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0)
+
+            override fun isLongPressDragEnabled(): Boolean = true
+
+            override fun onMove(
+                rv: androidx.recyclerview.widget.RecyclerView,
+                from: androidx.recyclerview.widget.RecyclerView.ViewHolder,
+                to: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Boolean {
+                move(from.bindingAdapterPosition, to.bindingAdapterPosition)
+                return true
+            }
+
+            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
+
+            override fun onSelectedChanged(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder?, action: Int) {
+                super.onSelectedChanged(vh, action)
+                // 拖起浮起：放大 + 抬升，落位还原
+                if (action == androidx.recyclerview.widget.ItemTouchHelper.ACTION_STATE_DRAG) {
+                    vh?.itemView?.animate()?.scaleX(1.04f)?.scaleY(1.04f)
+                        ?.translationZ(12f)?.setDuration(80)?.start()
                 }
             }
-            view.findViewById<Button>(R.id.btn_down).setOnClickListener {
-                if (pos < orderList.size - 1) {
-                    java.util.Collections.swap(orderList, pos, pos + 1)
-                    saveOrder(persistKey, orderList)
-                    rebuildSpeedPanel(box)
+
+            override fun clearView(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
+                super.clearView(rv, vh)
+                vh.itemView.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(120).start()
+                if (mDragDirty) {
+                    mDragDirty = false
+                    saveOrder(persistKey, order)
                 }
             }
-        } else {
-            view.findViewById<View>(R.id.btn_up).visibility = View.GONE
-            view.findViewById<View>(R.id.btn_down).visibility = View.GONE
         }
-        box.addView(view)
     }
 
     private fun saveOrder(key: String, list: ArrayList<String>) {
@@ -612,6 +927,14 @@ class SettingsActivity : Activity() {
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density + 0.5f).toInt()
+
+    /** hex(#RRGGBB) → RGB int（不含 alpha），失败返回 -1 */
+    private fun parseRgb(hex: String): Int {
+        return try {
+            val c = android.graphics.Color.parseColor(hex)
+            (((c shr 16) and 0xFF) shl 16) or (((c shr 8) and 0xFF) shl 8) or (c and 0xFF)
+        } catch (_: Exception) { -1 }
+    }
 
     private fun bindMusicTab() {
         val box = findViewById<LinearLayout>(R.id.box_music_seeks)

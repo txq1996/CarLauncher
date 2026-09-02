@@ -1,29 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 设置-应用 排序列行：拖拽手柄 + 图标 + 名称 + 隐藏勾选；长按行或按手柄拖动排序 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="52px"
-    android:background="@drawable/bg_grid_line"
+    android:layout_height="64px"
+    android:layout_marginTop="6px"
+    android:background="@drawable/bg_app_order_row"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="8px">
+    android:paddingStart="10px"
+    android:paddingEnd="12px">
+
+    <TextView
+        android:id="@+id/btn_drag"
+        android:layout_width="40px"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="≡"
+        android:textColor="@color/foreground_tertiary"
+        android:textSize="26px" />
 
     <ImageView
         android:id="@+id/app_icon"
-        android:layout_width="36px"
-        android:layout_height="36px"
+        android:layout_width="40px"
+        android:layout_height="40px"
+        android:layout_marginStart="6px"
         android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/app_label"
         android:layout_width="0px"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12px"
         android:layout_weight="1"
-        android:layout_marginStart="10px"
         android:ellipsize="end"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:textColor="@color/foreground"
-        android:textSize="19px" />
+        android:textSize="20px" />
+
+    <!-- 图标底色色块：点击弹颜色选择器（日/夜不同色） -->
+    <View
+        android:id="@+id/icon_bg_swatch"
+        android:layout_width="36px"
+        android:layout_height="36px"
+        android:layout_marginStart="8px"
+        android:background="@drawable/bg_color_swatch"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8px"
+        android:layout_marginEnd="2px"
+        android:text="隐藏"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="15px" />
 
     <CheckBox
         android:id="@+id/item_check"
@@ -33,30 +66,4 @@
         android:minWidth="0px"
         android:minHeight="0px"
         android:padding="8px" />
-
-    <Button
-        android:id="@+id/btn_up"
-        android:layout_width="48px"
-        android:layout_height="44px"
-        android:layout_marginStart="12px"
-        android:text="▲"
-        android:textSize="16px"
-        android:padding="0px"
-        android:minWidth="0px"
-        android:minHeight="0px"
-        android:insetTop="0px"
-        android:insetBottom="0px" />
-
-    <Button
-        android:id="@+id/btn_down"
-        android:layout_width="48px"
-        android:layout_height="44px"
-        android:layout_marginStart="6px"
-        android:text="▼"
-        android:textSize="16px"
-        android:padding="0px"
-        android:minWidth="0px"
-        android:minHeight="0px"
-        android:insetTop="0px"
-        android:insetBottom="0px" />
 </LinearLayout>

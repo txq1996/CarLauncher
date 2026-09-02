@@ -29,33 +29,41 @@ internal class DrawerAdapter(
 
     init {
         if (!dockMode || !hasDockItem(dockBtns, "settings", null)) {
-            labels.add("桌面设置"); icons.add(Store.normalizedEmoji(context, MapFeature.SETTINGS_EMOJI)); tags.add(TAG_SETTINGS)
+            val t = TAG_SETTINGS
+            labels.add("桌面设置"); icons.add(Store.normalizedEmoji(context, MapFeature.SETTINGS_EMOJI, Store.iconBgOverride(context, t))); tags.add(t)
         }
         if (!dockMode || !hasDockItem(dockBtns, "map", "home")) {
-            labels.add("回家"); icons.add(Store.normalizedEmoji(context, MapFeature.HOME_EMOJI)); tags.add(TAG_HOME)
+            val t = TAG_HOME
+            labels.add("回家"); icons.add(Store.normalizedEmoji(context, MapFeature.HOME_EMOJI, Store.iconBgOverride(context, t))); tags.add(t)
         }
         if (!dockMode || !hasDockItem(dockBtns, "map", "company")) {
-            labels.add("公司"); icons.add(Store.normalizedEmoji(context, MapFeature.COMPANY_EMOJI)); tags.add(TAG_COMPANY)
+            val t = TAG_COMPANY
+            labels.add("公司"); icons.add(Store.normalizedEmoji(context, MapFeature.COMPANY_EMOJI, Store.iconBgOverride(context, t))); tags.add(t)
         }
         if (!dockMode || !hasDockItem(dockBtns, "clean", null)) {
-            labels.add("清理"); icons.add(Store.normalizedEmoji(context, MapFeature.CLEAN_EMOJI)); tags.add(TAG_CLEAN)
+            val t = TAG_CLEAN
+            labels.add("清理"); icons.add(Store.normalizedEmoji(context, MapFeature.CLEAN_EMOJI, Store.iconBgOverride(context, t))); tags.add(t)
         }
         if (!dockMode) {
-            labels.add("分屏"); icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI)); tags.add(TAG_SPLIT_NEW)
-            labels.add("返回主页"); icons.add(Store.normalizedEmoji(context, MapFeature.GOHOME_EMOJI)); tags.add(TAG_GOHOME)
-            labels.add("重启桌面"); icons.add(Store.normalizedEmoji(context, MapFeature.RESTART_EMOJI)); tags.add(TAG_RESTART)
+            val tSplit = TAG_SPLIT_NEW
+            labels.add("分屏"); icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI, Store.iconBgOverride(context, tSplit))); tags.add(tSplit)
+            val tHome = TAG_GOHOME
+            labels.add("返回主页"); icons.add(Store.normalizedEmoji(context, MapFeature.GOHOME_EMOJI, Store.iconBgOverride(context, tHome))); tags.add(tHome)
+            val tRestart = TAG_RESTART
+            labels.add("重启桌面"); icons.add(Store.normalizedEmoji(context, MapFeature.RESTART_EMOJI, Store.iconBgOverride(context, tRestart))); tags.add(tRestart)
         }
         val splits = SplitRepository.load(context)
         for (i in splits.indices) {
             val pair = splits[i]
             if (dockMode && dockBtns.any { it == Store.V2Button.split(pair[0], pair[1]) }) continue
+            val t = "$SPLIT_PREFIX$i"
             labels.add("${Store.label(context, pair[0])}|${Store.label(context, pair[1])}")
-            icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1])); tags.add("$SPLIT_PREFIX$i")
+            icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1], Store.iconBgOverride(context, t))); tags.add(t)
         }
         for (ri in apps) {
             val id = "${ri.activityInfo.packageName}/${ri.activityInfo.name}"
             if (dockMode && hasDockItem(dockBtns, "app", id)) continue
-            labels.add(Store.label(context, id)); icons.add(Store.normalizedIcon(context, id)); tags.add(id)
+            labels.add(Store.label(context, id)); icons.add(Store.normalizedIcon(context, id, Store.iconBgOverride(context, id))); tags.add(id)
         }
         if (!dockMode) applyUserHidden()
         applyUserOrder()

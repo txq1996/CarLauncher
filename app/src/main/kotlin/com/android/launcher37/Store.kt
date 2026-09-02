@@ -298,11 +298,55 @@ object Store {
         false
     }
 
-    @JvmStatic fun normalizedIcon(c: Context, id: String) = IconNormalizer.normalizedIcon(c, id)
+    @JvmStatic fun normalizedIcon(c: Context, id: String, bgOverride: Int? = null) =
+        IconNormalizer.normalizedIcon(c, id, bgOverride)
     @JvmStatic fun normalizedGlyphIcon(c: Context, r: Int) = IconNormalizer.normalizedGlyphIcon(c, r)
-    @JvmStatic fun normalizedSplitIcon(c: Context, l: String, r: String) =
-        IconNormalizer.normalizedSplitIcon(c, l, r)
-    @JvmStatic fun normalizedEmoji(c: Context, e: String) = IconNormalizer.normalizedEmoji(c, e)
+    @JvmStatic fun normalizedSplitIcon(c: Context, l: String, r: String, bgOverride: Int? = null) =
+        IconNormalizer.normalizedSplitIcon(c, l, r, bgOverride)
+    @JvmStatic fun normalizedEmoji(c: Context, e: String, bgOverride: Int? = null) =
+        IconNormalizer.normalizedEmoji(c, e, bgOverride)
+
+    // ── 图标底色 per-tag 覆盖（日/夜不同 SP key，空=自动采样）──────────
+
+    /** 读取当前日夜模式下 tag 的自定义底色（无=自动采样，返回 null） */
+    @JvmStatic
+    fun iconBgOverride(c: Context, tag: String): Int? {
+        val isNight = (c.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val key = if (isNight) "icon_bg_night:$tag" else "icon_bg_day:$tag"
+        val hex = Prefs.of(c).getString(key, "") ?: ""
+        if (hex.isEmpty()) return null
+        return try { android.graphics.Color.parseColor(hex) } catch (_: Exception) { null }
+    }
+
+    /** 保存 tag 的日间底色 hex（空串=清除，恢复自动采样） */
+    @JvmStatic
+    fun saveIconBgDay(c: Context, tag: String, hex: String) {
+        val e = Prefs.of(c).edit()
+        if (hex.isBlank()) e.remove("icon_bg_day:$tag") else e.putString("icon_bg_day:$tag", hex)
+        e.apply()
+        IconCache.clearNormalized()
+    }
+
+    /** 保存 tag 的夜间底色 hex（空串=清除，恢复自动采样） */
+    @JvmStatic
+    fun saveIconBgNight(c: Context, tag: String, hex: String) {
+        val e = Prefs.of(c).edit()
+        if (hex.isBlank()) e.remove("icon_bg_night:$tag") else e.putString("icon_bg_night:$tag", hex)
+        e.apply()
+        IconCache.clearNormalized()
+    }
+
+    /** 读取 tag 的日间底色 hex（空=自动采样） */
+    @JvmStatic
+    fun iconBgDay(c: Context, tag: String): String =
+        Prefs.of(c).getString("icon_bg_day:$tag", "") ?: ""
+
+    /** 读取 tag 的夜间底色 hex（空=自动采样） */
+    @JvmStatic
+    fun iconBgNight(c: Context, tag: String): String =
+        Prefs.of(c).getString("icon_bg_night:$tag", "") ?: ""
 
     // ── 启动动作 ──────────────────────
 
