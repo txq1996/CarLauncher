@@ -19,7 +19,8 @@ internal class DrawerAdapter(
     apps: List<ResolveInfo>,
     dockBtns: List<Store.V2Button>,
     dockMode: Boolean,
-    private val iconSizePx: Int = 64
+    private val iconSizePx: Int = 64,
+    private val labelSizePx: Int = 17
 ) : BaseAdapter() {
     private val mContext: Context = context
     private val labels = ArrayList<String>()
@@ -41,6 +42,7 @@ internal class DrawerAdapter(
         }
         if (!dockMode) {
             labels.add("分屏"); icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI)); tags.add(TAG_SPLIT_NEW)
+            labels.add("返回主页"); icons.add(Store.normalizedEmoji(context, MapFeature.GOHOME_EMOJI)); tags.add(TAG_GOHOME)
         }
         val splits = SplitRepository.load(context)
         for (i in splits.indices) {
@@ -54,6 +56,28 @@ internal class DrawerAdapter(
             if (dockMode && hasDockItem(dockBtns, "app", id)) continue
             labels.add(Store.label(context, id)); icons.add(Store.normalizedIcon(context, id)); tags.add(id)
         }
+        applyUserOrder()
+    }
+
+    /**
+     * 用户自定义排序（设置页"应用"选项卡，功能项/分屏/应用统一排序）。
+     * 顺序表外的项（如新装应用）保持默认相对次序排尾（stable sort）。
+     */
+    private fun applyUserOrder() {
+        val order = Store.drawerOrder(mContext)
+        if (order.isEmpty()) return
+        val idx = HashMap<String, Int>(order.size * 2)
+        order.forEachIndexed { i, t -> if (!idx.containsKey(t)) idx[t] = i }
+        val indices = (0 until tags.size).sortedBy { idx[tags[it]] ?: Int.MAX_VALUE }
+        val newLabels = ArrayList<String>(tags.size)
+        val newIcons = ArrayList<android.graphics.drawable.Drawable?>(tags.size)
+        val newTags = ArrayList<String>(tags.size)
+        for (i in indices) {
+            newLabels.add(labels[i]); newIcons.add(icons[i]); newTags.add(tags[i])
+        }
+        labels.clear(); labels.addAll(newLabels)
+        icons.clear(); icons.addAll(newIcons)
+        tags.clear(); tags.addAll(newTags)
     }
 
     override fun getCount(): Int = labels.size
@@ -69,7 +93,16 @@ internal class DrawerAdapter(
         lp.width = iconSizePx
         lp.height = iconSizePx
         iv.layoutParams = lp
-        (cell.findViewById<View>(R.id.drawer_label) as TextView).text = labels[position]
+        // 格子正方形：高度跟随 GridView 列宽；极端字号下兜底保证内容不裁切
+        val cellLp = cell.layoutParams
+        cellLp.height = maxOf(
+            (parent as android.widget.GridView).columnWidth,
+            iconSizePx + labelSizePx + 22
+        )
+        cell.layoutParams = cellLp
+        val tv = cell.findViewById<TextView>(R.id.drawer_label)
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, labelSizePx.toFloat())
+        tv.text = labels[position]
         cell.tag = tags[position]
         return cell
     }
@@ -80,6 +113,7 @@ internal class DrawerAdapter(
         internal const val TAG_COMPANY = "feat_company"
         internal const val TAG_CLEAN = "feat_clean"
         internal const val TAG_SPLIT_NEW = "split_new"
+        internal const val TAG_GOHOME = "feat_gohome"
         internal const val SPLIT_PREFIX = "split:"
 
         /** 底栏中是否已存在该类按钮（type 匹配，action 为 null 时只看 type） */

@@ -15,7 +15,7 @@ import android.widget.TextView
  * Holo 风格 PopupWindow 统一封装。
  *
  * - [themedContext] 根据 Activity 当前 uiMode 返回日/夜主题的 [ContextThemeWrapper]
- * - [show] 居中显示 PopupWindow，背景为 [R.drawable.bg_holo_dialog]
+ * - [show] 居中显示 PopupWindow，背景为 [R.drawable.bg_popup_panel]
  * - [titledPanel] 构造"标题 + 内容"的纵向 LinearLayout（标题用 `Theme.Holo` 大字体）
  *
  * 所有弹窗（应用选择器、按钮菜单、应用抽屉）都通过本类统一弹出，避免各处重复代码。
@@ -37,7 +37,7 @@ object HoloPopup {
     /**
      * 居中显示 PopupWindow。
      *
-     * 背景：@drawable/bg_holo_dialog；可被外部 touch 关闭。
+     * 背景：@drawable/bg_popup_panel；可被外部 touch 关闭。
      *
      * @return 弹窗实例（调用方在 dismiss 后无需再释放，PopupWindow 自管）
      */
@@ -47,7 +47,7 @@ object HoloPopup {
     @JvmStatic
     fun showWithWidth(a: Activity, content: View, width: Int): PopupWindow {
         val popup = PopupWindow(content, width, ViewGroup.LayoutParams.WRAP_CONTENT, true)
-        popup.setBackgroundDrawable(content.context.getDrawable(R.drawable.bg_holo_dialog))
+        popup.setBackgroundDrawable(content.context.getDrawable(R.drawable.bg_popup_panel))
         popup.isOutsideTouchable = true
         popup.showAtLocation(a.window.decorView, Gravity.CENTER, 0, 0)
         return popup

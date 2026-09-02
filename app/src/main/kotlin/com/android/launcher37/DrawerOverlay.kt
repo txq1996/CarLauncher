@@ -148,11 +148,10 @@ object DrawerOverlay {
     private fun bindDrawerContent(appCtx: Context, content: View) {
         val tvTitle = content.findViewById<TextView>(R.id.tv_drawer_title)
         tvTitle.text = "全部应用"
-        // 同步设置：标题随时间字号，标签随音乐标题字号（不新增设置项）
+        // 同步设置：标题随时间字号，标签/图标用"全部应用外观"设置（应用 tab）
         val p = Prefs.of(appCtx)
         val titleSize = p.getInt(SettingsActivity.KEY_TS_TIME, 28)
-        val labelSize = p.getInt(SettingsActivity.KEY_TS_MUSIC_TITLE, 24)
-        val iconSize = (labelSize * 2.7f).toInt().coerceIn(48, 96)
+        val labelSize = p.getInt(SettingsActivity.KEY_DRAWER_LABEL_SIZE, 17)
         tvTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, titleSize.toFloat())
         val tvStats = content.findViewById<TextView>(R.id.tv_drawer_stats)
         tvStats.visibility = View.VISIBLE
@@ -182,10 +181,10 @@ object DrawerOverlay {
             if (tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
                 val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull()
                     ?: return@OnItemLongClickListener true
-                DrawerActions.removeSplitAndRefresh(appCtx, grid, idx, dockMode = false, iconSizePx = iconSize)
+                DrawerActions.removeSplitAndRefresh(appCtx, grid, idx, dockMode = false)
             }
             true
         }
-        DrawerActions.loadAdapterAsync(appCtx, grid, dockMode = false, iconSizePx = iconSize)
+        DrawerActions.loadAdapterAsync(appCtx, grid, dockMode = false)
     }
 }

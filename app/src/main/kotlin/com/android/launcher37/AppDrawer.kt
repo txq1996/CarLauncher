@@ -1,9 +1,8 @@
-﻿package com.android.launcher37
+package com.android.launcher37
 
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ResolveInfo
-import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -96,17 +95,14 @@ object AppDrawer {
         val themed: Context = HoloPopup.themedContext(activity)
         val content: View = LayoutInflater.from(themed).inflate(R.layout.dialog_app_drawer, null)
         val popup = PopupWindow(content, POPUP_W, POPUP_H, true).apply {
-            setBackgroundDrawable(
-                ColorDrawable(activity.resources.getColor(R.color.surface, activity.theme))
-            )
+            setBackgroundDrawable(themed.getDrawable(R.drawable.bg_drawer_dialog))
             isOutsideTouchable = true
             showAtLocation(activity.window.decorView, Gravity.CENTER, 0, 0)
         }
         sPopup = popup
         val p = Prefs.of(activity)
         val titleSize = p.getInt(SettingsActivity.KEY_TS_TIME, 28)
-        val labelSize = p.getInt(SettingsActivity.KEY_TS_MUSIC_TITLE, 24)
-        val iconSize = (labelSize * 2.7f).toInt().coerceIn(48, 96)
+        val labelSize = p.getInt(SettingsActivity.KEY_DRAWER_LABEL_SIZE, 17)
         val tvTitle = content.findViewById<TextView>(R.id.tv_drawer_title)
         tvTitle.text = dockTitle ?: "全部应用"
         tvTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, titleSize.toFloat())
@@ -147,13 +143,13 @@ object AppDrawer {
             val tagStr = view.tag as? String
             if (pickCallback == null && tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
                 val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull() ?: return@OnItemLongClickListener true
-                DrawerActions.removeSplitAndRefresh(activity, grid, idx, dockMode = false, iconSizePx = iconSize)
+                DrawerActions.removeSplitAndRefresh(activity, grid, idx, dockMode = false)
             }
             true
         }
 
         DrawerActions.loadAdapterAsync(
-            activity.applicationContext, grid, dockCallback != null, iconSize
+            activity.applicationContext, grid, dockCallback != null
         ) { !activity.isDestroyed && !activity.isFinishing }
     }
 

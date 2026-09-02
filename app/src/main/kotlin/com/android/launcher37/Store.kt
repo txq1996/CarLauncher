@@ -32,6 +32,12 @@ object Store {
     /** 底栏自定义按钮 JSON 序列化 key */
     private const val KEY_CUSTOM_BUTTONS = "custom_buttons"
 
+    /** 抽屉应用自定义顺序（逗号分隔 pkg/cls；pkg/cls 不含逗号，安全） */
+    private const val KEY_APP_ORDER = "app_drawer_order"
+
+    /** 抽屉隐藏应用（逗号分隔 pkg/cls 集合） */
+    private const val KEY_APP_HIDDEN = "app_drawer_hidden"
+
     /** Label 缓存（256 条封顶） */
     private val LABEL_CACHE = LruCache<String, String>(256)
 
@@ -183,6 +189,30 @@ object Store {
             // 序列化失败
         }
         prefs(c).edit().putString(KEY_CUSTOM_BUTTONS, arr.toString()).apply()
+    }
+
+    // ── 抽屉应用排序 / 隐藏持久化 ──────────────────────
+
+    /** 抽屉应用自定义顺序；未设置时返回空列表 */
+    @JvmStatic
+    fun drawerOrder(c: Context): List<String> =
+        prefs(c).getString(KEY_APP_ORDER, null)
+            ?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+
+    @JvmStatic
+    fun saveDrawerOrder(c: Context, ids: List<String>) {
+        prefs(c).edit().putString(KEY_APP_ORDER, ids.joinToString(",")).apply()
+    }
+
+    /** 抽屉隐藏应用集合；未设置时返回空集 */
+    @JvmStatic
+    fun drawerHidden(c: Context): Set<String> =
+        prefs(c).getString(KEY_APP_HIDDEN, null)
+            ?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+
+    @JvmStatic
+    fun saveDrawerHidden(c: Context, ids: Set<String>) {
+        prefs(c).edit().putString(KEY_APP_HIDDEN, ids.joinToString(",")).apply()
     }
 
     // ── PackageManager 工具 ──────────────────────

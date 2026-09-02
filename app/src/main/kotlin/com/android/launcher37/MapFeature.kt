@@ -17,4 +17,5 @@ internal object MapFeature {
     val CLEAN_EMOJI = "\uD83E\uDDF9"       // mop
     val SETTINGS_EMOJI = "\u2699\uFE0F"     // gear ⚙️
     val SPLIT_EMOJI = "\uD83E\uDDE9"       // puzzle 🧩
+    val GOHOME_EMOJI = "\uD83E\uDDED"      // compass 🧭（返回主页）
 }

@@ -159,7 +159,7 @@ class DockBar(
                 for (i in 0 until mGrid.childCount) {
                     val cell = mGrid.getChildAt(i)
                     cell.setBackgroundResource(0)
-                    cell.setBackgroundResource(R.drawable.bg_v2_cell)
+                    cell.setBackgroundResource(R.drawable.bg_dock_cell)
                 }
             }
         }
@@ -406,7 +406,7 @@ class DockBar(
         cell: View,
         block: (ImageView, TextView) -> Unit
     ) {
-        cell.setBackgroundResource(R.drawable.bg_v2_cell)
+        cell.setBackgroundResource(R.drawable.bg_dock_cell)
         styleCell(cell)
         val icon = cell.findViewById<ImageView>(R.id.dock_icon)
         val label = cell.findViewById<TextView>(R.id.dock_label)

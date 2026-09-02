@@ -144,7 +144,8 @@ class SettingsActivity : Activity() {
             KEY_TS_NAVI_EXIT, KEY_TS_NAVI_DIRECTION, KEY_TS_NAVI_ALERT,
             KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
             KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME,
-            KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT
+            KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT,
+            KEY_DRAWER_ICON_SIZE, KEY_DRAWER_ICON_GAP, KEY_DRAWER_LABEL_SIZE
         )
 
         val INT_DEFAULTS = intArrayOf(
@@ -154,12 +155,18 @@ class SettingsActivity : Activity() {
             36, 26, 15, 17, 17, 17, 17, 17, 17,
             26, 17, 17,
             24, 15, 15,
-            60, 28, 1
+            60, 28, 1,
+            64, 8, 17
         )
 
         // ── 行序键（持久化到 SP）─────────────────
         const val KEY_NAVI_ORDER = "navi_row_order"
         const val KEY_CRUISE_ORDER = "cruise_row_order"
+
+        // ── 全部应用外观（抽屉/悬浮窗共用，px/int）──────────────────
+        const val KEY_DRAWER_ICON_SIZE = "drawer_icon_size"
+        const val KEY_DRAWER_ICON_GAP = "drawer_icon_gap"
+        const val KEY_DRAWER_LABEL_SIZE = "drawer_label_size"
 
         // ── 通用 ───────────────────────
         const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
@@ -244,6 +251,7 @@ class SettingsActivity : Activity() {
             findViewById(R.id.tab_music),
             findViewById(R.id.tab_time),
             findViewById(R.id.tab_dock),
+            findViewById(R.id.tab_apps),
             findViewById(R.id.tab_general)
         )
         mPanels = arrayOf(
@@ -252,6 +260,7 @@ class SettingsActivity : Activity() {
             findViewById(R.id.panel_music),
             findViewById(R.id.panel_time),
             findViewById(R.id.panel_dock),
+            findViewById(R.id.panel_apps),
             findViewById(R.id.panel_general)
         )
         for (i in mTabs.indices) {
@@ -265,6 +274,8 @@ class SettingsActivity : Activity() {
         bindMusicTab()
         bindTimeTab()
         bindDockTab()
+        bindAppsTab()
+        bindDrawerLooks()
         bindGeneralTab()
         findViewById<Button>(R.id.btn_restart_launcher).setOnClickListener { restartLauncher() }
     }
@@ -295,6 +306,8 @@ class SettingsActivity : Activity() {
      */
     private fun restartLauncher() {
         val intent = Intent(this, LauncherActivity::class.java).apply {
+            // 带 HOME category：重启后进桌面，而不是走"其他 App 上弹悬浮窗"路径
+            addCategory(Intent.CATEGORY_HOME)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
         startActivity(intent)
@@ -341,6 +354,140 @@ class SettingsActivity : Activity() {
         bindSeek(box, "底栏高度", KEY_DOCK_HEIGHT, 80, 60, 120)
         bindSeek(box, "底栏图标大小", KEY_DOCK_ICON_SIZE, 44, 32, 64)
         bindSeek(box, "底栏图标数量", KEY_DOCK_COLUMNS, 10, 5, 10, unit = "个")
+    }
+
+    // ── 应用选项卡（抽屉排序与隐藏 + 全部应用外观） ──────────────────────
+
+    /** 应用选项卡行模型（tag / 显示名 / 图标） */
+    private data class OrderRow(val tag: String, val label: String, val icon: android.graphics.drawable.Drawable?)
+
+    /** 全部可启动应用入口（IO 线程预载，默认"用户优先+字典序"） */
+    private var mAppEntries: List<android.content.pm.ResolveInfo> = emptyList()
+
+    /** 抽屉项顺序（tag 全集：功能项/分屏/应用；含隐藏项，隐藏仅决定显示与否） */
+    private val mAppOrder: ArrayList<String> = ArrayList()
+
+    /** 抽屉隐藏应用集合 */
+    private val mAppHidden: LinkedHashSet<String> = LinkedHashSet()
+
+    /** 当前合并后的行集合（排序交换后按 mAppOrder 重新渲染用） */
+    private var mOrderRows: List<OrderRow> = emptyList()
+
+    /** IO 线程预载应用列表后合并已保存顺序，再渲染行 */
+    private fun bindAppsTab() {
+        mAppHidden.clear()
+        mAppHidden.addAll(Store.drawerHidden(this))
+        mAppOrder.clear()
+        mAppOrder.addAll(Store.drawerOrder(this))
+        SharedExecutor.io().execute {
+            val entries = AppQuery.launcherEntriesSorted(this)
+            // 预热 icon 缓存，主线程渲染行时不做 binder 调用
+            for (ri in entries) Store.normalizedIcon(this, AppQuery.appId(ri))
+            runOnUiThread {
+                if (isDestroyed || isFinishing) return@runOnUiThread
+                mAppEntries = entries
+                rebuildAppsPanel()
+            }
+        }
+    }
+
+    /** 与 DrawerAdapter 构造顺序一致的默认行序（功能项 → 分屏 → 应用） */
+    private fun buildDefaultRows(): List<OrderRow> {
+        val rows = ArrayList<OrderRow>()
+        val names = listOf("桌面设置", "回家", "公司", "清理", "分屏", "返回主页")
+        val tags = listOf(
+            DrawerAdapter.TAG_SETTINGS, DrawerAdapter.TAG_HOME, DrawerAdapter.TAG_COMPANY,
+            DrawerAdapter.TAG_CLEAN, DrawerAdapter.TAG_SPLIT_NEW, DrawerAdapter.TAG_GOHOME
+        )
+        val emojis = listOf(
+            MapFeature.SETTINGS_EMOJI, MapFeature.HOME_EMOJI, MapFeature.COMPANY_EMOJI,
+            MapFeature.CLEAN_EMOJI, MapFeature.SPLIT_EMOJI, MapFeature.GOHOME_EMOJI
+        )
+        for (i in tags.indices) rows.add(OrderRow(tags[i], names[i], Store.normalizedEmoji(this, emojis[i])))
+        val splits = SplitRepository.load(this)
+        for (i in splits.indices) {
+            val pair = splits[i]
+            rows.add(OrderRow(
+                "${DrawerAdapter.SPLIT_PREFIX}$i",
+                "${Store.label(this, pair[0])}|${Store.label(this, pair[1])}",
+                Store.normalizedSplitIcon(this, pair[0], pair[1])
+            ))
+        }
+        for (ri in mAppEntries) {
+            val id = AppQuery.appId(ri)
+            rows.add(OrderRow(id, Store.label(this, id), Store.normalizedIcon(this, id)))
+        }
+        return rows
+    }
+
+    private fun rebuildAppsPanel() {
+        val box = findViewById<LinearLayout>(R.id.box_apps) ?: return
+        val defaults = buildDefaultRows()
+        val byTag = HashMap<String, OrderRow>(defaults.size * 2)
+        for (r in defaults) byTag[r.tag] = r
+        // 合并：已保存顺序在前（仅保留仍存在的项），新项（新装应用/分屏/返回主页）按默认序追加
+        val merged = ArrayList<OrderRow>(defaults.size)
+        val seen = HashSet<String>()
+        for (tag in mAppOrder) {
+            byTag[tag]?.let { if (seen.add(tag)) merged.add(it) }
+        }
+        for (r in defaults) if (seen.add(r.tag)) merged.add(r)
+        mOrderRows = merged
+        mAppOrder.clear()
+        mAppOrder.addAll(merged.map { it.tag })
+        box.removeAllViews()
+        for ((i, row) in merged.withIndex()) renderOrderRow(box, row, i)
+    }
+
+    private fun renderOrderRow(box: LinearLayout, row: OrderRow, pos: Int) {
+        val view = layoutInflater.inflate(R.layout.item_app_order_row, box, false)
+        view.findViewById<android.widget.ImageView>(R.id.app_icon).setImageDrawable(row.icon)
+        view.findViewById<TextView>(R.id.app_label).text = row.label
+        val check = view.findViewById<CheckBox>(R.id.item_check)
+        if (row.tag.contains("/")) {  // 应用标识 pkg/cls 才可隐藏；功能项/分屏固定显示
+            check.visibility = View.VISIBLE
+            check.isChecked = row.tag in mAppHidden
+            check.setOnCheckedChangeListener { _, checked ->
+                if (checked) mAppHidden.add(row.tag) else mAppHidden.remove(row.tag)
+                Store.saveDrawerHidden(this, mAppHidden)
+            }
+        } else {
+            check.visibility = View.INVISIBLE
+        }
+        view.findViewById<Button>(R.id.btn_up).setOnClickListener {
+            if (pos > 0) {
+                java.util.Collections.swap(mAppOrder, pos, pos - 1)
+                Store.saveDrawerOrder(this, mAppOrder)
+                rerenderAppsPanel()
+            }
+        }
+        view.findViewById<Button>(R.id.btn_down).setOnClickListener {
+            if (pos < mAppOrder.size - 1) {
+                java.util.Collections.swap(mAppOrder, pos, pos + 1)
+                Store.saveDrawerOrder(this, mAppOrder)
+                rerenderAppsPanel()
+            }
+        }
+        box.addView(view)
+    }
+
+    /** 排序交换后按 mAppOrder + mOrderRows 重新渲染（避免重新扫描应用列表） */
+    private fun rerenderAppsPanel() {
+        val box = findViewById<LinearLayout>(R.id.box_apps) ?: return
+        val byTag = HashMap<String, OrderRow>(mOrderRows.size * 2)
+        for (r in mOrderRows) byTag[r.tag] = r
+        box.removeAllViews()
+        for ((i, tag) in mAppOrder.withIndex()) {
+            byTag[tag]?.let { renderOrderRow(box, it, i) }
+        }
+    }
+
+    private fun bindDrawerLooks() {
+        val box = findViewById<LinearLayout>(R.id.box_drawer_seeks)
+        box.removeAllViews()
+        bindSeek(box, "图标大小", KEY_DRAWER_ICON_SIZE, 64, 40, 120)
+        bindSeek(box, "间距", KEY_DRAWER_ICON_GAP, 8, 0, 40)
+        bindSeek(box, "字体大小", KEY_DRAWER_LABEL_SIZE, 17, 12, 40)
     }
 
     private fun bindSpeedTab() {

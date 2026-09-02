@@ -51,6 +51,15 @@ internal object DrawerActions {
                 onDismiss(); onClean()
             }
             tagStr == DrawerAdapter.TAG_SPLIT_NEW -> onSplitNew()
+            tagStr == DrawerAdapter.TAG_GOHOME -> {
+                // 返回 launcher37 桌面：launcher 是 HOME，发 HOME intent 即回桌面
+                onDismiss()
+                try {
+                    c.startActivity(Intent(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_HOME)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: Exception) {}
+            }
             tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX) -> {
                 val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull()
                     ?: return
@@ -66,25 +75,37 @@ internal object DrawerActions {
     }
 
     /** 长按分屏项：删除并异步重建列表 */
-    fun removeSplitAndRefresh(c: Context, grid: GridView, idx: Int, dockMode: Boolean, iconSizePx: Int) {
+    fun removeSplitAndRefresh(c: Context, grid: GridView, idx: Int, dockMode: Boolean) {
         SplitRepository.remove(c, idx)
         Toast.makeText(c, "已删除分屏项", Toast.LENGTH_SHORT).show()
-        loadAdapterAsync(c, grid, dockMode, iconSizePx)
+        loadAdapterAsync(c, grid, dockMode)
     }
 
-    /** IO 线程加载应用列表并异步设置适配器（[guard] 非空时在回主线程后校验宿主存活） */
+    /**
+     * IO 线程加载应用列表并异步设置适配器（[guard] 非空时在回主线程后校验宿主存活）。
+     * 外观（图标大小/间距/字号）从 SP 读取并应用到 grid（全部应用外观设置，应用 tab）。
+     */
     fun loadAdapterAsync(
         c: Context,
         grid: GridView,
         dockMode: Boolean,
-        iconSizePx: Int,
         guard: (() -> Boolean)? = null
     ) {
         SharedExecutor.io().execute {
+            val p = Prefs.of(c)
+            val iconSize = p.getInt(SettingsActivity.KEY_DRAWER_ICON_SIZE, 64)
+            val labelSize = p.getInt(SettingsActivity.KEY_DRAWER_LABEL_SIZE, 17)
+            val gap = p.getInt(SettingsActivity.KEY_DRAWER_ICON_GAP, 8)
             val adapter = DrawerAdapter(
-                c, AppQuery.launcherEntriesSorted(c), Store.v2Buttons(c), dockMode, iconSizePx
+                c,
+                AppQuery.applyDrawerPrefs(c, AppQuery.launcherEntriesSorted(c), dockMode),
+                Store.v2Buttons(c), dockMode, iconSize, labelSize
             )
             grid.post {
+                grid.horizontalSpacing = gap
+                grid.verticalSpacing = gap
+                // 自适应列宽：auto_fit 按columnWidth 计算列数，随图标大小联动
+                grid.columnWidth = iconSize + 48
                 if (guard == null || guard()) grid.adapter = adapter
             }
         }

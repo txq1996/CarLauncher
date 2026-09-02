@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全部应用弹窗面板：Holo 风格 + 5px 圆角 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/surface_highlight" />
+    <stroke android:width="2px" android:color="@color/divider" />
+    <corners android:radius="5px" />
+</shape>

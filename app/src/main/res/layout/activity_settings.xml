@@ -67,6 +67,7 @@
                         <TextView android:id="@+id/tab_speed" style="@style/Tab" android:text="车速" />
                         <TextView android:id="@+id/tab_music" style="@style/Tab" android:text="音乐" />
                         <TextView android:id="@+id/tab_dock" style="@style/Tab" android:text="底栏" />
+                        <TextView android:id="@+id/tab_apps" style="@style/Tab" android:text="应用" />
                         <TextView android:id="@+id/tab_general" style="@style/Tab" android:text="通用" />
                     </LinearLayout>
                 </ScrollView>
@@ -259,6 +260,83 @@
 
                         <CheckBox android:id="@+id/cb_show_dock_label" style="@style/CheckRow" android:text="显示图标名称" />
                         <LinearLayout android:id="@+id/box_dock_seeks" style="@style/SeekBox" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- ── 应用（抽屉排序与隐藏） ── -->
+                <ScrollView android:id="@+id/panel_apps" style="@style/Panel">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView style="@style/SectionHeader" android:text="全部应用" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_grid_line"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="8px">
+
+                            <TextView
+                                android:layout_width="0px"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="名称"
+                                android:textColor="@color/foreground_secondary"
+                                android:textSize="15px" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="隐藏"
+                                android:textColor="@color/foreground_secondary"
+                                android:textSize="15px"
+                                android:paddingStart="8px"
+                                android:paddingEnd="8px" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="24px"
+                                android:text="排序"
+                                android:textColor="@color/foreground_secondary"
+                                android:textSize="15px" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/box_apps"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8px"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="40px"
+                            android:layout_marginTop="12px"
+                            android:text="排序和隐藏在下次打开抽屉时生效，无需重启桌面；隐藏的应用仍可添加到底栏和分屏"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
+
+                        <TextView style="@style/SectionHeader" android:text="全部应用外观" />
+
+                        <LinearLayout
+                            android:id="@+id/box_drawer_seeks"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="40px"
+                            android:layout_marginTop="12px"
+                            android:text="设置抽屉与悬浮窗的图标大小、间距、字体大小，下次打开时生效"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
                     </LinearLayout>
                 </ScrollView>
 
