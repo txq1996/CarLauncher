@@ -21,6 +21,8 @@
          本地 release 默认启用，CI 走 -PminifyRelease=true 时 AdbDebug 被 R8 shrink 剔除，
          残留的权限声明是 system uid 进程的合理配置（无对应类调用则 framework 拒注入）。 -->
     <uses-permission android:name="android.permission.INJECT_EVENTS" />
+    <!-- DrawerOverlay：全部应用悬浮窗 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- 包可见性：允许查询可启动应用与标准媒体意图（Android 11+） -->
     <queries>
@@ -64,6 +66,8 @@
             android:name=".SettingsActivity"
             android:excludeFromRecents="true"
             android:exported="false" />
+
+        <service android:name=".DrawerService" android:exported="false" />
 
         <!--
             独立进程持有 VirtualDisplay：launcher 进程被 force-stop / APK 替换时

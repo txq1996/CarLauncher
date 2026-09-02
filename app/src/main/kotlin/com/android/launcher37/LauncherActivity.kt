@@ -15,14 +15,7 @@ import com.android.launcher37.home.UpdateDelegate
 
 /**
  * Home launcher activity (singleTask).
- *
- * Acts purely as an assembler + lifecycle router: binds views once, instantiates
- * 5 delegate modules under `home/` (XxxDelegate), and forwards Activity lifecycle
- * (onStart / onStop / onDestroy / onConfigurationChanged / onWindowFocusChanged).
- * Business logic (speed, navigation, music, update) lives in the delegates.
- *
- * Day/night mode is intercepted via `configChanges=uiMode`; we never recreate
- * the Activity (would destroy the std VirtualDisplay and break navigation).
+ * 直接启动时若开启 home_direct_app_drawer，则像 autodock 一样走 Service 悬浮，不建 1x1 窗口，不返桌面。
  */
 class LauncherActivity : Activity() {
 
@@ -35,7 +28,6 @@ class LauncherActivity : Activity() {
     private lateinit var time: com.android.launcher37.home.TimeDelegate
     private lateinit var update: UpdateDelegate
 
-    // Exposed to sibling modules (AppDrawer / MemoryCleaner) via cast.
     internal lateinit var dockBar: DockBar
         private set
     internal lateinit var pip: PipController
@@ -44,8 +36,35 @@ class LauncherActivity : Activity() {
 
     private var mNeedPipSync: Boolean = false
     private var mHasFocus: Boolean = false
+    private var mAppDrawerPending: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 用内存焦点状态 sLauncherForeground 判定“启动前是否在本 launcher”：
+        // 冷启动（新进程）默认 false → 走悬浮；进程存活的重建保留原焦点状态。
+        val direct = Prefs.of(this).getBoolean(SettingsActivity.KEY_HOME_DIRECT_APP_DRAWER, true)
+        val fromHome = intent?.hasCategory(Intent.CATEGORY_HOME) == true
+        if (direct && !fromHome) {
+            if (DrawerOverlay.isShowing() || AppDrawer.isShowing()) {
+                DrawerOverlay.dismiss()
+                AppDrawer.dismissIfShowing()
+                super.onCreate(savedInstanceState)
+                finish()
+                return
+            }
+            // 用内存前台标志区分：启动前不在本 launcher（其他 App）弹悬浮，在桌面弹 AppDrawer
+            if (!sLauncherForeground) {
+                super.onCreate(savedInstanceState)
+                startService(Intent(this, DrawerService::class.java))
+                finish()
+                return
+            } else {
+                mAppDrawerPending = true
+            }
+        }
+        if (direct && fromHome) {
+            if (DrawerOverlay.isShowing()) DrawerOverlay.dismiss()
+            AppDrawer.dismissIfShowing()
+        }
         super.onCreate(savedInstanceState)
         IconCache.clearNormalized()
         setContentView(R.layout.activity_main)
@@ -102,17 +121,10 @@ class LauncherActivity : Activity() {
         update = UpdateDelegate(application, this)
         speed.bind()
 
-        // MapPipHost survives Activity recreation - reuse the application-scoped
-        // instance to keep the navigation VirtualDisplay alive.
-        // PipController 持 applicationContext 而非 Activity（避免 launcher 进程
-        // 跨 Activity 持有死 Activity 引用导致 release/releaseTransient 回调 crash）。
         pip = (application as LauncherApp).pipController
             ?: PipController(applicationContext, views.pipPlaceholder).also {
                 (application as LauncherApp).pipController = it
             }
-        // Activity 重建时 placeholder 是新 ViewGroup，老 mHost 的 SurfaceView 引用
-        // 还指着旧的；attach 把 SurfaceView 重新加到新 placeholder 上并触发 surfaceChanged，
-        // 让 :pip 进程 service 端的 attachSurface 走 reuse VD + moveStaleTask 把导航 task 拉回画面。
         pip.setPlaceholder(views.pipPlaceholder)
         dockBar = DockBar(this, views.dockGrid)
         dockBar.setCleanAction { cleanMemory() }
@@ -125,54 +137,173 @@ class LauncherActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        sLauncherStopped = false
+        if (!::views.isInitialized) return
         time.start()
         music.start()
         navi.start()
         update.checkOnLaunch()
     }
 
+    // #region debug-point lifecy-v1（仅日志，不改逻辑）
+    private fun dbgTop(): String = try {
+        (getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager)
+            .getRunningTasks(1).firstOrNull()?.topActivity?.flattenToString() ?: "null"
+    } catch (_: Exception) { "err" }
+    // #endregion
+
+    /**
+     * 快照当前系统顶部任务（包名 + displayId），供 onNewIntent 判定"触发前用户是否在本桌面"。
+     *
+     * 关键事实（emulator-5554 API 28 实测）：
+     * - 高德跑在本 launcher 的 VirtualDisplay 上时，系统"顶部任务"是 VD 上的高德任务，
+     *   它会把主屏 launcher 挤成 paused+失焦 —— 但用户视觉上仍在桌面；
+     * - 此刻 getRunningTasks 恰好返回该 VD 任务（top=amapauto, display=VD id），
+     *   而浏览器等真正盖顶的其他 App 返回 display 0 的任务 —— 以此区分。
+     */
+    private fun snapshotTop() {
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+            val t = am.getRunningTasks(1).firstOrNull() ?: return
+            sLastPauseTopPkg = t.topActivity?.packageName
+            sLastPauseTopDisplay = taskDisplayId(t)
+        } catch (_: Exception) { }
+    }
+
+    /** RunningTaskInfo 的 displayId：API 29+ 有 getDisplayId()/字段，28 上反射探测，失败回退主屏。 */
+    private fun taskDisplayId(task: android.app.ActivityManager.RunningTaskInfo): Int = try {
+        task.javaClass.getMethod("getDisplayId").invoke(task) as? Int
+            ?: android.view.Display.DEFAULT_DISPLAY
+    } catch (_: Throwable) {
+        try { task.javaClass.getField("displayId").getInt(task) }
+        catch (_: Throwable) { android.view.Display.DEFAULT_DISPLAY }
+    }
+
     override fun onResume() {
+        sLauncherForeground = true
+        // 快照重置为自身：resume 即回到顶部，旧的"抢焦者"快照已过期
+        // （否则 HOME 回桌面后，am start 会读到浏览器等陈旧快照误走悬浮）。
+        sLastPauseTopPkg = packageName
+        sLastPauseTopDisplay = android.view.Display.DEFAULT_DISPLAY
+        android.util.Log.i("VDFocusDbg", "onResume fg=${sLauncherForeground} focus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus top=${dbgTop()}")
         super.onResume()
+        if (mAppDrawerPending && ::views.isInitialized) {
+            mAppDrawerPending = false
+            // 需 post 到 window token 就绪后再弹，避免 BadToken
+            window.decorView.post {
+                if (!isFinishing && !isDestroyed && !AppDrawer.isShowing() && !DrawerOverlay.isShowing()) {
+                    AppDrawer.show(this)
+                }
+            }
+        }
         mNeedPipSync = true
     }
 
+    override fun onPause() {
+        sLauncherForeground = false
+        // 记录本次被暂停时窗口是否仍持焦 —— 这是"触发前是否在本桌面"的快照之一。
+        // pause 时先清 stopped 标志：VD 抢焦只 pause 不 stop（launcher 仍可见），
+        // 而其他 App 真盖顶随后必然 onStop。onNewIntent 据此区分两种"失焦"。
+        sLauncherStopped = false
+        snapshotTop()
+        android.util.Log.i("VDFocusDbg", "onPause focus=$mHasFocus -> lastPauseHadFocus=$sLastPauseHadFocus lastTop=$sLastPauseTopPkg@$sLastPauseTopDisplay top=${dbgTop()}")
+        super.onPause()
+    }
+
     override fun onStop() {
-        time.stop()
-        music.stop()
-        navi.stop()
+        android.util.Log.i("VDFocusDbg", "onStop focus=$mHasFocus top=${dbgTop()}")
+        // 置 stopped：其他 App 盖顶（浏览器等）必经此回调；VD 抢焦不触发。
+        // 也刷新快照：launcher 已被 VD 抢焦成 paused 后，其他 App 盖顶不会再触发新的 onPause。
+        sLauncherStopped = true
+        snapshotTop()
+        if (::views.isInitialized) {
+            time.stop()
+            music.stop()
+            navi.stop()
+        }
         super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        android.util.Log.i("VDFocusDbg", "onNewIntent act=${intent.action} fromHome=${intent.hasCategory(Intent.CATEGORY_HOME)} mHasFocus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus fg=$sLauncherForeground top=${dbgTop()}")
         mNeedPipSync = true
+        val direct = Prefs.of(this).getBoolean(SettingsActivity.KEY_HOME_DIRECT_APP_DRAWER, true)
+        val fromHome = intent.hasCategory(Intent.CATEGORY_HOME)
+        if (direct) {
+            if (fromHome) {
+                // HOME：桌面上切换全部应用，其余回桌面
+                if (mHasFocus) {
+                    if (AppDrawer.isShowing() || DrawerOverlay.isShowing()) {
+                        AppDrawer.dismissIfShowing()
+                        DrawerOverlay.dismiss()
+                    } else {
+                        AppDrawer.show(this)
+                    }
+                } else {
+                    if (DrawerOverlay.isShowing()) DrawerOverlay.dismiss()
+                    AppDrawer.dismissIfShowing()
+                }
+                return
+            }
+            // am start com.android.launcher37：判定"触发前用户在不在本 launcher 桌面"。
+            // 焦点快照（sLastPauseHadFocus）在"桌面挂着高德 VD"时不可靠：VD 上的高德任务
+            // 会成为系统顶部任务，把 launcher 挤成 paused+失焦（用户视觉上仍在桌面），
+            // 导致快照恒 false → 误走悬浮窗。因此叠加多重判定，任一成立即视为桌面：
+            // - sLastPauseHadFocus：最后一次 onPause 时窗口仍持焦（纯桌面场景）；
+            // - lastTop==自己：am start 自身触发的瞬时 onPause（快照被刷新为 launcher）；
+            // - !sLauncherStopped：VD 抢焦只 pause 不 stop（launcher 仍可见，用户仍在桌面）；
+            //   而浏览器等真盖顶必经 onStop（API 28 无任务 displayId，用此区分 VD/盖顶）。
+            // 快照在 onPause/onStop 都会刷新（已 paused 后被盖顶只触发 onStop），
+            // onResume 时重置为自身，避免 HOME 回桌面后读到陈旧快照。
+            val vdId = try { pip.vdDisplayId() } catch (_: Throwable) { -1 }
+            val onDesktop = sLastPauseHadFocus
+                || sLastPauseTopPkg == packageName
+                || !sLauncherStopped
+            android.util.Log.i("VDFocusDbg", "am-start path: onDesktop=$onDesktop (hadFocus=$sLastPauseHadFocus topPkg=$sLastPauseTopPkg topDisplay=$sLastPauseTopDisplay stopped=$sLauncherStopped vdId=$vdId)")
+            if (onDesktop) {
+                if (AppDrawer.isShowing() || DrawerOverlay.isShowing()) {
+                    AppDrawer.dismissIfShowing()
+                    DrawerOverlay.dismiss()
+                } else {
+                    AppDrawer.show(this)
+                }
+                return
+            }
+            // 其他 App 上：悬浮切换，不返桌面
+            if (DrawerOverlay.isShowing()) {
+                DrawerOverlay.dismiss()
+            } else {
+                startService(Intent(this, DrawerService::class.java))
+            }
+            try { moveTaskToBack(true) } catch (_: Exception) {}
+            finish()
+            return
+        }
         if (mHasFocus) {
-            // 用户按 Home 键而桌面已在前台：切换全部应用抽屉
             AppDrawer.toggle(this)
         } else {
-            // 后台唤回（如 MusicLauncher 回到桌面）：不打开抽屉，仅取消已有抽屉
             AppDrawer.dismissIfShowing()
         }
     }
 
     override fun onDestroy() {
         AppDrawer.dismissIfShowing()
-        // We deliberately do NOT call pip.release() - that would destroy the
-        // VirtualDisplay and drop the navigation task. On process death (self
-        // update, LMK kill) the navigation state must survive so a new process
-        // can attach a fresh Surface and continue showing it.
-        pip.releaseTransient()
-        speed.unbind()
-        music.stop()
-        music.cancelPending()
-        navi.stop()
-        update.release()
-        music.clearReturnHome()
+        if (::views.isInitialized) {
+            pip.releaseTransient()
+            speed.unbind()
+            music.stop()
+            music.cancelPending()
+            navi.stop()
+            update.release()
+            music.clearReturnHome()
+        }
         super.onDestroy()
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (!::views.isInitialized) return
         applyStatusBarVisibility()
         layout.applyTheme()
         layout.reapplyNightDrawables()
@@ -191,8 +322,9 @@ class LauncherActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        android.util.Log.i("VDFocusDbg", "onWindowFocusChanged hasFocus=$hasFocus")
         mHasFocus = hasFocus
-        if (!hasFocus) return
+        if (!hasFocus || !::views.isInitialized) return
         if (mNeedPipSync) {
             mNeedPipSync = false
             views.pipPlaceholder.postDelayed({ pip.ensureStd() }, PIP_START_DELAY_MS)
@@ -202,6 +334,26 @@ class LauncherActivity : Activity() {
     fun cleanMemory() = MemoryCleaner.cleanFromUi(this)
 
     companion object {
+        /** 本 launcher 是否曾进入前台（onResume=true / onPause=false）。仅用于 onCreate 冷启动兜底判定。 */
+        @Volatile
+        var sLauncherForeground: Boolean = false
+
+        /** 最近一次 onPause 时窗口是否仍持焦。判定 am start 热启动前用户是否在本桌面。 */
+        @Volatile
+        var sLastPauseHadFocus: Boolean = false
+
+        /** 最后一次 onPause/onStop 时系统顶部任务的包名（抢焦者快照）。 */
+        @Volatile
+        var sLastPauseTopPkg: String? = null
+
+        /** 最后一次 onPause/onStop 时系统顶部任务所在 displayId（-1 未知）。 */
+        @Volatile
+        var sLastPauseTopDisplay: Int = -1
+
+        /** launcher 是否处于 stopped（被其他 App 真盖顶）。VD 抢焦只 pause 不 stop，据此区分二者。 */
+        @Volatile
+        var sLauncherStopped: Boolean = false
+
         private const val PIP_START_DELAY_MS = 250L
         private const val SELECT_MUSIC_TITLE = "选择音乐应用"
     }

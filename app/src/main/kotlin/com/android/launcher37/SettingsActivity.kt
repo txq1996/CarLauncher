@@ -159,6 +159,7 @@ class SettingsActivity : Activity() {
 
         // ── 通用 ───────────────────────
         const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
+        const val KEY_HOME_DIRECT_APP_DRAWER = "home_direct_app_drawer"
 
         // ── ADB 调试入口 ───────────────────────
         const val KEY_ADB_DEBUG = "adb_debug_enabled"
@@ -584,6 +585,7 @@ class SettingsActivity : Activity() {
     // 颜色设置页已移除：主题色改由 values/colors.xml + values-night/colors.xml 自动切换
 
     private fun bindGeneralTab() {
+        bindCheck(R.id.cb_home_direct_drawer, KEY_HOME_DIRECT_APP_DRAWER)
         bindAdbDebugToggle()
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()

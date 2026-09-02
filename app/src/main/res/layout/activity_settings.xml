@@ -522,9 +522,22 @@
                             android:textSize="23px"
                             android:textStyle="bold" />
 
+                        <CheckBox
+                            android:id="@+id/cb_home_direct_drawer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8px"
+                            android:background="@drawable/bg_grid_line"
+                            android:minHeight="52px"
+                            android:padding="8px"
+                            android:text="启动直接打开全部应用"
+                            android:textColor="@color/foreground"
+                            android:textSize="19px" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="16px"
                             android:text="ADB 调试入口"
                             android:textColor="@color/foreground"
                             android:textSize="23px"

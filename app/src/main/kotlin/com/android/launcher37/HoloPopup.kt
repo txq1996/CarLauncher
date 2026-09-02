@@ -61,9 +61,11 @@ object HoloPopup {
         val panel = LinearLayout(themed).apply {
             orientation = LinearLayout.VERTICAL
         }
+        val titleSize = try { Prefs.of(themed).getInt(SettingsActivity.KEY_TS_TIME, 28) } catch (_: Exception) { 28 }
         val tv = TextView(themed, null, android.R.attr.textAppearanceLarge).apply {
             text = title
             setPadding(24, 18, 24, 6)
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, titleSize.toFloat())
         }
         panel.addView(
             tv,

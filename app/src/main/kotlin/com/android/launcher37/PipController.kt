@@ -30,6 +30,9 @@ class PipController(
 
     private var mHost: MapPipHost? = null
 
+    /** 当前 VD displayId（-1 表示 VD 不存在/未就绪）。用于判定"抢焦者是否在本 launcher 自己的虚拟屏上"。 */
+    fun vdDisplayId(): Int = try { mHost?.displayId() ?: -1 } catch (_: Throwable) { -1 }
+
     /** 更新 placeholder 视图（Activity 重建时调用） */
     fun setPlaceholder(view: View) {
         mPlaceholder = view

@@ -50,6 +50,7 @@ object AppDrawer {
     private var sStatsRunnable: Runnable? = null
     private var sPrevIdle: Long = 0
     private var sPrevTotal: Long = 0
+    private var sDismissListeners: MutableList<Runnable> = mutableListOf()
 
     // 弹窗尺寸常量（与 HoloPopup.WIDTH=400 区分；本弹窗是 1000×620 大窗口）
     private const val POPUP_W = 1000
@@ -60,11 +61,30 @@ object AppDrawer {
     }
 
     fun show(activity: Activity) {
+        android.util.Log.i("VDFocusDbg", "AppDrawer.show()")  // debug-point lifecy-v1
         showInternal(activity, null, null)
     }
 
+    fun isShowing(): Boolean = sPopup?.isShowing == true
+
+    fun addOnDismissListener(listener: Runnable) {
+        sDismissListeners.add(listener)
+    }
+
+    fun removeOnDismissListener(listener: Runnable) {
+        sDismissListeners.remove(listener)
+    }
+
+    private fun notifyDismiss() {
+        val listeners = sDismissListeners.toList()
+        sDismissListeners.clear()
+        for (l in listeners) l.run()
+    }
+
     fun dismissIfShowing() {
-        sPopup?.takeIf { it.isShowing }?.dismiss()
+        if (sPopup?.isShowing == true) {
+            sPopup?.dismiss()
+        }
     }
 
     /** 切换全部应用抽屉：已显示时关闭，否则打开 */
@@ -94,15 +114,22 @@ object AppDrawer {
             showAtLocation(activity.window.decorView, Gravity.CENTER, 0, 0)
         }
         sPopup = popup
+        val p = Prefs.of(activity)
+        val titleSize = p.getInt(SettingsActivity.KEY_TS_TIME, 28)
+        val labelSize = p.getInt(SettingsActivity.KEY_TS_MUSIC_TITLE, 24)
+        val iconSize = (labelSize * 2.7f).toInt().coerceIn(48, 96)
         val tvTitle = content.findViewById<TextView>(R.id.tv_drawer_title)
         tvTitle.text = dockTitle ?: "全部应用"
+        tvTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, titleSize.toFloat())
         val tvStats = content.findViewById<TextView>(R.id.tv_drawer_stats)
         // 标题栏系统状态：仅全部应用模式显示，dock选择模式隐藏
         tvStats.visibility = if (dockCallback == null) View.VISIBLE else View.GONE
+        tvStats.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, (labelSize * 0.9f).toFloat())
         if (dockCallback == null) startStatsTicker(activity, tvStats, popup)
         popup.setOnDismissListener {
             if (sPopup === popup) sPopup = null
             stopStatsTicker()
+            notifyDismiss()
         }
         val grid = content.findViewById<GridView>(R.id.drawer_grid)
         content.findViewById<View>(R.id.btn_drawer_close).setOnClickListener { popup.dismiss() }
@@ -182,14 +209,14 @@ object AppDrawer {
                 val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
                 if (pickCallback == null) {
                     removeSplitItem(activity, idx)
-                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null)
+                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null, labelSize, iconSize)
                 }
             }
             true
         }
 
         SharedExecutor.io().execute {
-            val adapter = DrawerAdapter(activity.applicationContext, loadApps(activity.applicationContext), dockBtns, pickCallback != null)
+            val adapter = DrawerAdapter(activity.applicationContext, loadApps(activity.applicationContext), dockBtns, pickCallback != null, labelSize, iconSize)
             grid.post {
                 if (!activity.isDestroyed && !activity.isFinishing) grid.adapter = adapter
             }
@@ -263,6 +290,7 @@ object AppDrawer {
             val icons = ids.map { Store.normalizedIcon(appCtx, it) }
             list.post {
                 if (!activity.isDestroyed && !activity.isFinishing) {
+                    val labelSize = Prefs.of(activity).getInt(SettingsActivity.KEY_TS_MUSIC_TITLE, 24)
                     list.adapter = object : BaseAdapter() {
                         override fun getCount(): Int = entries.size
                         override fun getItem(p: Int): Any = entries[p].first
@@ -270,7 +298,9 @@ object AppDrawer {
                         override fun getView(pos: Int, cv: View?, parent: ViewGroup): View {
                             val v = cv ?: LayoutInflater.from(activity).inflate(R.layout.item_app, parent, false)
                             v.findViewById<ImageView>(R.id.app_icon).setImageDrawable(icons[pos])
-                            v.findViewById<TextView>(R.id.app_name).text = entries[pos].second
+                            val tv = v.findViewById<TextView>(R.id.app_name)
+                            tv.text = entries[pos].second
+                            tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, labelSize.toFloat())
                             return v
                         }
                     }
@@ -300,7 +330,9 @@ object AppDrawer {
         context: Context,
         apps: List<ResolveInfo>,
         dockBtns: List<Store.V2Button>,
-        dockMode: Boolean
+        dockMode: Boolean,
+        private val labelSizePx: Int = 17,
+        private val iconSizePx: Int = 64
     ) : BaseAdapter() {
         private val mContext: Context = context
         private val labels = ArrayList<String>()
