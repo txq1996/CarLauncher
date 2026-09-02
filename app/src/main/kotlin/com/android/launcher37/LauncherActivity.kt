@@ -147,7 +147,11 @@ class LauncherActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        sLauncherStopped = false
+        // 注意：不能在此复位 sLauncherStopped —— API 31+ 上单任务回拉的回调顺序是
+        // onRestart→onStart→onNewIntent→onResume（API 28 为 onNewIntent→onStart），
+        // 在此清零会把 onStop 留下的"被真 App 盖顶"证据在 onNewIntent 判定前擦掉。
+        // 统一放到 onResume（两版本均晚于 onNewIntent）复位。
+        Dbg.i("VDFocusDbg") { "onStart stopped=$sLauncherStopped top=${dbgTop()}" }
         if (!::views.isInitialized) return
         time.start()
         music.start()
@@ -183,6 +187,9 @@ class LauncherActivity : Activity() {
         // 快照重置为自身：resume 即回到顶部，旧的"抢焦者"快照已过期
         // （否则 HOME 回桌面后，am start 会读到浏览器等陈旧快照误走悬浮）。
         sLastPauseTopPkg = packageName
+        // stopped 标志在此复位而非 onStart：onResume 必在 onNewIntent 之后，
+        // 不会擦掉 onStop 留给 am-start 判定的"被盖顶"证据。
+        sLauncherStopped = false
         Dbg.i("VDFocusDbg") { "onResume fg=${sLauncherForeground} focus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus top=${dbgTop()}" }
         super.onResume()
         if (mAppDrawerPending && ::views.isInitialized) {
