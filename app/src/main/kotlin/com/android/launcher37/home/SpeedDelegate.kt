@@ -19,8 +19,9 @@ import com.android.launcher37.SysProps
  * 每个元素独立字号 + 独立显隐，导航/巡航模式分别设置。
  *
  * 数据源优先级：
- * 1. IPC（[SpeedClient]）：实时 GPS 车速
- * 2. AmapNaviListener：导航/巡航时高德广播的 CUR_SPEED
+ * 1. AmapNaviListener：导航/巡航时高德广播的 CUR_SPEED
+ * 2. IPC（[SpeedClient]）回退：高德无导航/巡航数据时用实时 GPS 车速
+ * 高德导航/巡航结束时清除高德缓存，自动回退 MS；ACC 关时归零复位。
  */
 class SpeedDelegate(
     private val activity: android.app.Activity,
@@ -28,7 +29,12 @@ class SpeedDelegate(
 ) : AmapNaviListener.Listener, SpeedClient.Listener {
     private val mMiles: Boolean = isMiles(activity)
     private var mSpeedClient: SpeedClient? = null
-    @Volatile private var mUseIpcSpeed: Boolean = false
+
+    // MS IPC 最新车速（回退源）
+    private var mIpcSpeed: Int = 0
+
+    // 高德最新车速；null = 高德当前无导航/巡航数据 → 回退 [mIpcSpeed]
+    private var mAmapSpeed: Int? = null
 
     // 当前模式：false=导航, true=巡航
     private var mCruise: Boolean = false
@@ -271,28 +277,40 @@ class SpeedDelegate(
         else activity.resources.getColor(R.color.foreground_secondary, activity.theme)
     }
 
-    // ── SpeedClient 回调（IPC 优先） ──────────────────────────────
+    // ── SpeedClient 回调（MS 回退源：仅高德无数据时上屏） ──────────
 
     override fun onSpeedChanged(kmh: Int) {
-        mUseIpcSpeed = true
-        applySpeed(kmh)
+        mIpcSpeed = kmh
+        if (mAmapSpeed == null) applySpeed(kmh)
     }
 
     override fun onAccOff() {
-        mUseIpcSpeed = false
-        val naviSpeed = AmapNaviListener.lastNaviInfo?.curSpeed ?: 0
-        val cruiseSpeed = AmapNaviListener.lastCruiseInfo?.curSpeed ?: 0
-        applySpeed(if (naviSpeed > 0) naviSpeed else cruiseSpeed)
+        // ACC 关：归零复位，两路缓存一并失效
+        mAmapSpeed = null
+        mIpcSpeed = 0
+        applySpeed(0)
     }
 
-    // ── AmapNaviListener 回退（IPC 不可用时才处理） ──────────────
+    // ── AmapNaviListener 回调（高德优先源） ───────────────────────
 
     override fun onNaviInfo(info: AmapNaviListener.NaviInfo) {
-        if (!mUseIpcSpeed) applySpeed(info.curSpeed)
+        mAmapSpeed = info.curSpeed
+        applySpeed(info.curSpeed)
     }
 
     override fun onCruiseInfo(info: AmapNaviListener.CruiseInfo) {
-        if (!mUseIpcSpeed) applySpeed(info.curSpeed)
+        mAmapSpeed = info.curSpeed
+        applySpeed(info.curSpeed)
+    }
+
+    override fun onNavigationEnded() {
+        mAmapSpeed = null
+        applySpeed(mIpcSpeed)
+    }
+
+    override fun onCruiseEnded() {
+        mAmapSpeed = null
+        applySpeed(mIpcSpeed)
     }
 
     private fun applySpeed(kmh: Int) {

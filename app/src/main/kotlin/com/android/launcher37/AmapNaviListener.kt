@@ -84,7 +84,7 @@ object AmapNaviListener {
         var routeRemainDisMeters: Int = 0,
         /** 行程进度0~100 已计算【未用】预留，未上UI */
         var progressPercent: Int = 0,
-        /** 当前车速km/h CUR_SPEED【已用】SpeedDelegate:onNaviInfo 回退(IPC不可用时) */
+        /** 当前车速km/h CUR_SPEED【已用】SpeedDelegate:onNaviInfo 高德优先车速源 */
         var curSpeed: Int = 0,
         /** 道路限速km/h LIMITED_SPEED(恒-1需看12110)【未用】UI限速来自 NaviTextClient.limitedSpeed/cameraSpeed，可切换此源 */
         var limitedSpeed: Int = -1,
@@ -122,7 +122,7 @@ object AmapNaviListener {
         var etaText: String? = null
     )
 
-    /** 巡航专用数据（10001 ICON=0）【全部已用】cruise_road/cruise_alert/cruise_direction + SpeedDelegate车速回退 */
+    /** 巡航专用数据（10001 ICON=0）【全部已用】cruise_road/cruise_alert/cruise_direction + SpeedDelegate车速（高德优先源） */
     data class CruiseInfo(
         var curSpeed: Int = 0, // 【已用】SpeedDelegate:onCruiseInfo + cruise_alert
         var curRoadName: String? = null, // 【已用】cruise_road
