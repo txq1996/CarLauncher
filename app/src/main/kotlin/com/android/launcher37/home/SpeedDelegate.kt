@@ -62,6 +62,9 @@ class SpeedDelegate(
         mSpeedClient = null
     }
 
+    /** 当前是否巡航模式（供主题切换重建等外部判断）。 */
+    val cruise: Boolean get() = mCruise
+
     /**
      * 由 NaviPanelDelegate 在模式切换时调用：设置当前模式并重新渲染车速区域。
      */

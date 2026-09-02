@@ -37,7 +37,7 @@
                     android:layout_width="48px"
                     android:layout_height="48px"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/navinfo_icon9_white" />
+                    android:src="@drawable/navinfo_icon9" />
 
                 <TextView
                     android:id="@+id/tv_navi_dist"

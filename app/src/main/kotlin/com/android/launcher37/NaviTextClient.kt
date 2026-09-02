@@ -79,30 +79,31 @@ class NaviTextClient(
 
 /**
          * 高位IC 转向类型 → 本应用转向图标资源 id。
-         * 对应 `drawable-nodpi/navinfo_icon{2..20}_white.png` 共 19 个白色位图。
-         * 后续白天/夜晚不同色版本用 `navinfo_icon{N}_day.png` / `_night.png` 替换此处即可。
+         * 对应 `drawable-nodpi/navinfo_icon{2..20}.png` 共 19 个位图；
+         * 日/夜双色由资源系统自动切换（drawable-nodpi 日间色 / drawable-night-nodpi 夜间色，
+         * 由白色源图按调色板 foreground 染色生成，等价原运行时 SRC_IN 效果）。
          */
         @JvmStatic
         fun turnIconRes(icon: Int): Int = when (icon) {
-            2 -> R.drawable.navinfo_icon2_white
-            3 -> R.drawable.navinfo_icon3_white
-            4 -> R.drawable.navinfo_icon4_white
-            5 -> R.drawable.navinfo_icon5_white
-            6 -> R.drawable.navinfo_icon6_white
-            7 -> R.drawable.navinfo_icon7_white
-            8 -> R.drawable.navinfo_icon8_white
-            9 -> R.drawable.navinfo_icon9_white
-            10 -> R.drawable.navinfo_icon10_white
-            11 -> R.drawable.navinfo_icon11_white
-            12 -> R.drawable.navinfo_icon12_white
-            13 -> R.drawable.navinfo_icon13_white
-            14 -> R.drawable.navinfo_icon14_white
-            15 -> R.drawable.navinfo_icon15_white
-            16 -> R.drawable.navinfo_icon16_white
-            17 -> R.drawable.navinfo_icon17_white
-            18 -> R.drawable.navinfo_icon18_white
-            19 -> R.drawable.navinfo_icon19_white
-            20 -> R.drawable.navinfo_icon20_white
+            2 -> R.drawable.navinfo_icon2
+            3 -> R.drawable.navinfo_icon3
+            4 -> R.drawable.navinfo_icon4
+            5 -> R.drawable.navinfo_icon5
+            6 -> R.drawable.navinfo_icon6
+            7 -> R.drawable.navinfo_icon7
+            8 -> R.drawable.navinfo_icon8
+            9 -> R.drawable.navinfo_icon9
+            10 -> R.drawable.navinfo_icon10
+            11 -> R.drawable.navinfo_icon11
+            12 -> R.drawable.navinfo_icon12
+            13 -> R.drawable.navinfo_icon13
+            14 -> R.drawable.navinfo_icon14
+            15 -> R.drawable.navinfo_icon15
+            16 -> R.drawable.navinfo_icon16
+            17 -> R.drawable.navinfo_icon17
+            18 -> R.drawable.navinfo_icon18
+            19 -> R.drawable.navinfo_icon19
+            20 -> R.drawable.navinfo_icon20
             else -> 0
         }
 

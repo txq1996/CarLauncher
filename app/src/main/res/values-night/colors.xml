@@ -1,10 +1,10 @@
 <!--
-    调色板：A_深灰蓝（深色模式 / values-night/）
+    夜间调色板（A_深灰蓝 夜色版）
     来源：out/car_launcher_color_palettes/A_深灰蓝/res/values-night/colors.xml
-    与 values/colors.xml 一一对应。
+    走系统 UiMode 日/夜自动切换：系统进入夜间模式时自动启用本文件，
+    drawable-night-nodpi/ 下的资源同步切换。
 -->
 <resources>
-
     <color name="background">#0B1016</color>
     <color name="surface">#151C24</color>
     <color name="surface_variant">#1D2732</color>
@@ -13,9 +13,4 @@
     <color name="foreground_secondary">#AAB6C3</color>
     <color name="foreground_tertiary">#748291</color>
     <color name="divider">#303B47</color>
-
-    <color name="trafficRed">#FFFF5252</color>
-    <color name="trafficYellow">#FFFFD740</color>
-    <color name="trafficGreen">#FF69F0AE</color>
-
 </resources>

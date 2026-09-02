@@ -42,6 +42,19 @@ class NaviPanelDelegate(
     }
     fun stop() = mClient.stop()
 
+    /**
+     * 日/夜主题切换后由 onConfigurationChanged 调用：清空结构签名强制全量重建，
+     * 让动态渲染的文字/图标按新 uiMode 重新读色（常规 ~1Hz 推送只 setText 不重读色）。
+     */
+    fun rebuildForThemeChange() {
+        mLastStructureSig = null
+        val cruise = speed.cruise
+        val mockInfo = NaviTextClient.NaviInfo().apply {
+            mode = if (cruise) NaviTextClient.Mode.CRUISE else NaviTextClient.Mode.NAV
+        }
+        applyNaviOrder(cruise, mockInfo, if (cruise) AmapNaviListener.lastCruiseInfo else AmapNaviListener.lastNaviInfo)
+    }
+
     override fun onNaviInfo(info: NaviTextClient.NaviInfo) {
         speed.setLimit(if (info.limitedSpeed > 0) info.limitedSpeed else info.cameraSpeed)
         val cruise = info.mode == NaviTextClient.Mode.CRUISE
@@ -161,15 +174,8 @@ class NaviPanelDelegate(
                 val iconRes = NaviTextClient.turnIconRes(info.icon)
                 if (iconRes != 0) {
                     views.ivTurnIcon.setImageResource(iconRes)
-                    // navinfo_icon{N}_white.png 是白底位图（alpha 透明 + 白色像素）；
-                    // 用 PorterDuff.SRC_IN 把白色像素替换成当前主题 foreground，
-                    // 实现日夜自动变色（day 黑、night 浅）。
-                    views.ivTurnIcon.setColorFilter(
-                        android.graphics.PorterDuffColorFilter(
-                            activity.resources.getColor(R.color.foreground, activity.theme),
-                            android.graphics.PorterDuff.Mode.SRC_IN
-                        )
-                    )
+                    // 日/夜双色已烘进资源（drawable-nodpi / drawable-nodpi-night），
+                    // 由系统 UiMode 自动切换，无需运行时染色。
                     views.ivTurnIcon.scaleX = if (NaviTextClient.turnIconMirrored(info.icon)) -1f else 1f
                 }
                 views.tvNaviDist.text = formatDis(info.segRemainDis)

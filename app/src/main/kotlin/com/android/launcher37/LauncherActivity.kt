@@ -297,6 +297,8 @@ class LauncherActivity : Activity() {
         applyStatusBarVisibility()
         layout.applyTheme()
         layout.reapplyNightDrawables()
+        // uiMode 切换不重建 Activity，动态渲染的文字/转向图标需强制重建重新读色
+        if (::navi.isInitialized) navi.rebuildForThemeChange()
         dockBar.refresh()
     }
 
@@ -317,7 +319,7 @@ class LauncherActivity : Activity() {
         if (!hasFocus || !::views.isInitialized) return
         if (mNeedPipSync) {
             mNeedPipSync = false
-            views.pipPlaceholder.postDelayed({ pip.ensureStd() }, PIP_START_DELAY_MS)
+            pip.ensureStd()  // 实测：取消固定延迟，立即拉起
         }
     }
 
@@ -340,7 +342,6 @@ class LauncherActivity : Activity() {
         @Volatile
         var sLauncherStopped: Boolean = false
 
-        private const val PIP_START_DELAY_MS = 250L
         private const val SELECT_MUSIC_TITLE = "选择音乐应用"
     }
 }
