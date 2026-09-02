@@ -145,7 +145,8 @@ class SettingsActivity : Activity() {
             KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
             KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME,
             KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT,
-            KEY_DRAWER_ICON_SIZE, KEY_DRAWER_ICON_GAP, KEY_DRAWER_LABEL_SIZE
+            KEY_DRAWER_ICON_SIZE, KEY_DRAWER_ICON_GAP, KEY_DRAWER_LABEL_SIZE,
+            KEY_PIP_START_DELAY, KEY_VD_LAUNCH_DELAY
         )
 
         val INT_DEFAULTS = intArrayOf(
@@ -156,7 +157,8 @@ class SettingsActivity : Activity() {
             26, 17, 17,
             24, 15, 15,
             60, 28, 1,
-            64, 8, 17
+            64, 8, 17,
+            250, 250
         )
 
         // ── 行序键（持久化到 SP）─────────────────
@@ -171,6 +173,10 @@ class SettingsActivity : Activity() {
         // ── 通用 ───────────────────────
         const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
         const val KEY_HOME_DIRECT_APP_DRAWER = "home_direct_app_drawer"
+        /** 桌面拉起 PIP 前的延迟毫秒（0=立即；恢复 d4584a0 删除的 PIP_START_DELAY_MS=250） */
+        const val KEY_PIP_START_DELAY = "pip_start_delay"
+        /** PipService 拉起/拉回任务前的延迟毫秒（0=立即；恢复 d4584a0 删除的 LAUNCH_DELAY_MS=500） */
+        const val KEY_VD_LAUNCH_DELAY = "vd_launch_delay"
     }
 
     private lateinit var mTabs: Array<TextView>
@@ -394,14 +400,16 @@ class SettingsActivity : Activity() {
     /** 与 DrawerAdapter 构造顺序一致的默认行序（功能项 → 分屏 → 应用） */
     private fun buildDefaultRows(): List<OrderRow> {
         val rows = ArrayList<OrderRow>()
-        val names = listOf("桌面设置", "回家", "公司", "清理", "分屏", "返回主页")
+        val names = listOf("桌面设置", "回家", "公司", "清理", "分屏", "返回主页", "重启桌面")
         val tags = listOf(
             DrawerAdapter.TAG_SETTINGS, DrawerAdapter.TAG_HOME, DrawerAdapter.TAG_COMPANY,
-            DrawerAdapter.TAG_CLEAN, DrawerAdapter.TAG_SPLIT_NEW, DrawerAdapter.TAG_GOHOME
+            DrawerAdapter.TAG_CLEAN, DrawerAdapter.TAG_SPLIT_NEW, DrawerAdapter.TAG_GOHOME,
+            DrawerAdapter.TAG_RESTART
         )
         val emojis = listOf(
             MapFeature.SETTINGS_EMOJI, MapFeature.HOME_EMOJI, MapFeature.COMPANY_EMOJI,
-            MapFeature.CLEAN_EMOJI, MapFeature.SPLIT_EMOJI, MapFeature.GOHOME_EMOJI
+            MapFeature.CLEAN_EMOJI, MapFeature.SPLIT_EMOJI, MapFeature.GOHOME_EMOJI,
+            MapFeature.RESTART_EMOJI
         )
         for (i in tags.indices) rows.add(OrderRow(tags[i], names[i], Store.normalizedEmoji(this, emojis[i])))
         val splits = SplitRepository.load(this)
@@ -444,15 +452,12 @@ class SettingsActivity : Activity() {
         view.findViewById<android.widget.ImageView>(R.id.app_icon).setImageDrawable(row.icon)
         view.findViewById<TextView>(R.id.app_label).text = row.label
         val check = view.findViewById<CheckBox>(R.id.item_check)
-        if (row.tag.contains("/")) {  // 应用标识 pkg/cls 才可隐藏；功能项/分屏固定显示
-            check.visibility = View.VISIBLE
-            check.isChecked = row.tag in mAppHidden
-            check.setOnCheckedChangeListener { _, checked ->
-                if (checked) mAppHidden.add(row.tag) else mAppHidden.remove(row.tag)
-                Store.saveDrawerHidden(this, mAppHidden)
-            }
-        } else {
-            check.visibility = View.INVISIBLE
+        // 所有快捷方式（功能项/分屏/应用）均可隐藏
+        check.visibility = View.VISIBLE
+        check.isChecked = row.tag in mAppHidden
+        check.setOnCheckedChangeListener { _, checked ->
+            if (checked) mAppHidden.add(row.tag) else mAppHidden.remove(row.tag)
+            Store.saveDrawerHidden(this, mAppHidden)
         }
         view.findViewById<Button>(R.id.btn_up).setOnClickListener {
             if (pos > 0) {
@@ -726,6 +731,9 @@ class SettingsActivity : Activity() {
 
     private fun bindGeneralTab() {
         bindCheck(R.id.cb_home_direct_drawer, KEY_HOME_DIRECT_APP_DRAWER)
+        val box = findViewById<LinearLayout>(R.id.box_general_seeks)
+        bindSeek(box, "桌面拉起延迟", KEY_PIP_START_DELAY, 250, 0, 1000, unit = "毫秒")
+        bindSeek(box, "VD拉起延迟", KEY_VD_LAUNCH_DELAY, 250, 0, 1000, unit = "毫秒")
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()
         val btn = findViewById<Button>(R.id.btn_check_update)

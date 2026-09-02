@@ -68,7 +68,11 @@ class LauncherActivity : Activity() {
         super.onCreate(savedInstanceState)
         IconCache.clearNormalized()
         setContentView(R.layout.activity_main)
+        buildUi()
+    }
 
+    /** 构建桌面 UI：设置快照 + view 树引用 + 全部 delegate + 底栏 + PIP placeholder（onCreate/rebuildUi 共用） */
+    private fun buildUi() {
         snapshot = SettingsSnapshot.load(this)
         views = HomeViews(
             contentRoot = findViewById(R.id.page_content),
@@ -325,7 +329,13 @@ class LauncherActivity : Activity() {
         if (!hasFocus || !::views.isInitialized) return
         if (mNeedPipSync) {
             mNeedPipSync = false
-            pip.ensureStd()  // 实测：取消固定延迟，立即拉起
+            // 桌面拉起延迟（pip_start_delay，0=立即）：恢复 d4584a0 删除的 PIP_START_DELAY_MS(250ms) 固定延迟，改为可设置
+            val startDelayMs = snapshot.size(SettingsActivity.KEY_PIP_START_DELAY, 250)
+            if (startDelayMs > 0) {
+                views.pipPlaceholder.postDelayed({ pip.ensureStd() }, startDelayMs.toLong())
+            } else {
+                pip.ensureStd()
+            }
         }
     }
 

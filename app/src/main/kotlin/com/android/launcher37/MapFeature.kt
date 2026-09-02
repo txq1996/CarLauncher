@@ -18,4 +18,5 @@ internal object MapFeature {
     val SETTINGS_EMOJI = "\u2699\uFE0F"     // gear ⚙️
     val SPLIT_EMOJI = "\uD83E\uDDE9"       // puzzle 🧩
     val GOHOME_EMOJI = "\uD83E\uDDED"      // compass 🧭（返回主页）
+    val RESTART_EMOJI = "\uD83D\uDD04"     // arrows 🔄（重启桌面）
 }

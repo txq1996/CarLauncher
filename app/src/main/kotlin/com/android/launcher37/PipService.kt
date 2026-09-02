@@ -161,7 +161,7 @@ class PipService : Service() {
     inner class LocalBinder : IPipService.Stub() {
         override fun getDisplayId(): Int = synchronized(this@PipService) { displayId() }
 
-        override fun attachSurface(surface: Surface?, width: Int, height: Int): Boolean {
+        override fun attachSurface(surface: Surface?, width: Int, height: Int, launchDelayMs: Long): Boolean {
             Log.i(TAG, "attachSurface: w=$width h=$height valid=${surface?.isValid}")
             if (surface == null) {
                 Log.w(TAG, "attachSurface: null surface")
@@ -184,7 +184,8 @@ class PipService : Service() {
             if (mCurrentPkg != null) {
                 mPendingLaunch = mCurrentPkg
                 mHandler.removeCallbacks(mLaunchRunnable)
-                mHandler.post(mLaunchRunnable)  // 实测：取消固定延迟，立即拉起
+                if (launchDelayMs > 0) mHandler.postDelayed(mLaunchRunnable, launchDelayMs)
+                else mHandler.post(mLaunchRunnable)
             }
             return true
         }
@@ -208,7 +209,7 @@ class PipService : Service() {
             }
         }
 
-        override fun launch(packageName: String?) {
+        override fun launch(packageName: String?, launchDelayMs: Long) {
             if (packageName.isNullOrEmpty()) {
                 Log.w(TAG, "launch: empty package")
                 return
@@ -221,7 +222,8 @@ class PipService : Service() {
             mHandler.removeCallbacks(mLaunchRunnable)
             if (moveStaleTask(packageName)) return
             mPendingLaunch = packageName
-            mHandler.post(mLaunchRunnable)  // 实测：取消固定延迟，立即 doStart
+            if (launchDelayMs > 0) mHandler.postDelayed(mLaunchRunnable, launchDelayMs)
+            else mHandler.post(mLaunchRunnable)
         }
 
         override fun forwardTouch(event: MotionEvent?): Boolean {

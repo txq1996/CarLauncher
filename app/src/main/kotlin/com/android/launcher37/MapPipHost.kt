@@ -88,7 +88,7 @@ internal class MapPipHost private constructor(private val mContext: Context) {
             mPendingLaunch?.let { intent ->
                 val pkg = intent.getPackage() ?: intent.component?.packageName
                 if (!pkg.isNullOrEmpty()) {
-                    try { mService?.launch(pkg) } catch (t: RemoteException) {
+                    try { mService?.launch(pkg, launchDelayMs()) } catch (t: RemoteException) {
                         Log.w(TAG, "launch on connect failed", t)
                     }
                 }
@@ -147,12 +147,17 @@ internal class MapPipHost private constructor(private val mContext: Context) {
             return
         }
         try {
-            val ok = svc.attachSurface(surface, width, height)
+            val ok = svc.attachSurface(surface, width, height, launchDelayMs())
             Log.i(TAG, "attachSurface result=$ok")
         } catch (t: RemoteException) {
             Log.w(TAG, "attachSurface remote failed", t)
         }
     }
+
+    /** VD 拉起延迟（设置项 vd_launch_delay，毫秒，0=立即；surface 绑定/任务拉回前等待） */
+    private fun launchDelayMs(): Long = try {
+        Prefs.of(mContext).getInt(SettingsActivity.KEY_VD_LAUNCH_DELAY, 250).toLong()
+    } catch (t: Throwable) { 250L }
 
     fun launch(packageName: String) {
         if (packageName.isEmpty()) return
@@ -162,7 +167,7 @@ internal class MapPipHost private constructor(private val mContext: Context) {
             bindServiceIfNeeded()
             return
         }
-        try { svc.launch(packageName) } catch (t: RemoteException) {
+        try { svc.launch(packageName, launchDelayMs()) } catch (t: RemoteException) {
             Log.w(TAG, "launch failed", t)
         }
     }

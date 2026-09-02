@@ -355,6 +355,13 @@
                             android:layout_marginTop="8px"
                             android:text="启动直接打开全部应用" />
 
+                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="地图嵌入" />
+                        <LinearLayout
+                            android:id="@+id/box_general_seeks"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
                         <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="在线更新" />
                         <TextView
                             android:id="@+id/tv_update_status"

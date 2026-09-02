@@ -18,14 +18,15 @@ import android.view.Surface;
 interface IPipService {
     int getDisplayId();
 
-    /** 把 launcher 的 surface 绑到 service 持有的 VD。返回是否成功。 */
-    boolean attachSurface(in Surface surface, int width, int height);
+    /** 把 launcher 的 surface 绑到 service 持有的 VD。返回是否成功。
+     *  launchDelayMs: 绑定后重新拉起当前任务前的延迟（毫秒，0=立即） */
+    boolean attachSurface(in Surface surface, int width, int height, long launchDelayMs);
 
     /** 摘 surface（不销毁 VD） */
     void detachSurface();
 
-    /** 启动/搬移 packageName 到 PIP VD 上 */
-    void launch(String packageName);
+    /** 启动/搬移 packageName 到 PIP VD 上（launchDelayMs: 拉起前延迟，毫秒，0=立即） */
+    void launch(String packageName, long launchDelayMs);
 
     /** 从 launcher 端转发触摸事件到 VD（service 进程内注入） */
     boolean forwardTouch(in MotionEvent event);

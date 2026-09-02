@@ -43,6 +43,7 @@ internal class DrawerAdapter(
         if (!dockMode) {
             labels.add("分屏"); icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI)); tags.add(TAG_SPLIT_NEW)
             labels.add("返回主页"); icons.add(Store.normalizedEmoji(context, MapFeature.GOHOME_EMOJI)); tags.add(TAG_GOHOME)
+            labels.add("重启桌面"); icons.add(Store.normalizedEmoji(context, MapFeature.RESTART_EMOJI)); tags.add(TAG_RESTART)
         }
         val splits = SplitRepository.load(context)
         for (i in splits.indices) {
@@ -56,7 +57,22 @@ internal class DrawerAdapter(
             if (dockMode && hasDockItem(dockBtns, "app", id)) continue
             labels.add(Store.label(context, id)); icons.add(Store.normalizedIcon(context, id)); tags.add(id)
         }
+        if (!dockMode) applyUserHidden()
         applyUserOrder()
+    }
+
+    /**
+     * 用户隐藏（设置页"应用"选项卡）：tag 命中 [Store.drawerHidden] 的条目一律移除——
+     * 功能项/分屏/应用全部可隐藏；dockMode（底栏选择器）保留全部候选（调用处已保证非 dockMode）。
+     */
+    private fun applyUserHidden() {
+        val hidden = Store.drawerHidden(mContext)
+        if (hidden.isEmpty()) return
+        for (i in tags.indices.reversed()) {
+            if (tags[i] in hidden) {
+                tags.removeAt(i); icons.removeAt(i); labels.removeAt(i)
+            }
+        }
     }
 
     /**
@@ -114,6 +130,7 @@ internal class DrawerAdapter(
         internal const val TAG_CLEAN = "feat_clean"
         internal const val TAG_SPLIT_NEW = "split_new"
         internal const val TAG_GOHOME = "feat_gohome"
+        internal const val TAG_RESTART = "feat_restart"
         internal const val SPLIT_PREFIX = "split:"
 
         /** 底栏中是否已存在该类按钮（type 匹配，action 为 null 时只看 type） */

@@ -60,6 +60,15 @@ internal object DrawerActions {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 } catch (_: Exception) {}
             }
+            tagStr == DrawerAdapter.TAG_RESTART -> {
+                // 重启桌面：与 SettingsActivity.restartLauncher 一致（CLEAR_TASK 重建 LauncherActivity）
+                onDismiss()
+                try {
+                    c.startActivity(Intent(c, LauncherActivity::class.java)
+                        .addCategory(Intent.CATEGORY_HOME)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                } catch (_: Exception) {}
+            }
             tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX) -> {
                 val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull()
                     ?: return
