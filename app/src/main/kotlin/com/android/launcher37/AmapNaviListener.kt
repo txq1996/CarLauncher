@@ -275,42 +275,34 @@ object AmapNaviListener {
         }
     }
 
+    /** 统一通知：切主线程 + 遍历 listeners + runCatching 防止单个回调异常中断其他回调 */
+    private inline fun postNotify(crossinline block: (Listener) -> Unit) {
+        if (mRegistered) mHandler.post { listeners.forEach { runCatching { block(it) } } }
+    }
+
     private fun handleState(extras: Bundle) {
         val state = asInt(extras.get("EXTRA_STATE"), -1)
         dayNightState = state
         when (state) {
-            State.DAY -> {
-                isNightMode = false
-                post { listeners.forEach { runCatching { it.onDayNightChanged(false) } } }
-            }
-            State.NIGHT -> {
-                isNightMode = true
-                post { listeners.forEach { runCatching { it.onDayNightChanged(true) } } }
-            }
-            State.FOREGROUND -> {
-                isAmapForeground = true
-                post { listeners.forEach { runCatching { it.onAmapForegroundChanged(true) } } }
-            }
-            State.BACKGROUND -> {
-                isAmapForeground = false
-                post { listeners.forEach { runCatching { it.onAmapForegroundChanged(false) } } }
-            }
+            State.DAY -> { isNightMode = false; postNotify { it.onDayNightChanged(false) } }
+            State.NIGHT -> { isNightMode = true; postNotify { it.onDayNightChanged(true) } }
+            State.FOREGROUND -> { isAmapForeground = true; postNotify { it.onAmapForegroundChanged(true) } }
+            State.BACKGROUND -> { isAmapForeground = false; postNotify { it.onAmapForegroundChanged(false) } }
             State.NAV_ENDED -> {
                 resetTrafficLight()
-                post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
-                post { listeners.forEach { runCatching { it.onNavigationEnded() } } }
+                postNotify { it.onTrafficLightHidden() }
+                postNotify { it.onNavigationEnded() }
             }
             State.CRUISE_ENDED -> {
                 resetTrafficLight()
-                post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
-                post { listeners.forEach { runCatching { it.onCruiseEnded() } } }
+                postNotify { it.onTrafficLightHidden() }
+                postNotify { it.onCruiseEnded() }
             }
         }
-        // 路口放大图：1 = 放大图激活
         if (extras.containsKey("EXTRA_CROSS_MAP")) {
             val active = asInt(extras.get("EXTRA_CROSS_MAP"), 0) == 1
             crossMapActive = active
-            post { listeners.forEach { runCatching { it.onCrossMapStatus(active) } } }
+            postNotify { it.onCrossMapStatus(active) }
         }
     }
 
@@ -322,7 +314,7 @@ object AmapNaviListener {
         val limitSpeed = asInt(extras.get("LIMITED_SPEED"), 0)
         val info = IntervalSpeed(startDist, startDistText, avgSpeed, endDistText, limitSpeed)
         lastIntervalSpeed = info
-        post { listeners.forEach { runCatching { it.onIntervalSpeed(info) } } }
+        postNotify { it.onIntervalSpeed(info) }
     }
 
     private fun handleTrafficLight(extras: Bundle) {
@@ -334,16 +326,15 @@ object AmapNaviListener {
         // （避免退出导航后红绿灯永不消失的实机 bug，与旧 TrafficLightClient 行为一致）
         if (status <= 0 && countdown <= 0) {
             resetTrafficLight()
-            post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
+            postNotify { it.onTrafficLightHidden() }
             return
         }
         lastTrafficLight = TrafficLightInfo(status, dir, countdown)
-        // lightsData 非空 = 巡航多灯 JSON；同时也缓存并回调，便于调试页直接看
         if (!lightsData.isNullOrEmpty()) {
             lastCruiseTrafficLights = lightsData
-            post { listeners.forEach { runCatching { it.onCruiseTrafficLights(lightsData) } } }
+            postNotify { it.onCruiseTrafficLights(lightsData) }
         } else {
-            post { listeners.forEach { runCatching { it.onTrafficLight(lastTrafficLight!!) } } }
+            postNotify { it.onTrafficLight(lastTrafficLight!!) }
         }
         // 仅在收到有效灯色数据时刷新过期基点
         scheduleTrafficLightStaleCheck()
@@ -354,24 +345,18 @@ object AmapNaviListener {
         if (mTrafficLightLastUpdate > 0 &&
             System.currentTimeMillis() - mTrafficLightLastUpdate > TRAFFIC_LIGHT_STALE_MS) {
             resetTrafficLight()
-            post { listeners.forEach { runCatching { it.onTrafficLightHidden() } } }
+            postNotify { it.onTrafficLightHidden() }
         }
     }
 
     private fun handleTmc(extras: Bundle) {
         val tmc = extras.getString("EXTRA_TMC_SEGMENT")
-        if (tmc != null) {
-            lastTmcJson = tmc
-            post { listeners.forEach { runCatching { it.onTmcData(tmc) } } }
-        }
+        if (tmc != null) { lastTmcJson = tmc; postNotify { it.onTmcData(tmc) } }
     }
 
     private fun handleLane(extras: Bundle) {
         val lane = extras.getString("EXTRA_DRIVE_WAY")
-        if (lane != null) {
-            lastLaneJson = lane
-            post { listeners.forEach { runCatching { it.onLaneLines(lane) } } }
-        }
+        if (lane != null) { lastLaneJson = lane; postNotify { it.onLaneLines(lane) } }
     }
 
     private fun handleRoute(extras: Bundle) {
@@ -380,9 +365,8 @@ object AmapNaviListener {
         if (icon != 0) {
             lastNaviInfo = parseNaviInfo(extras, icon)
             val info = lastNaviInfo!!
-            post { listeners.forEach { runCatching { it.onNaviInfo(info) } } }
+            postNotify { it.onNaviInfo(info) }
         } else {
-            // ICON=0 = 巡航数据：单独缓存一份以便上层直接读 speed/road/camera
             val cruise = CruiseInfo(
                 curSpeed = asInt(extras.get("CUR_SPEED"), 0),
                 curRoadName = extras.getString("CUR_ROAD_NAME") ?: "未知道路",
@@ -392,7 +376,7 @@ object AmapNaviListener {
                 carDirection = asInt(extras.get("CAR_DIRECTION"), -1)
             )
             lastCruiseInfo = cruise
-            post { listeners.forEach { runCatching { it.onCruiseInfo(cruise) } } }
+            postNotify { it.onCruiseInfo(cruise) }
         }
     }
 

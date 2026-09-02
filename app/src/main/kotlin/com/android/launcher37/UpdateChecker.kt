@@ -145,10 +145,7 @@ class UpdateChecker(
             // 24h 内已检查过；静默跳过，不打扰用户
             return
         }
-        doCheckAndInstall(
-            onSkip = { /* 节流命中，已在 doCheckAndInstall 入口处理 */ },
-            isAuto = true
-        )
+        doCheckAndInstall(isAuto = true)
     }
 
     /**
@@ -159,11 +156,8 @@ class UpdateChecker(
             toast("已在更新中，请稍候")
             return
         }
-        doCheckAndInstall(onSkip = {}, isAuto = false)
+        doCheckAndInstall(isAuto = false)
     }
-
-    /** 兼容旧 API：等价于 [checkManually] */
-    fun checkAndInstall() = checkManually()
 
     /**
      * 释放：清 Activity 引用 + 取消正在进行的下载。
@@ -174,7 +168,7 @@ class UpdateChecker(
         mCancelled.set(true)
     }
 
-    private fun doCheckAndInstall(onSkip: () -> Unit, isAuto: Boolean) {
+    private fun doCheckAndInstall(isAuto: Boolean) {
         Log.i(TAG, "[Updater] doCheckAndInstall isAuto=$isAuto mDownloading=${mDownloading.get()}")
         if (!isOnline()) {
             Log.w(TAG, "[Updater] no network, skip")
@@ -232,13 +226,7 @@ class UpdateChecker(
 
     private fun fetchLatestRelease(): UpdateInfo? {
         Log.i(TAG, "[Updater] fetch GET $GITHUB_API_LATEST")
-        val conn = (URL(GITHUB_API_LATEST).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
-            setRequestProperty("User-Agent", UA)
-            setRequestProperty("Accept", "application/vnd.github+json")
-        }
+        val conn = openHttp(GITHUB_API_LATEST, accept = "application/vnd.github+json")
         try {
             val code = conn.responseCode
             if (code !in 200..299) {
@@ -255,12 +243,9 @@ class UpdateChecker(
             // versionName 解析：优先 tag_name（vYYYYMMDD.HHMMSS）去掉 v 前缀；
             // 如果 tag 是 "latest"（GitHub 单一 release tag）则回退到 release name（"CarLauncher <version>"）
             // 解析出形如 YYYYMMDD 或 YYYYMMDD.HHMMSS 的子串。
-            val version: String = parseVersionName(tag, json.optString("name"))
-            // versionCode 解析：GitHub Actions release body 形如
-            //   - versionCode: `1787996903`
-            // 用单行正则抓数字串。失败则 0L（触发 versionName fallback）。
+            val version: String = UpdateVersion.parseVersionName(tag, json.optString("name"))
             val body = json.optString("body")
-            val versionCode: Long = parseVersionCodeFromBody(body)
+            val versionCode: Long = UpdateVersion.parseVersionCodeFromBody(body)
             val assets = json.optJSONArray("assets") ?: return null
             var apkUrl: String? = null
             var sizeBytes: Long = 0
@@ -299,12 +284,7 @@ class UpdateChecker(
         val apk = File(mApp.cacheDir, UPDATE_FILE)
         if (apk.exists()) apk.delete()
         Log.i(TAG, "[Updater] download start: ${info.apkUrl.takeLast(40)} (expected=${info.sizeBytes}B)")
-        val conn = (URL(info.apkUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
-            setRequestProperty("User-Agent", UA)
-        }
+        val conn = openHttp(info.apkUrl)
         try {
             val code = conn.responseCode
             if (code !in 200..299) {
@@ -344,7 +324,12 @@ class UpdateChecker(
                 return
             }
             Log.i(TAG, "[Updater] download done: ${apk.absolutePath} size=${apk.length()}B")
-            mHandler.post { installApk(apk) }
+            mHandler.post {
+                if (!apk.exists() || apk.length() == 0L) {
+                    postError("下载文件无效"); return@post
+                }
+                installViaPackageInstaller(apk)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "[Updater] download exception", e)
             postError("下载失败：${e.message ?: e.javaClass.simpleName}")
@@ -353,19 +338,6 @@ class UpdateChecker(
             mDownloading.set(false)
         }
     }
-
-    /**
-     * 从 release 元数据解析 versionName（委托给 [UpdateVersion.parseVersionName]）。
-     */
-    private fun parseVersionName(tagName: String, releaseName: String): String =
-        UpdateVersion.parseVersionName(tagName, releaseName)
-
-    /**
-     * 从 release body 解析整数 versionCode（委托给 [UpdateVersion.parseVersionCodeFromBody]）。
-     * 失败返回 0L，由 [queryAndInstall] 决定 fallback 到 versionName 比较。
-     */
-    private fun parseVersionCodeFromBody(body: String?): Long =
-        UpdateVersion.parseVersionCodeFromBody(body)
 
     private fun currentVersionName(): String = try {
         mApp.packageManager.getPackageInfo(mApp.packageName, 0).versionName ?: "0"
@@ -399,51 +371,12 @@ class UpdateChecker(
     }
 
     /**
-     * 启动系统安装器安装 [apk]。`private` — 仅 `downloadAndInstall` 完成后由
-     * [MainThread.handler] 切主线程调度；产品路径（自动 / 手动检查）走这一条。
-     */
-    private fun installApk(apk: File) {
-        if (!apk.exists() || apk.length() == 0L) {
-            Log.w(TAG, "[Updater] installApk invalid file: ${apk.absolutePath} exists=${apk.exists()} size=${apk.length()}")
-            postError("下载文件无效")
-            return
-        }
-        installViaPackageInstaller(apk)
-    }
-
-    /**
-     * 用 [PackageInstaller] session API 装 [apk]，走 [PackageInstaller.SessionParams.MODE_FULL_INSTALL]。
-     *
-     * ## 为什么不用 `Intent.ACTION_INSTALL_PACKAGE + content URI + grant flag`
-     *
-     * 那条路径在 `sharedUserId="android.uid.system"` 进程下**完全走不通**：
-     *  - 我们把 `cacheDir/update.apk` 包成 `content://<applicationId>/...` URI
-     *  - 加 `FLAG_GRANT_READ_URI_PERMISSION` 后 framework 端
-     *    `UriGrantsManagerService.checkGrantUriPermissionFromIntentUnlocked` 检查
-     *    caller 是 system uid (1000)，**直接拒绝 grant**：
-     *      `For security reasons, the system cannot issue a Uri permission grant
-     *       to content://...; use startActivityAsCaller() instead`
-     *  - 目标 `com.android.packageinstaller` 进程拿不到 URI 权限，`InstallStart`
-     *    `onCreate` 读 URI 报 `SecurityException: UID 10021 does not have permission
-     *    to content://...` 后 crash
-     *
-     ## PackageInstaller session API 不走 grant 路径
-     *
-     *  - `packageInstaller.createSession()` 在 system_server 内部开 session
-     *  - caller 进程用 `INSTALL_PACKAGES` 权限（`sharedUserId=system` 自动有）把
-     *    APK **文件流**写进 session，**不用跨进程 URI**
-     *  - `session.commit()` 后 framework 自己跑 install，无须任何 URI grant
-     *  - self-update 时 framework 走 `installPackageLI` 静默路径（不弹 dialog），
-     *    装完会 force-stop caller 进程；非 self-update 场景会弹系统确认框
-     *
-     ## 为什么用 MODE_FULL_INSTALL 而不是 MODE_INHERIT_EXISTING
-     *
-     * 之前用 `MODE_INHERIT_EXISTING + setAppPackageName` 期望 framework 走
-     * "自更新快路径"（省签名验证、复用 INHERIT 元数据），但 framework 实际
-     * 在 INHERIT 模式下**严格校验新旧 versionCode 必须相同**，否则
-     * 报 `INSTALL_FAILED_INVALID_APK: Existing version code X inconsistent
-     * with Y` 拒绝 session。普通自更新（versionCode 严格递增）走
-     * `MODE_FULL_INSTALL` 才是 framework 推荐路径。
+     * 用 PackageInstaller session API 安装 APK。
+     * 不用 Intent.ACTION_INSTALL_PACKAGE + content URI：在 sharedUserId=system 下
+     * framework 拒绝 URI grant，installer 读 URI 时 SecurityException crash。
+     * PackageInstaller session 走 system_server 内部路径，不需要 URI grant。
+     * self-update 时 framework 走静默路径（不弹 dialog）；非 self-update 会弹确认框。
+     * 用 MODE_FULL_INSTALL：INHERIT_EXISTING 要求新旧 versionCode 相同，不适用于升级。
      */
     private fun installViaPackageInstaller(apk: File) {
         val pm = mApp.packageManager
@@ -451,16 +384,6 @@ class UpdateChecker(
         val params = PackageInstaller.SessionParams(
             PackageInstaller.SessionParams.MODE_FULL_INSTALL
         ).apply {
-            // MODE_FULL_INSTALL: 标准自更新路径。framework 会校验
-            // 签名一致 + 新 versionCode > 已装 versionCode + 接受更小
-            // 内存占用 + 重做 dex 优化。
-            //
-            // 之前用 MODE_INHERIT_EXISTING + setAppPackageName 期望
-            // framework 走"自更新快路径"（省签名验证、复用 INHERIT 元数据），
-            // 但实际 framework 在 INHERIT 模式下严格校验新旧 versionCode
-            // **必须相同**，否则报 `INSTALL_FAILED_INVALID_APK: Existing
-            // version code X inconsistent with Y` 拒绝 session。普通
-            // versionCode 严格递增的 update 走 FULL_INSTALL 才对。
             setAppPackageName(mApp.packageName)
             setSize(apk.length())
         }
@@ -551,6 +474,16 @@ class UpdateChecker(
             runCatching { mApp.unregisterReceiver(this) }
         }
     }
+
+    /** 统一 HTTP 连接初始化：UA + 超时 + 可选 Accept header */
+    private fun openHttp(url: String, accept: String? = null): HttpURLConnection =
+        (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = TIMEOUT_MS
+            readTimeout = TIMEOUT_MS
+            setRequestProperty("User-Agent", UA)
+            if (accept != null) setRequestProperty("Accept", accept)
+        }
 
     private fun isOnline(): Boolean {
         val cm = mApp.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager

@@ -14,6 +14,7 @@ import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.RadioGroup
 import android.widget.TextView
+import com.android.launcher37.home.NaviPanelDelegate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -74,7 +75,7 @@ class SettingsActivity : Activity() {
         const val KEY_TS_TIME = "ts_time"
         const val KEY_TIME_FORMAT = "time_format"
 
-        /** bool 开关全集（LauncherActivity.loadSettings 按 key=true 缺省快照） */
+        /** bool 开关全集（SettingsSnapshot.load 按 key=true 缺省快照） */
         val SHOW_KEYS = arrayOf(
             KEY_SHOW_NAVI_SPEED, KEY_SHOW_NAVI_KMH, KEY_SHOW_NAVI_LIMIT, KEY_SHOW_NAVI_TRAFFIC,
             KEY_SHOW_CRUISE_SPEED, KEY_SHOW_CRUISE_KMH, KEY_SHOW_CRUISE_LIMIT, KEY_SHOW_CRUISE_TRAFFIC,
@@ -226,10 +227,6 @@ class SettingsActivity : Activity() {
         SettingItem("cruise_alert",      "电子眼/服务区", KEY_TS_CRUISE_ALERT,        17,  KEY_SHOW_CRUISE_ALERT,        true, true)
     )
 
-    private val allItems: List<SettingItem> by lazy {
-        naviAllItems + cruiseAllItems
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -345,13 +342,12 @@ class SettingsActivity : Activity() {
         val box = findViewById<LinearLayout>(R.id.box_all_settings)
 
         // 导航全部行序（车速 + 行序）
-        val naviDefaultOrder = "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
+        val naviDefaultOrder = NaviPanelDelegate.DEFAULT_NAVI_ORDER
         val naviSaved = prefs().getString(KEY_NAVI_ORDER, naviDefaultOrder)!!
         mNaviOrder.clear()
         mNaviOrder.addAll(naviSaved.split(",").filter { it.isNotBlank() })
 
-        // 巡航全部行序（车速 + 行序）
-        val cruiseDefaultOrder = "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
+        val cruiseDefaultOrder = NaviPanelDelegate.DEFAULT_CRUISE_ORDER
         val cruiseSaved = prefs().getString(KEY_CRUISE_ORDER, cruiseDefaultOrder)!!
         mCruiseOrder.clear()
         mCruiseOrder.addAll(cruiseSaved.split(",").filter { it.isNotBlank() })
@@ -455,12 +451,7 @@ class SettingsActivity : Activity() {
     }
 
     private fun saveOrder(key: String, list: ArrayList<String>) {
-        val sb = StringBuilder()
-        for (i in list.indices) {
-            if (i > 0) sb.append(",")
-            sb.append(list[i])
-        }
-        prefs().edit().putString(key, sb.toString()).apply()
+        prefs().edit().putString(key, list.joinToString(",")).apply()
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density + 0.5f).toInt()

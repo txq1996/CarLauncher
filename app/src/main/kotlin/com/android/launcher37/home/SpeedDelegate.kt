@@ -33,6 +33,9 @@ class SpeedDelegate(
     // 当前模式：false=导航, true=巡航
     private var mCruise: Boolean = false
 
+    // 车速区结构签名（模式 + 显隐 + 字号）；未变化时 renderSpeedRow 跳过重建
+    private var mSpeedSig: String? = null
+
     // 动态创建的 View 引用
     private var mTvSpeed: TextView? = null
     private var mTvKm: TextView? = null
@@ -72,20 +75,21 @@ class SpeedDelegate(
     /**
      * 动态渲染车速区域：根据当前模式 + 行序 + 设置快照，构建 View 并 addView 到 naviPanel 顶部。
      * 只渲染车速相关的 key（speed/speed_unit/limit/traffic），忽略导航行序 key。
+     *
+     * 结构签名（模式 + 显隐 + 字号）未变化时跳过重建——高德 ~1Hz 的常规推送
+     * 只会走到 [NaviPanelDelegate] 的文本更新路径；[force] 由面板全量重建路径调用
+     * （naviPanel 已 removeAllViews，必须重建车速 View）。
      */
-    fun renderSpeedRow() {
+    fun renderSpeedRow(force: Boolean = false) {
         val snapshot = SettingsSnapshot.load(activity)
         val orderKey = if (mCruise) SettingsActivity.KEY_CRUISE_ORDER else SettingsActivity.KEY_NAVI_ORDER
         val defaultOrder = if (mCruise) {
-            "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
+            NaviPanelDelegate.DEFAULT_CRUISE_ORDER
         } else {
-            "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
+            NaviPanelDelegate.DEFAULT_NAVI_ORDER
         }
         val order = Prefs.getString(activity, orderKey, defaultOrder)!!
-        val keys = order.split(",").filter { it.isNotBlank() }
-
-        // 只处理车速相关的 key
-        val speedKeys = keys.filter { it in SPEED_ITEM_KEYS }
+        val speedKeys = order.split(",").filter { it.isNotBlank() && it in SPEED_ITEM_KEYS }
 
         // 字号/显隐 key 前缀
         val tsPrefix = if (mCruise) "ts_cruise_" else "ts_navi_"
@@ -99,19 +103,27 @@ class SpeedDelegate(
             "traffic" to 36
         )
 
+        // 先解析显隐/字号并算结构签名；未变化时无需重建
+        val shown = ArrayList<Pair<String, Int>>() // key to fontPx
+        val sig = StringBuilder(if (mCruise) "C" else "N")
+        for (key in speedKeys) {
+            val showKey = showPrefix + key.replace("speed_unit", "kmh")
+            val show = snapshot.show(showKey, true)
+            if (!show) continue
+            val tsKey = tsPrefix + key.replace("speed_unit", "kmh").replace("traffic", "traffic_sec")
+            val def = defaults[key] ?: 17
+            val fontPx = snapshot.size(tsKey, def)
+            sig.append('|').append(key).append(':').append(fontPx)
+            shown.add(key to fontPx)
+        }
+        if (!force && sig.toString() == mSpeedSig) return
+        mSpeedSig = sig.toString()
+
         // 清除旧的车速 View
         removeSpeedViews()
 
         // 按行序添加车速 View
-        for (key in speedKeys) {
-            val showKey = showPrefix + key.replace("speed_unit", "kmh").replace("traffic", "traffic")
-            val show = snapshot.show(showKey, true)
-            if (!show) continue
-
-            val tsKey = tsPrefix + key.replace("speed_unit", "kmh").replace("traffic", "traffic_sec")
-            val def = defaults[key] ?: 17
-            val fontPx = snapshot.size(tsKey, def)
-
+        for ((key, fontPx) in shown) {
             when (key) {
                 "speed" -> {
                     val tv = createSpeedTextView(fontPx)

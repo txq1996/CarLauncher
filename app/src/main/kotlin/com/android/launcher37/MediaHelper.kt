@@ -35,15 +35,6 @@ class MediaHelper(
         private const val TAG = "MediaHelper"
         private const val TICK_MS = 500L
         private const val PLAYING_PKGS_REFRESH_MS = 2_000L
-
-        /**
-         * 最后一个 evaluate 后所有正在播放的包名集合。仅供 debug 反射读取
-         * —— 不参与业务逻辑。
-         * 业务应使用实例的 [playingPackages] getter（保证多实例时不会串）。
-         */
-        @Volatile
-        var lastPlayingPkgs: Set<String> = emptySet()
-            private set
     }
 
     private val mHandler = MainThread.handler
@@ -106,7 +97,6 @@ class MediaHelper(
         mHandler.removeCallbacks(mTicker)
         mHandler.removeCallbacks(mPlayingPkgsRefresher)
         mPlayingPkgs = emptySet()
-        lastPlayingPkgs = emptySet()
         if (mMsm != null) {
             try {
                 mMsm!!.removeOnActiveSessionsChangedListener(mSessionsListener)
@@ -212,7 +202,6 @@ class MediaHelper(
         val list = safeActiveSessions()
         val pkgs = collectPlayingPackages(list)
         mPlayingPkgs = pkgs
-        lastPlayingPkgs = pkgs
     }
 
     private val mTicker = object : Runnable {
@@ -269,8 +258,6 @@ class MediaHelper(
         // 即使 best 因 break 只能指向第一个在播的，mPlayingPkgs 仍包含所有在播 app。
         val pkgs = collectPlayingPackages(list)
         mPlayingPkgs = pkgs
-        // companion 静态字段：给 debug 反射用，业务逻辑不应读这里
-        lastPlayingPkgs = pkgs
         refreshPlayState()
         updateProgress()
         startTicker()

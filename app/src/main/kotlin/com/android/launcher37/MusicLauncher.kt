@@ -9,11 +9,10 @@ import android.os.Handler
  *
  * 用户按下「上一首 / 播放暂停 / 下一首」时，若已绑定包名 (`boundPkg`)：
  * - 如果该 APP 已有 MediaSession：直接发 play，然后 `control.run()` 控制
- * - 否则：冷启动该 APP，0.5s × N 次轮询检查 `isPlaying()`，
+ * - 否则：冷启动该 APP，200ms × N 次轮询检查 `isPlaying()`，
  *   播放后调 [returnHome] 返回桌面（让 app 转后台播放）
  *
- * 0.5s 后仍未播放 → 再等 1s 重发 play → 仍未播放 → 走 [togglePlay] 兜底。
- * 总计检查时间约 1.5s（实测：冷启动到 MediaSession 建立通常 200~800ms）。
+ * 8s 超时仍未播放 → 取消轮询（cancelPending），等待下次按键。
  */
 class MusicLauncher(
     private val mActivity: Activity,

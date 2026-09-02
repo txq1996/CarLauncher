@@ -113,17 +113,6 @@ class MusicDelegate(
     }
 
     /**
-     * 同步触发返回桌面（用于「绑定音乐 app 后把后台 app 留后台」）。
-     * 注意：调用方已直接调 `mReturnHomeRunnable.run()` 同步执行，
-     * 并没有 post 到 Handler，所以"清理"是 no-op。保留方法仅为接口兼容。
-     */
-    @Suppress("unused")
-    fun clearReturnHome() {
-        // mReturnHomeRunnable 由 MusicLauncher 在主线程同步触发，不需要 Handler 取消。
-        // 实际清理已在 LauncherActivity.onDestroy → music.cancelPending() 中完成。
-    }
-
-    /**
      * 取绑定 id（pkg/cls 完整格式）。SP key 复用老的 music_app_pkg 以兼容旧数据：
      * 旧版本只存 pkg 没有 cls，新版本存 pkg/cls。
      * - 旧数据（如 "com.tencent.qqmusiccar"）会当成只有 pkg 的 id 走兜底启动；

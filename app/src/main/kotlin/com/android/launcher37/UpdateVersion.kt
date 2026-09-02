@@ -1,7 +1,7 @@
 package com.android.launcher37
 
 /**
- * 版本号解析与比较的纯函数工具。供 [UpdateChecker] 与单测共用。
+ * 版本号解析与比较的纯函数工具，供 [UpdateChecker] 使用。
  *
  * - [parseVersionName] 把 tag_name / release_name 解析为 versionName 字符串
  *   （YYYYMMDD[.HHMMSS]）。
@@ -10,7 +10,7 @@ package com.android.launcher37
  * - [compareVersionName] 字典序比较。
  * - [compareVersionCode] 整数比较（构建 epoch 秒数天然单调递增）。
  *
- * 这些函数独立、无状态、依赖最小，放 top-level 便于 JUnit 直接覆盖。
+ * 这些函数独立、无状态、依赖最小，如需补充单测可直接 JUnit 覆盖。
  */
 object UpdateVersion {
 

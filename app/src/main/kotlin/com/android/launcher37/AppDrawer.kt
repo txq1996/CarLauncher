@@ -2,16 +2,13 @@
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.ResolveInfo
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.Drawable
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.BaseAdapter
 import android.widget.GridView
 import android.widget.ImageView
@@ -32,6 +29,8 @@ import android.widget.Toast
  * - 底栏模式（[showForDock]）：点击直接回调 [OnDockPick]，让调用方写入底栏
  *
  * 列表首部按当前模式去重（已加入底栏的不再显示在选择器中）。
+ * 适配器 / 统计栏 / 普通模式点击分发 / 分屏增删与 [DrawerOverlay] 共用
+ * （[DrawerAdapter] / [DrawerStats] / [DrawerActions]）。
  */
 object AppDrawer {
 
@@ -39,17 +38,7 @@ object AppDrawer {
         fun onPicked(button: Store.V2Button)
     }
 
-    private const val TAG_SETTINGS = "settings"
-    private const val TAG_HOME = "feat_home"
-    private const val TAG_COMPANY = "feat_company"
-    private const val TAG_CLEAN = "feat_clean"
-    private const val TAG_SPLIT_NEW = "split_new"
-    private const val SPLIT_PREFIX = "split:"
-
     private var sPopup: PopupWindow? = null
-    private var sStatsRunnable: Runnable? = null
-    private var sPrevIdle: Long = 0
-    private var sPrevTotal: Long = 0
     private var sDismissListeners: MutableList<Runnable> = mutableListOf()
 
     // 弹窗尺寸常量（与 HoloPopup.WIDTH=400 区分；本弹窗是 1000×620 大窗口）
@@ -61,7 +50,7 @@ object AppDrawer {
     }
 
     fun show(activity: Activity) {
-        android.util.Log.i("VDFocusDbg", "AppDrawer.show()")  // debug-point lifecy-v1
+        Dbg.i("VDFocusDbg") { "AppDrawer.show()" }  // debug-point lifecy-v1
         showInternal(activity, null, null)
     }
 
@@ -125,10 +114,14 @@ object AppDrawer {
         // 标题栏系统状态：仅全部应用模式显示，dock选择模式隐藏
         tvStats.visibility = if (dockCallback == null) View.VISIBLE else View.GONE
         tvStats.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, (labelSize * 0.9f).toFloat())
-        if (dockCallback == null) startStatsTicker(activity, tvStats, popup)
+        if (dockCallback == null) {
+            DrawerStats.start(activity, tvStats) {
+                popup.isShowing && !activity.isDestroyed && !activity.isFinishing
+            }
+        }
         popup.setOnDismissListener {
             if (sPopup === popup) sPopup = null
-            stopStatsTicker()
+            DrawerStats.stop()
             notifyDismiss()
         }
         val grid = content.findViewById<GridView>(R.id.drawer_grid)
@@ -138,126 +131,56 @@ object AppDrawer {
 
         grid.onItemClickListener = AdapterView.OnItemClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String ?: return@OnItemClickListener
-            when {
-                tagStr == TAG_SETTINGS -> {
-                    if (pickCallback != null) {
-                        pickAndClose(pickCallback, Store.V2Button.settings())
-                    } else {
-                        activity.startActivity(Intent(activity, SettingsActivity::class.java))
-                        popup.dismiss()
-                    }
-                }
-                tagStr == TAG_HOME -> {
-                    if (pickCallback != null) {
-                        pickAndClose(pickCallback, Store.V2Button.map("home"))
-                    } else {
-                        ensureInDock(dockBtns, Store.V2Button.map("home"))
-                        Store.saveV2Buttons(activity, dockBtns)
-                        popup.dismiss()
-                        MapActions.run(activity, "home")
-                    }
-                }
-                tagStr == TAG_COMPANY -> {
-                    if (pickCallback != null) {
-                        pickAndClose(pickCallback, Store.V2Button.map("company"))
-                    } else {
-                        ensureInDock(dockBtns, Store.V2Button.map("company"))
-                        Store.saveV2Buttons(activity, dockBtns)
-                        popup.dismiss()
-                        MapActions.run(activity, "company")
-                    }
-                }
-                tagStr == TAG_CLEAN -> {
-                    if (pickCallback != null) {
-                        pickAndClose(pickCallback, Store.V2Button.clean())
-                    } else {
-                        ensureInDock(dockBtns, Store.V2Button.clean())
-                        Store.saveV2Buttons(activity, dockBtns)
-                        popup.dismiss()
-                        cleanMemory(activity)
-                    }
-                }
-                tagStr == TAG_SPLIT_NEW -> {
-                    pickNewSplitItem(activity, popup, dockBtns)
-                }
-                tagStr.startsWith(SPLIT_PREFIX) -> {
-                    val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
-                    val pair = getSplitItem(activity, idx)
-                    if (pair != null) {
-                        if (pickCallback != null) {
-                            pickAndClose(pickCallback, Store.V2Button.split(pair[0], pair[1]))
-                        } else {
-                            popup.dismiss()
-                            Store.launchSplit(activity, pair[0], pair[1])
-                        }
-                    }
-                }
-                else -> {
-                    if (pickCallback != null) {
-                        pickAndClose(pickCallback, Store.V2Button.app(tagStr))
-                    } else {
-                        Store.launchApp(activity, tagStr)
-                        popup.dismiss()
-                    }
-                }
+            if (pickCallback != null) {
+                handleDockPick(activity, tagStr, pickCallback)
+            } else {
+                DrawerActions.handleNormal(
+                    activity, tagStr, dockBtns,
+                    onDismiss = { popup.dismiss() },
+                    onClean = { MemoryCleaner.cleanFromUi(activity) },
+                    onSplitNew = { pickNewSplitItem(activity, popup) }
+                )
             }
         }
 
         grid.onItemLongClickListener = AdapterView.OnItemLongClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String
-            if (tagStr != null && tagStr.startsWith(SPLIT_PREFIX)) {
-                val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
-                if (pickCallback == null) {
-                    removeSplitItem(activity, idx)
-                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null, iconSizePx = iconSize)
-                }
+            if (pickCallback == null && tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
+                val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull() ?: return@OnItemLongClickListener true
+                DrawerActions.removeSplitAndRefresh(activity, grid, idx, dockMode = false, iconSizePx = iconSize)
             }
             true
         }
 
-        SharedExecutor.io().execute {
-            val adapter = DrawerAdapter(activity.applicationContext, loadApps(activity.applicationContext), dockBtns, pickCallback != null, iconSizePx = iconSize)
-            grid.post {
-                if (!activity.isDestroyed && !activity.isFinishing) grid.adapter = adapter
+        DrawerActions.loadAdapterAsync(
+            activity.applicationContext, grid, dockCallback != null, iconSize
+        ) { !activity.isDestroyed && !activity.isFinishing }
+    }
+
+    /** dock 模式点击分发：所有格子都只回调，不执行动作（split_new 仅普通模式存在） */
+    private fun handleDockPick(activity: Activity, tagStr: String, cb: OnDockPick) {
+        when {
+            tagStr == DrawerAdapter.TAG_SETTINGS -> pickAndClose(cb, Store.V2Button.settings())
+            tagStr == DrawerAdapter.TAG_HOME -> pickAndClose(cb, Store.V2Button.map("home"))
+            tagStr == DrawerAdapter.TAG_COMPANY -> pickAndClose(cb, Store.V2Button.map("company"))
+            tagStr == DrawerAdapter.TAG_CLEAN -> pickAndClose(cb, Store.V2Button.clean())
+            tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX) -> {
+                val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull() ?: return
+                val pair = SplitRepository.get(activity, idx)
+                if (pair != null) pickAndClose(cb, Store.V2Button.split(pair[0], pair[1]))
             }
+            else -> pickAndClose(cb, Store.V2Button.app(tagStr))
         }
     }
 
-    /** 触发内存清理（统一在 [MemoryCleaner.cleanFromUi]） */
-    private fun cleanMemory(activity: Activity) = MemoryCleaner.cleanFromUi(activity)
+    // ── 分屏选择器 ──────────────────────────
 
-    // ── Feature grid items ──────────────────────────
-
-    /** 确保底栏中存在该按钮（不存在则追加，已存在则跳过） */
-    private fun ensureInDock(dockBtns: MutableList<Store.V2Button>, btn: Store.V2Button) {
-        for (e in dockBtns) {
-            if (e.sameAs(btn)) return
-        }
-        if (dockBtns.size < DockBar.MAX_DOCK_BUTTONS) {
-            dockBtns.add(btn)
-        }
-    }
-
-    private fun hasDockItem(btns: List<Store.V2Button>, type: String, action: String?): Boolean {
-        for (b in btns) {
-            if (type == b.type && (action == null || action == b.action)) return true
-        }
-        return false
-    }
-
-    private fun getSplitItem(c: Context, i: Int): Array<String>? = SplitRepository.get(c, i)
-    private fun addSplitItem(c: Context, l: String, r: String) = SplitRepository.add(c, l, r)
-    private fun removeSplitItem(c: Context, i: Int) {
-        SplitRepository.remove(c, i)
-        Toast.makeText(c, "已删除分屏项", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun pickNewSplitItem(activity: Activity, drawer: PopupWindow, dockBtns: MutableList<Store.V2Button>) {
+    private fun pickNewSplitItem(activity: Activity, drawer: PopupWindow) {
         val ids = resolveAppIds(activity)
         // 选左 → 选右：左侧 popup 关闭后用右侧 popup 接管列表
         pickSplitSide(activity, drawer, ids, title = "分屏 · 选择左侧应用") { leftId ->
             pickSplitSide(activity, drawer, ids, title = "分屏 · 选择右侧应用", leftId) { rightId ->
-                addSplitItem(activity, leftId, rightId)
+                SplitRepository.add(activity, leftId, rightId)
                 Toast.makeText(activity, "已添加分屏到全部应用", Toast.LENGTH_SHORT).show()
             }
         }
@@ -302,12 +225,8 @@ object AppDrawer {
                     }
                     list.onItemClickListener = AdapterView.OnItemClickListener { _, _, pos, _ ->
                         popup.dismiss()
-                        if (leftId == null) {
-                            onPicked(ids[pos])
-                        } else {
-                            onPicked(ids[pos])
-                            drawer.dismiss()
-                        }
+                        onPicked(ids[pos])
+                        if (leftId != null) drawer.dismiss()
                     }
                 }
             }
@@ -316,150 +235,5 @@ object AppDrawer {
 
     /** 解析当前可启动应用为 `pkg/cls` 列表（按用户优先 + 字典序） */
     private fun resolveAppIds(activity: Activity): List<String> =
-        loadApps(activity).map { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
-
-    private fun loadApps(context: Context): List<ResolveInfo> = AppQuery.launcherEntriesSorted(context)
-
-    // ── Grid Adapter：固定项 + 已保存分屏 + 普通应用 ──
-
-    private class DrawerAdapter(
-        context: Context,
-        apps: List<ResolveInfo>,
-        dockBtns: List<Store.V2Button>,
-        dockMode: Boolean,
-        private val iconSizePx: Int = 64
-    ) : BaseAdapter() {
-        private val mContext: Context = context
-        private val labels = ArrayList<String>()
-        private val icons = ArrayList<Drawable?>()
-        private val tags = ArrayList<String>()
-
-        init {
-            if (!dockMode || !hasDockItem(dockBtns, "settings", null)) {
-                labels.add("桌面设置")
-                icons.add(Store.normalizedEmoji(context, MapFeature.SETTINGS_EMOJI))
-                tags.add(TAG_SETTINGS)
-            }
-            if (!dockMode || !hasDockItem(dockBtns, "map", "home")) {
-                labels.add("回家")
-                icons.add(Store.normalizedEmoji(context, MapFeature.HOME_EMOJI))
-                tags.add(TAG_HOME)
-            }
-            if (!dockMode || !hasDockItem(dockBtns, "map", "company")) {
-                labels.add("公司")
-                icons.add(Store.normalizedEmoji(context, MapFeature.COMPANY_EMOJI))
-                tags.add(TAG_COMPANY)
-            }
-            if (!dockMode || !hasDockItem(dockBtns, "clean", null)) {
-                labels.add("清理")
-                icons.add(Store.normalizedEmoji(context, MapFeature.CLEAN_EMOJI))
-                tags.add(TAG_CLEAN)
-            }
-            if (!dockMode) {
-                labels.add("分屏")
-                icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI))
-                tags.add(TAG_SPLIT_NEW)
-            }
-            val splits = SplitRepository.load(context)
-            for (i in splits.indices) {
-                val pair = splits[i]
-                if (dockMode && dockBtns.any { it == Store.V2Button.split(pair[0], pair[1]) }) continue
-                labels.add("${Store.label(context, pair[0])}|${Store.label(context, pair[1])}")
-                icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1]))
-                tags.add("$SPLIT_PREFIX$i")
-            }
-            for (ri in apps) {
-                val id = "${ri.activityInfo.packageName}/${ri.activityInfo.name}"
-                if (dockMode && hasDockItem(dockBtns, "app", id)) continue
-                labels.add(Store.label(context, id))
-                icons.add(Store.normalizedIcon(context, id))
-                tags.add(id)
-            }
-        }
-
-        override fun getCount(): Int = labels.size
-        override fun getItem(position: Int): Any = tags[position]
-        override fun getItemId(position: Int): Long = position.toLong()
-
-        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val cell = convertView
-                ?: LayoutInflater.from(mContext).inflate(R.layout.item_drawer_cell, parent, false)
-            val iv = cell.findViewById<ImageView>(R.id.drawer_icon)
-            iv.setImageDrawable(icons[position])
-            val lp = iv.layoutParams
-            lp.width = iconSizePx
-            lp.height = iconSizePx
-            iv.layoutParams = lp
-            (cell.findViewById<View>(R.id.drawer_label) as TextView).text = labels[position]
-            cell.tag = tags[position]
-            return cell
-        }
-    }
-
-    private fun startStatsTicker(activity: Activity, tv: TextView, popup: PopupWindow) {
-        stopStatsTicker()
-        val handler = MainThread.handler
-        val runnable = object : Runnable {
-            override fun run() {
-                if (!popup.isShowing || activity.isDestroyed || activity.isFinishing) { stopStatsTicker(); return }
-                tv.text = buildStatsText(activity)
-                handler.postDelayed(this, 1000)
-            }
-        }
-        sStatsRunnable = runnable
-        tv.text = buildStatsText(activity)
-        handler.postDelayed(runnable, 1000)
-    }
-
-    private fun stopStatsTicker() {
-        sStatsRunnable?.let { MainThread.handler.removeCallbacks(it) }
-        sStatsRunnable = null
-    }
-
-    private fun buildStatsText(c: Context): String {
-        val cpu = readCpuPercent()
-        val temp = readCpuTemp()
-        val mem = readMemPercent(c)
-        val cpuStr = if (cpu >= 0) String.format("%4s", "$cpu%") else String.format("%4s", "--%")
-        val tempStr = if (temp >= 0) String.format("%4s", "${temp}°C") else String.format("%4s", "--°C")
-        val memStr = if (mem >= 0) String.format("%4s", "$mem%") else String.format("%4s", "--%")
-        return "CPU:$cpuStr  $tempStr  MEM:$memStr"
-    }
-
-    private fun readCpuPercent(): Int {
-        return try {
-            val stat = java.io.File("/proc/stat").bufferedReader().use { it.readLine() } ?: return -1
-            val t = stat.trim().split(Regex("\\s+"))
-            if (t.size < 8 || t[0] != "cpu") return -1
-            val user = t[1].toLongOrNull() ?: 0L; val nice = t[2].toLongOrNull() ?: 0L
-            val sys = t[3].toLongOrNull() ?: 0L; val idle = t[4].toLongOrNull() ?: 0L
-            val iow = t[5].toLongOrNull() ?: 0L; val irq = t[6].toLongOrNull() ?: 0L; val sirq = t[7].toLongOrNull() ?: 0L
-            val total = user + nice + sys + idle + iow + irq + sirq
-            val idleAll = idle + iow
-            val diffIdle = idleAll - sPrevIdle
-            val diffTotal = total - sPrevTotal
-            sPrevIdle = idleAll; sPrevTotal = total
-            if (diffTotal <= 0) return -1
-            ((diffTotal - diffIdle) * 100 / diffTotal).toInt().coerceIn(0, 100)
-        } catch (_: Exception) { -1 }
-    }
-
-    private fun readCpuTemp(): Int {
-        return try {
-            val f = java.io.File("/sys/class/thermal/thermal_zone0/temp")
-            if (!f.exists()) return -1
-            val v = f.bufferedReader().use { it.readLine() }?.trim()?.toLongOrNull() ?: return -1
-            val c = if (v > 1000) (v / 1000).toInt() else v.toInt()
-            if (c in 0..150) c else -1
-        } catch (_: Exception) { -1 }
-    }
-
-    private fun readMemPercent(c: Context): Int {
-        return try {
-            val am = c.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-            val mi = android.app.ActivityManager.MemoryInfo()
-            am.getMemoryInfo(mi)
-            ((mi.totalMem - mi.availMem) * 100 / mi.totalMem).toInt().coerceIn(0, 100)
-        } catch (_: Exception) { -1 }
-    }
+        AppQuery.launcherEntriesSorted(activity).map { "${it.activityInfo.packageName}/${it.activityInfo.name}" }
 }

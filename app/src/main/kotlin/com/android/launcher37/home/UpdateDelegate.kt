@@ -30,7 +30,7 @@ class UpdateDelegate(
             // Activity 已销毁时降级为静默（避免 BadTokenException）。
             val ctx = activity ?: return
             try {
-                Toast.makeText(ctx, "已下载新版本，正在打开安装器…", Toast.LENGTH_SHORT).show()
+                Toast.makeText(ctx, "发现新版本，正在下载…", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Log.w("UpdateDelegate", "toast on found failed", e)
             }

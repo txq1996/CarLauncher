@@ -53,29 +53,20 @@ class NaviPanelDelegate(
     }
 
     override fun onNaviStopped() {
-        // 导航停止后回到巡航模式（显示巡航信息 + IPC 车速）
+        // 导航停止后回到巡航模式（显示巡航信息 + IPC 车速）；无巡航数据时只显示车速区域
         speed.setCruise(true)
         speed.setLimit(-1)
-        // 使用缓存的巡航数据渲染
-        val cruiseInfo = AmapNaviListener.lastCruiseInfo
-        if (cruiseInfo != null) {
-            views.naviPanel.visibility = View.VISIBLE
-            val mockInfo = NaviTextClient.NaviInfo().apply {
-                mode = NaviTextClient.Mode.CRUISE
-            }
-            applyNaviOrder(true, mockInfo, cruiseInfo)
-        } else {
-            // 无巡航数据时只显示车速区域
-            views.naviPanel.visibility = View.VISIBLE
-            val mockInfo = NaviTextClient.NaviInfo().apply {
-                mode = NaviTextClient.Mode.CRUISE
-            }
-            applyNaviOrder(true, mockInfo, null)
+        views.naviPanel.visibility = View.VISIBLE
+        val mockInfo = NaviTextClient.NaviInfo().apply {
+            mode = NaviTextClient.Mode.CRUISE
         }
+        applyNaviOrder(true, mockInfo, AmapNaviListener.lastCruiseInfo)
     }
 
     /**
-     * 渲染入口：清除旧子项，按 [KEY_NAVI_ORDER]/[KEY_CRUISE_ORDER] 逐条 addView。
+     * 渲染入口：结构变化时清除旧子项按 [SettingsActivity.KEY_NAVI_ORDER]/
+     * [SettingsActivity.KEY_CRUISE_ORDER] 逐条 addView；结构未变（高德 ~1Hz
+     * 的常规推送）时只更新文本与显隐，避免每秒全量重建 View 造成卡顿与 GC 抖动。
      *
      * @param cruise true=巡航模式 false=导航模式
      * @param info NaviTextClient 推过来的基础数据
@@ -86,17 +77,68 @@ class NaviPanelDelegate(
         info: NaviTextClient.NaviInfo,
         ext: Any?
     ) {
-        val orderKey = if (cruise) KEY_CRUISE_ORDER else KEY_NAVI_ORDER
+        val orderKey = if (cruise) SettingsActivity.KEY_CRUISE_ORDER else SettingsActivity.KEY_NAVI_ORDER
         val defaultOrder = if (cruise) DEFAULT_CRUISE_ORDER else DEFAULT_NAVI_ORDER
         val order = Prefs.getString(activity, orderKey, defaultOrder)!!
         val keys = order.split(",").filter { it.isNotBlank() }
+        val snapshot = snapshotProvider()
+        val sig = buildStructureSig(cruise, keys, snapshot)
+        if (sig == mLastStructureSig) {
+            for (key in keys) {
+                if (key !in SPEED_KEYS) renderKey(key, cruise, info, ext, rebuild = false)
+            }
+            return
+        }
+        mLastStructureSig = sig
         views.naviPanel.removeAllViews()
         // 先渲染车速区域（动态排序）
-        speed.renderSpeedRow()
+        speed.renderSpeedRow(force = true)
         // 再渲染导航行序（跳过已由 SpeedDelegate 渲染的车速 key）
         for (key in keys) {
-            if (key !in SPEED_KEYS) renderKey(key, cruise, info, ext)
+            if (key !in SPEED_KEYS) renderKey(key, cruise, info, ext, rebuild = true)
         }
+    }
+
+    /** 上一次渲染的结构签名（模式 + 行序 + 各行显隐/字号） */
+    private var mLastStructureSig: String? = null
+
+    /** 行样式设置来源（显隐 + 字号 SP key 与缺省字号），供渲染与结构签名共用 */
+    private class RowStyle(val tsKey: String, val showKey: String, val defaultPx: Int)
+
+    private fun rowStyle(key: String, cruise: Boolean): RowStyle? = when (key) {
+        "navi_turn" -> RowStyle(SettingsActivity.KEY_TS_NAVI_TURN, SettingsActivity.KEY_SHOW_NAVI_TURN, 36)
+        "navi_road", "cruise_road" -> if (cruise)
+            RowStyle(SettingsActivity.KEY_TS_CRUISE_ROAD, SettingsActivity.KEY_SHOW_CRUISE_ROAD, 26)
+        else RowStyle(SettingsActivity.KEY_TS_NAVI_ROAD, SettingsActivity.KEY_SHOW_NAVI_ROAD, 26)
+        "navi_dest" -> RowStyle(SettingsActivity.KEY_TS_NAVI_DEST, SettingsActivity.KEY_SHOW_NAVI_DEST, 15)
+        "navi_eta" -> RowStyle(SettingsActivity.KEY_TS_NAVI_ETA, SettingsActivity.KEY_SHOW_NAVI_ETA, 17)
+        "navi_eta_text" -> RowStyle(SettingsActivity.KEY_TS_NAVI_ETA_TEXT, SettingsActivity.KEY_SHOW_NAVI_ETA_TEXT, 17)
+        "navi_light_count" -> RowStyle(SettingsActivity.KEY_TS_NAVI_LIGHT_COUNT, SettingsActivity.KEY_SHOW_NAVI_LIGHT_COUNT, 17)
+        "navi_exit" -> RowStyle(SettingsActivity.KEY_TS_NAVI_EXIT, SettingsActivity.KEY_SHOW_NAVI_EXIT, 17)
+        "navi_direction", "cruise_direction" -> if (cruise)
+            RowStyle(SettingsActivity.KEY_TS_CRUISE_DIRECTION, SettingsActivity.KEY_SHOW_CRUISE_DIRECTION, 17)
+        else RowStyle(SettingsActivity.KEY_TS_NAVI_DIRECTION, SettingsActivity.KEY_SHOW_NAVI_DIRECTION, 17)
+        "navi_alert", "cruise_alert" -> if (cruise)
+            RowStyle(SettingsActivity.KEY_TS_CRUISE_ALERT, SettingsActivity.KEY_SHOW_CRUISE_ALERT, 17)
+        else RowStyle(SettingsActivity.KEY_TS_NAVI_ALERT, SettingsActivity.KEY_SHOW_NAVI_ALERT, 17)
+        else -> null
+    }
+
+    /** 结构签名：模式 + 非车速行的显隐/字号取值（车速区结构由 SpeedDelegate 自身签名管理） */
+    private fun buildStructureSig(
+        cruise: Boolean,
+        keys: List<String>,
+        snapshot: SettingsSnapshot
+    ): String {
+        val sb = StringBuilder(if (cruise) "C" else "N")
+        for (key in keys) {
+            if (key in SPEED_KEYS) continue
+            val st = rowStyle(key, cruise) ?: continue
+            sb.append('|').append(key)
+                .append(snapshot.show(st.showKey, true)).append(',')
+                .append(snapshot.size(st.tsKey, st.defaultPx))
+        }
+        return sb.toString()
     }
 
     /**
@@ -110,7 +152,8 @@ class NaviPanelDelegate(
         key: String,
         cruise: Boolean,
         info: NaviTextClient.NaviInfo,
-        ext: Any?
+        ext: Any?,
+        rebuild: Boolean
     ) {
         val snapshot = snapshotProvider()
         when (key) {
@@ -133,7 +176,7 @@ class NaviPanelDelegate(
                 applyRow(views.naviRowTurn, snapshot,
                     SettingsActivity.KEY_TS_NAVI_TURN,
                     SettingsActivity.KEY_SHOW_NAVI_TURN, defaultPx = 36,
-                    applyFontToChildren = true)
+                    applyFontToChildren = true, rebuild = rebuild)
             }
             "navi_road", "cruise_road" -> {
                 var road = if (cruise) info.curRoadName else info.nextRoadName
@@ -147,24 +190,27 @@ class NaviPanelDelegate(
                     views.tvNaviRoad, snapshot,
                     if (cruise) SettingsActivity.KEY_TS_CRUISE_ROAD else SettingsActivity.KEY_TS_NAVI_ROAD,
                     if (cruise) SettingsActivity.KEY_SHOW_CRUISE_ROAD else SettingsActivity.KEY_SHOW_NAVI_ROAD,
-                    defaultPx = 26
+                    defaultPx = 26, rebuild = rebuild
                 )
             }
             "navi_dest" -> if (!cruise) {
                 views.tvNaviDest.text = info.endPoiName ?: ""
                 applyRow(views.tvNaviDest, snapshot,
                     SettingsActivity.KEY_TS_NAVI_DEST,
-                    SettingsActivity.KEY_SHOW_NAVI_DEST, defaultPx = 15)
+                    SettingsActivity.KEY_SHOW_NAVI_DEST, defaultPx = 15, rebuild = rebuild)
             }
             "navi_eta" -> if (!cruise) {
                 // 巡航误入导航模式时 remainTime/remainDis 为 0，避免仅显示“剩”字
-                if (info.remainTime <= 0 && info.remainDis <= 0) return
+                if (info.remainTime <= 0 && info.remainDis <= 0) {
+                    if (!rebuild) views.naviRowEta.visibility = View.GONE
+                    return
+                }
                 views.tvNaviTime.text = "剩${formatDuration(info.remainTime)}"
                 views.tvNaviRemain.text = formatRemain(info.remainDis)
                 applyRow(views.naviRowEta, snapshot,
                     SettingsActivity.KEY_TS_NAVI_ETA,
                     SettingsActivity.KEY_SHOW_NAVI_ETA, defaultPx = 17,
-                    applyFontToChildren = true)
+                    applyFontToChildren = true, rebuild = rebuild)
             }
             "navi_eta_text" -> if (!cruise) {
                 val text = (ext as? AmapNaviListener.NaviInfo)?.etaText ?: ""
@@ -174,7 +220,8 @@ class NaviPanelDelegate(
                     SettingsActivity.KEY_TS_NAVI_ETA_TEXT,
                     SettingsActivity.KEY_SHOW_NAVI_ETA_TEXT,
                     defaultPx = 17,
-                    forceText = text2
+                    forceText = text2,
+                    rebuild = rebuild
                 )
             }
             "navi_light_count" -> if (!cruise) {
@@ -185,7 +232,8 @@ class NaviPanelDelegate(
                     SettingsActivity.KEY_TS_NAVI_LIGHT_COUNT,
                     SettingsActivity.KEY_SHOW_NAVI_LIGHT_COUNT,
                     defaultPx = 17,
-                    forceText = text
+                    forceText = text,
+                    rebuild = rebuild
                 )
             }
             "navi_exit" -> if (!cruise) {
@@ -201,7 +249,8 @@ class NaviPanelDelegate(
                     views.tvNaviExit, snapshot,
                     SettingsActivity.KEY_TS_NAVI_EXIT,
                     SettingsActivity.KEY_SHOW_NAVI_EXIT, defaultPx = 17,
-                    forceText = text
+                    forceText = text,
+                    rebuild = rebuild
                 )
             }
             "navi_direction", "cruise_direction" -> {
@@ -216,7 +265,8 @@ class NaviPanelDelegate(
                     if (cruise) SettingsActivity.KEY_TS_CRUISE_DIRECTION else SettingsActivity.KEY_TS_NAVI_DIRECTION,
                     if (cruise) SettingsActivity.KEY_SHOW_CRUISE_DIRECTION else SettingsActivity.KEY_SHOW_NAVI_DIRECTION,
                     defaultPx = 17,
-                    forceText = text
+                    forceText = text,
+                    rebuild = rebuild
                 )
             }
             "navi_alert", "cruise_alert" -> {
@@ -230,8 +280,11 @@ class NaviPanelDelegate(
                         if (cruise) SettingsActivity.KEY_TS_CRUISE_ALERT else SettingsActivity.KEY_TS_NAVI_ALERT,
                         showKey = "",  // 显隐已在 renderAlert 里判定
                         defaultPx = 17,
-                        applyFontToChildren = false
+                        applyFontToChildren = false,
+                        rebuild = rebuild
                     )
+                } else if (!rebuild) {
+                    views.tvNaviAlert.visibility = View.GONE
                 }
             }
         }
@@ -255,7 +308,8 @@ class NaviPanelDelegate(
         showKey: String,
         defaultPx: Int,
         forceText: String? = null,
-        applyFontToChildren: Boolean = false
+        applyFontToChildren: Boolean = false,
+        rebuild: Boolean
     ) {
         val showOn = if (showKey.isEmpty()) true else snapshot.show(showKey, true)
         val textOk = when {
@@ -263,16 +317,21 @@ class NaviPanelDelegate(
             forceText.isEmpty() -> false
             else -> true
         }
-        if (!showOn || !textOk) {
-            // 不 addView，避免空白行占据 navi_panel 布局高度
-            return
+        if (rebuild) {
+            if (!showOn || !textOk) {
+                // 不 addView，避免空白行占据 navi_panel 布局高度
+                return
+            }
+            val fontPx = snapshot.size(fontKey, defaultPx)
+            if (forceText != null && tv is android.widget.TextView) {
+                tv.text = forceText
+            }
+            applyFont(tv, fontPx, applyFontToChildren)
+            views.naviPanel.addView(tv)
+        } else {
+            // 结构未变：只同步文本显隐，不重建、不重设字号
+            tv.visibility = if (showOn && textOk) View.VISIBLE else View.GONE
         }
-        val fontPx = snapshot.size(fontKey, defaultPx)
-        if (forceText != null && tv is android.widget.TextView) {
-            tv.text = forceText
-        }
-        applyFont(tv, fontPx, applyFontToChildren)
-        views.naviPanel.addView(tv)
     }
 
     /**
@@ -323,10 +382,13 @@ class NaviPanelDelegate(
     private fun formatDuration(s: Int): String = FormatUtils.formatDuration(s)
 
     companion object {
-        private const val KEY_NAVI_ORDER = "navi_row_order"
-        private const val KEY_CRUISE_ORDER = "cruise_row_order"
+        // 行序 SP key 单一来源在 SettingsActivity（与设置页共用）
         private val SPEED_KEYS = setOf("speed", "speed_unit", "limit", "traffic")
-        private const val DEFAULT_NAVI_ORDER = "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
-        private const val DEFAULT_CRUISE_ORDER = "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
+
+        /** 默认导航行序（车速 + 行序），SpeedDelegate 排序车速区时也引用 */
+        internal const val DEFAULT_NAVI_ORDER = "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
+
+        /** 默认巡航行序（车速 + 行序） */
+        internal const val DEFAULT_CRUISE_ORDER = "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
     }
 }

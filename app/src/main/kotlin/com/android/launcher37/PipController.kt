@@ -42,7 +42,7 @@ class PipController(
         if (!MapPipHost.available()) return
         var host = mHost
         if (host == null) {
-            host = MapPipHost.create(mContext) ?: return
+            host = MapPipHost.create(mContext)
             host.attach(mPlaceholder as android.view.ViewGroup)
             mHost = host
         }

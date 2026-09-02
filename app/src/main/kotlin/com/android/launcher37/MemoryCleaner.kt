@@ -102,8 +102,7 @@ object MemoryCleaner {
         val pipPkg = (a as? LauncherActivity)?.pip?.resolvePkg()
         val freedMb = clean(a, playing, pipPkg)
         val msg = if (freedMb > 0) "已释放 $freedMb MB 内存" else "当前无后台进程可清理"
-        // Toast 必须在主线程；从 /memoryclean 这种后台 worker 线程进来时
-        // post 到主线程避免 IllegalStateException。
+        // clean() 可能在任意线程被调（UI 点击 / 抽屉动作），Toast 统一 post 回主线程
         MainThread.handler.post {
             try { android.widget.Toast.makeText(a, msg, android.widget.Toast.LENGTH_SHORT).show() }
             catch (_: Throwable) { /* Activity 死亡时静默 */ }

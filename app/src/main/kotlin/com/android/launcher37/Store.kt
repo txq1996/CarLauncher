@@ -165,7 +165,8 @@ object Store {
 
     @JvmStatic
     fun saveV2Buttons(c: Context, btns: List<V2Button>) {
-        V2BUTTONS_CACHE.remove(c)
+        // 回写缓存：保存后下一次 v2Buttons 直接命中，避免重复走 SP/默认构建路径
+        V2BUTTONS_CACHE[c] = btns.toList()
         val arr = JSONArray()
         try {
             for (b in btns) {

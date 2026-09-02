@@ -11,7 +11,7 @@ import android.os.IBinder
  */
 class DrawerService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        android.util.Log.i("VDFocusDbg", "DrawerService.onStartCommand (悬浮窗路径)")  // debug-point lifecy-v1
+        Dbg.i("VDFocusDbg") { "DrawerService.onStartCommand (悬浮窗路径)" }  // debug-point lifecy-v1
         if (DrawerOverlay.isShowing()) {
             DrawerOverlay.dismiss()
             stopSelf()

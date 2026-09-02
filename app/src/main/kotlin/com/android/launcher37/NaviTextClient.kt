@@ -238,7 +238,8 @@ class NaviTextClient(
         mInfo.endPoiName = stringOr(intent.getStringExtra("endPOIName"), mInfo.endPoiName)
         val curRoad = intent.getStringExtra("CUR_ROAD_NAME")
         if (!curRoad.isNullOrEmpty()) mInfo.curRoadName = curRoad
-        mInfo.nextRoadName = intent.getStringExtra("NEXT_ROAD_NAME")
+        // 与 SAPA_NAME/endPOIName 同策略：extra 缺席或为空时保留上一次有效值
+        mInfo.nextRoadName = stringOr(intent.getStringExtra("NEXT_ROAD_NAME"), mInfo.nextRoadName)
         // TYPE: 0=GPS 导航 1=模拟导航 2=巡航；巡航路线也走 10001 推送
         val cruiseRoute = intent.getIntExtra("TYPE", 0) == 2
         setMode(if (cruiseRoute) Mode.CRUISE else Mode.NAV)

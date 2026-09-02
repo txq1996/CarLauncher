@@ -44,6 +44,7 @@
             android:layout_height="match_parent"
             android:orientation="horizontal">
 
+            <!-- ── 左侧 Tab 栏 ── -->
             <LinearLayout
                 android:id="@+id/tab_box"
                 android:layout_width="140px"
@@ -61,54 +62,12 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/tab_layout"
-                            android:layout_width="match_parent"
-                            android:layout_height="60px"
-                            android:gravity="center"
-                            android:text="布局"
-                            android:textSize="23px" />
-
-                        <TextView
-                            android:id="@+id/tab_time"
-                            android:layout_width="match_parent"
-                            android:layout_height="60px"
-                            android:gravity="center"
-                            android:text="时间"
-                            android:textSize="23px" />
-
-                        <TextView
-                            android:id="@+id/tab_speed"
-                            android:layout_width="match_parent"
-                            android:layout_height="60px"
-                            android:gravity="center"
-                            android:text="车速"
-                            android:textSize="23px" />
-
-                        <TextView
-                            android:id="@+id/tab_music"
-                            android:layout_width="match_parent"
-                            android:layout_height="60px"
-                            android:gravity="center"
-                            android:text="音乐"
-                            android:textSize="23px" />
-
-                        <TextView
-                            android:id="@+id/tab_dock"
-                            android:layout_width="match_parent"
-                            android:layout_height="60px"
-                            android:gravity="center"
-                            android:text="底栏"
-                            android:textSize="23px" />
-
-                        <TextView
-                            android:id="@+id/tab_general"
-                            android:layout_width="match_parent"
-                            android:layout_height="60px"
-                            android:gravity="center"
-                            android:text="通用"
-                            android:textSize="23px" />
-
+                        <TextView android:id="@+id/tab_layout" style="@style/Tab" android:text="布局" />
+                        <TextView android:id="@+id/tab_time" style="@style/Tab" android:text="时间" />
+                        <TextView android:id="@+id/tab_speed" style="@style/Tab" android:text="车速" />
+                        <TextView android:id="@+id/tab_music" style="@style/Tab" android:text="音乐" />
+                        <TextView android:id="@+id/tab_dock" style="@style/Tab" android:text="底栏" />
+                        <TextView android:id="@+id/tab_general" style="@style/Tab" android:text="通用" />
                     </LinearLayout>
                 </ScrollView>
             </LinearLayout>
@@ -119,128 +78,36 @@
                 android:layout_marginStart="24px"
                 android:layout_weight="1">
 
-                <!-- ── 布局 ───────────────────────────── -->
-                <ScrollView
-                    android:id="@+id/panel_layout"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none">
+                <!-- ── 布局 ── -->
+                <ScrollView android:id="@+id/panel_layout" style="@style/Panel" android:visibility="visible">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="布局参数"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
+                        <TextView style="@style/SectionHeader" android:text="布局参数" />
+                        <LinearLayout android:id="@+id/box_layout_seeks" style="@style/SeekBox" />
 
-                        <LinearLayout
-                            android:id="@+id/box_layout_seeks"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:orientation="vertical" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="24px"
-                            android:text="卡片显示"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
-
-                        <CheckBox
-                            android:id="@+id/cb_hide_status_bar"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="显示状态栏"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_show_time"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="显示时间卡片"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_show_speed_card"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="显示车速卡片"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_show_music_card"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="显示音乐卡片"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_show_dock"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="显示底栏"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
+                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="卡片显示" />
+                        <CheckBox android:id="@+id/cb_hide_status_bar" style="@style/CheckRow" android:text="显示状态栏" />
+                        <CheckBox android:id="@+id/cb_show_time" style="@style/CheckRow" android:text="显示时间卡片" />
+                        <CheckBox android:id="@+id/cb_show_speed_card" style="@style/CheckRow" android:text="显示车速卡片" />
+                        <CheckBox android:id="@+id/cb_show_music_card" style="@style/CheckRow" android:text="显示音乐卡片" />
+                        <CheckBox android:id="@+id/cb_show_dock" style="@style/CheckRow" android:text="显示底栏" />
                     </LinearLayout>
                 </ScrollView>
 
-                <!-- ── 时间 ───────────────────── -->
-                <ScrollView
-                    android:id="@+id/panel_time"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none"
-                    android:visibility="gone">
+                <!-- ── 时间 ── -->
+                <ScrollView android:id="@+id/panel_time" style="@style/Panel">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="字体大小"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
-
-                        <LinearLayout
-                            android:id="@+id/box_time_seeks"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:orientation="vertical" />
+                        <TextView style="@style/SectionHeader" android:text="字体大小" />
+                        <LinearLayout android:id="@+id/box_time_seeks" style="@style/SeekBox" />
 
                         <TextView
                             android:id="@+id/tv_time_format"
@@ -256,14 +123,8 @@
                     </LinearLayout>
                 </ScrollView>
 
-                <!-- ── 车速 ───────────────────────────── -->
-                <ScrollView
-                    android:id="@+id/panel_speed"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none"
-                    android:visibility="gone">
+                <!-- ── 车速 ── -->
+                <ScrollView android:id="@+id/panel_speed" style="@style/Panel">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -276,10 +137,7 @@
                             android:background="@drawable/bg_grid_line"
                             android:gravity="center_vertical"
                             android:orientation="horizontal"
-                            android:paddingStart="8px"
-                            android:paddingEnd="8px"
-                            android:paddingTop="8px"
-                            android:paddingBottom="8px">
+                            android:padding="8px">
 
                             <TextView
                                 android:layout_width="0px"
@@ -288,7 +146,6 @@
                                 android:text="名称"
                                 android:textColor="@color/foreground_secondary"
                                 android:textSize="15px" />
-
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -297,7 +154,6 @@
                                 android:textSize="15px"
                                 android:paddingStart="8px"
                                 android:paddingEnd="8px" />
-
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -305,7 +161,6 @@
                                 android:text="字号(px)"
                                 android:textColor="@color/foreground_secondary"
                                 android:textSize="15px" />
-
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -324,27 +179,15 @@
                     </LinearLayout>
                 </ScrollView>
 
-                <!-- ── 音乐 ───────────────────────────── -->
-                <ScrollView
-                    android:id="@+id/panel_music"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none"
-                    android:visibility="gone">
+                <!-- ── 音乐 ── -->
+                <ScrollView android:id="@+id/panel_music" style="@style/Panel">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="绑定应用"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
+                        <TextView style="@style/SectionHeader" android:text="绑定应用" />
 
                         <LinearLayout
                             android:id="@+id/row_music_app"
@@ -361,7 +204,6 @@
                                 android:layout_width="32px"
                                 android:layout_height="32px"
                                 android:scaleType="fitCenter" />
-
                             <TextView
                                 android:id="@+id/tv_music_app_name"
                                 android:layout_width="0px"
@@ -374,7 +216,6 @@
                                 android:text="未绑定"
                                 android:textColor="@color/foreground"
                                 android:textSize="17px" />
-
                             <Button
                                 android:id="@+id/btn_pick_music_app"
                                 android:layout_width="wrap_content"
@@ -388,74 +229,14 @@
                                 android:textSize="15px" />
                         </LinearLayout>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="24px"
-                            android:text="字体大小 (px)"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
+                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="字体大小 (px)" />
+                        <LinearLayout android:id="@+id/box_music_seeks" style="@style/SeekBox" />
 
-                        <LinearLayout
-                            android:id="@+id/box_music_seeks"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:orientation="vertical" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="24px"
-                            android:text="显示项"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
-
-                        <CheckBox
-                            android:id="@+id/cb_music_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="歌曲名"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_music_artist"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="歌手名"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_music_time"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="进度时间（当前/总时长）"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <CheckBox
-                            android:id="@+id/cb_music_bar"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="进度条"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
+                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="显示项" />
+                        <CheckBox android:id="@+id/cb_music_title" style="@style/CheckRow" android:text="歌曲名" />
+                        <CheckBox android:id="@+id/cb_music_artist" style="@style/CheckRow" android:text="歌手名" />
+                        <CheckBox android:id="@+id/cb_music_time" style="@style/CheckRow" android:text="进度时间（当前/总时长）" />
+                        <CheckBox android:id="@+id/cb_music_bar" style="@style/CheckRow" android:text="进度条" />
 
                         <TextView
                             android:layout_width="match_parent"
@@ -466,83 +247,37 @@
                             android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
                     </LinearLayout>
-                </ScrollView><!-- ── 底栏 ───────────────────── -->
-                <ScrollView
-                    android:id="@+id/panel_dock"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none"
-                    android:visibility="gone">
+                </ScrollView>
+
+                <!-- ── 底栏 ── -->
+                <ScrollView android:id="@+id/panel_dock" style="@style/Panel">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <CheckBox
-                            android:id="@+id/cb_show_dock_label"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="显示图标名称"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
-
-                        <LinearLayout
-                            android:id="@+id/box_dock_seeks"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:orientation="vertical" />
+                        <CheckBox android:id="@+id/cb_show_dock_label" style="@style/CheckRow" android:text="显示图标名称" />
+                        <LinearLayout android:id="@+id/box_dock_seeks" style="@style/SeekBox" />
                     </LinearLayout>
                 </ScrollView>
 
-                <!-- ── 通用（在线更新）───────────────────── -->
-                <ScrollView
-                    android:id="@+id/panel_general"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none"
-                    android:visibility="gone">
+                <!-- ── 通用 ── -->
+                <ScrollView android:id="@+id/panel_general" style="@style/Panel">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="通用设置"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
-
+                        <TextView style="@style/SectionHeader" android:text="通用设置" />
                         <CheckBox
                             android:id="@+id/cb_home_direct_drawer"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            style="@style/CheckRow"
                             android:layout_marginTop="8px"
-                            android:background="@drawable/bg_grid_line"
-                            android:minHeight="52px"
-                            android:padding="8px"
-                            android:text="启动直接打开全部应用"
-                            android:textColor="@color/foreground"
-                            android:textSize="19px" />
+                            android:text="启动直接打开全部应用" />
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="24px"
-                            android:text="在线更新"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
-
+                        <TextView style="@style/SectionHeader" android:layout_marginTop="24px" android:text="在线更新" />
                         <TextView
                             android:id="@+id/tv_update_status"
                             android:layout_width="match_parent"
@@ -551,7 +286,6 @@
                             android:text="未检查"
                             android:textColor="@color/foreground_secondary"
                             android:textSize="17px" />
-
                         <TextView
                             android:id="@+id/tv_version_info"
                             android:layout_width="match_parent"
@@ -560,7 +294,6 @@
                             android:text="当前版本：--"
                             android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
-
                         <Button
                             android:id="@+id/btn_check_update"
                             android:layout_width="match_parent"
@@ -569,7 +302,6 @@
                             android:text="检查更新"
                             android:textColor="@color/foreground"
                             android:textSize="21px" />
-
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -579,9 +311,7 @@
                             android:textSize="15px" />
                     </LinearLayout>
                 </ScrollView>
-
             </FrameLayout>
         </LinearLayout>
-
     </FrameLayout>
 </LinearLayout>

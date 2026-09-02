@@ -71,7 +71,7 @@ class LauncherActivity : Activity() {
 
         snapshot = SettingsSnapshot.load(this)
         views = HomeViews(
-            contentRoot = findViewById(R.id.content_root),
+            contentRoot = findViewById(R.id.page_content),
             pageContent = findViewById(R.id.page_content),
             leftCol = findViewById(R.id.left_col),
             gapTimeSpeed = findViewById(R.id.gap_time_speed),
@@ -173,7 +173,7 @@ class LauncherActivity : Activity() {
         // 快照重置为自身：resume 即回到顶部，旧的"抢焦者"快照已过期
         // （否则 HOME 回桌面后，am start 会读到浏览器等陈旧快照误走悬浮）。
         sLastPauseTopPkg = packageName
-        android.util.Log.i("VDFocusDbg", "onResume fg=${sLauncherForeground} focus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus top=${dbgTop()}")
+        Dbg.i("VDFocusDbg") { "onResume fg=${sLauncherForeground} focus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus top=${dbgTop()}" }
         super.onResume()
         if (mAppDrawerPending && ::views.isInitialized) {
             mAppDrawerPending = false
@@ -193,16 +193,20 @@ class LauncherActivity : Activity() {
         // pause 时先清 stopped 标志：VD 抢焦只 pause 不 stop（launcher 仍可见），
         // 而其他 App 真盖顶随后必然 onStop。onNewIntent 据此区分两种"失焦"。
         sLauncherStopped = false
+        sLastPauseHadFocus = mHasFocus
         snapshotTop()
-        android.util.Log.i("VDFocusDbg", "onPause focus=$mHasFocus -> lastPauseHadFocus=$sLastPauseHadFocus lastTop=$sLastPauseTopPkg top=${dbgTop()}")
+        Dbg.i("VDFocusDbg") { "onPause focus=$mHasFocus -> lastPauseHadFocus=$sLastPauseHadFocus lastTop=$sLastPauseTopPkg top=${dbgTop()}" }
         super.onPause()
     }
 
     override fun onStop() {
-        android.util.Log.i("VDFocusDbg", "onStop focus=$mHasFocus top=${dbgTop()}")
+        Dbg.i("VDFocusDbg") { "onStop focus=$mHasFocus top=${dbgTop()}" }
         // 置 stopped：其他 App 盖顶（浏览器等）必经此回调；VD 抢焦不触发。
         // 也刷新快照：launcher 已被 VD 抢焦成 paused 后，其他 App 盖顶不会再触发新的 onPause。
         sLauncherStopped = true
+        // 焦点快照同步失效：桌面持焦时被盖顶的 pause 会留下 hadFocus=true，
+        // 不清掉的话后续 am start 会误判"仍在桌面"而弹抽屉（应为悬浮窗）。
+        sLastPauseHadFocus = false
         snapshotTop()
         if (::views.isInitialized) {
             time.stop()
@@ -214,7 +218,7 @@ class LauncherActivity : Activity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        android.util.Log.i("VDFocusDbg", "onNewIntent act=${intent.action} fromHome=${intent.hasCategory(Intent.CATEGORY_HOME)} mHasFocus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus fg=$sLauncherForeground top=${dbgTop()}")
+        Dbg.i("VDFocusDbg") { "onNewIntent act=${intent.action} fromHome=${intent.hasCategory(Intent.CATEGORY_HOME)} mHasFocus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus fg=$sLauncherForeground top=${dbgTop()}" }
         mNeedPipSync = true
         val direct = Prefs.of(this).getBoolean(SettingsActivity.KEY_HOME_DIRECT_APP_DRAWER, true)
         val fromHome = intent.hasCategory(Intent.CATEGORY_HOME)
@@ -247,7 +251,7 @@ class LauncherActivity : Activity() {
             val onDesktop = sLastPauseHadFocus
                 || sLastPauseTopPkg == packageName
                 || !sLauncherStopped
-            android.util.Log.i("VDFocusDbg", "am-start path: onDesktop=$onDesktop (hadFocus=$sLastPauseHadFocus topPkg=$sLastPauseTopPkg stopped=$sLauncherStopped)")
+            Dbg.i("VDFocusDbg") { "am-start path: onDesktop=$onDesktop (hadFocus=$sLastPauseHadFocus topPkg=$sLastPauseTopPkg stopped=$sLauncherStopped)" }
             if (onDesktop) {
                 if (AppDrawer.isShowing() || DrawerOverlay.isShowing()) {
                     AppDrawer.dismissIfShowing()
@@ -283,7 +287,6 @@ class LauncherActivity : Activity() {
             music.cancelPending()
             navi.stop()
             update.release()
-            music.clearReturnHome()
         }
         super.onDestroy()
     }
@@ -309,7 +312,7 @@ class LauncherActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        android.util.Log.i("VDFocusDbg", "onWindowFocusChanged hasFocus=$hasFocus")
+        Dbg.i("VDFocusDbg") { "onWindowFocusChanged hasFocus=$hasFocus" }
         mHasFocus = hasFocus
         if (!hasFocus || !::views.isInitialized) return
         if (mNeedPipSync) {

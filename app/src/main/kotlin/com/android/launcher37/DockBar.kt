@@ -54,6 +54,17 @@ class DockBar(
             "company" -> MapFeature.COMPANY_EMOJI
             else -> MapFeature.STOP_EMOJI
         }
+
+        /** 确保底栏中存在该按钮（不存在则追加，已存在则跳过） */
+        @JvmStatic
+        internal fun ensureInDock(dockBtns: MutableList<Store.V2Button>, btn: Store.V2Button) {
+            for (e in dockBtns) {
+                if (e.sameAs(btn)) return
+            }
+            if (dockBtns.size < MAX_DOCK_BUTTONS) {
+                dockBtns.add(btn)
+            }
+        }
     }
 
     private val mAdapter = DockAdapter()

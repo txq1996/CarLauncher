@@ -154,8 +154,4 @@ class LayoutDelegate(
             if (matchH != 0) matchH else ViewGroup.LayoutParams.WRAP_CONTENT
         )
     }
-
-    companion object {
-        private const val DOCK_GRID_HEIGHT_PX = 80
-    }
 }

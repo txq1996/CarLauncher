@@ -8,7 +8,6 @@
     android:layout_height="0px"
     android:layout_weight="1">
 
-    <!-- 唯一容器：速度 + 导航全部在此，整体居中 -->
     <LinearLayout
         android:id="@+id/speed_content"
         android:layout_width="wrap_content"
@@ -17,8 +16,6 @@
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
-        <!-- ===== 动态渲染区域 ===== -->
-        <!-- 车速 + 导航全部由代码 addView 进容器；字号/显隐/顺序由设置驱动。 -->
         <LinearLayout
             android:id="@+id/navi_panel"
             android:layout_width="wrap_content"
@@ -27,7 +24,7 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <!-- 转向行：转向图标 + 距离（图标默认 src 由代码覆盖为 navinfo_icon{N}_white） -->
+            <!-- 转向行：转向图标 + 距离 -->
             <LinearLayout
                 android:id="@+id/navi_row_turn"
                 android:layout_width="wrap_content"
@@ -49,13 +46,12 @@
                     android:layout_marginStart="12px"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:text=""
                     android:textColor="@color/foreground"
                     android:textSize="36px"
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- 路名：当前/下一条道路名称（26px） -->
+            <!-- 路名（26px） -->
             <TextView
                 android:id="@+id/tv_navi_road"
                 android:layout_width="wrap_content"
@@ -65,82 +61,23 @@
                 android:ellipsize="end"
                 android:gravity="center"
                 android:maxLines="1"
-                android:text=""
                 android:textColor="@color/foreground"
                 android:textSize="26px"
                 android:textStyle="bold" />
 
-            <!-- 终点名称：目的地POI（17px，作为新条目默认字号/颜色参照） -->
+            <!-- 终点名称（17px secondary） -->
             <TextView
                 android:id="@+id/tv_navi_dest"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3px"
-                android:includeFontPadding="false"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="@color/foreground_secondary"
-                android:textSize="17px" />
+                style="@style/NaviHint"
+                android:textColor="@color/foreground_secondary" />
 
-            <!-- ETA：预计到达时间（hint层级，17px tertiary） -->
-            <TextView
-                android:id="@+id/tv_navi_eta_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3px"
-                android:includeFontPadding="false"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="@color/foreground_tertiary"
-                android:textSize="17px" />
+            <!-- 以下 5 个均为 hint 层级（17px tertiary），共用 @style/NaviHint -->
+            <TextView android:id="@+id/tv_navi_eta_text" style="@style/NaviHint" />
+            <TextView android:id="@+id/tv_navi_light_count" style="@style/NaviHint" />
+            <TextView android:id="@+id/tv_navi_exit" style="@style/NaviHint" />
+            <TextView android:id="@+id/tv_navi_direction" style="@style/NaviHint" />
 
-            <!-- 剩余红绿灯数（hint层级，17px tertiary） -->
-            <TextView
-                android:id="@+id/tv_navi_light_count"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3px"
-                android:includeFontPadding="false"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="@color/foreground_tertiary"
-                android:textSize="17px" />
-
-            <!-- 出口信息（hint层级，17px tertiary） -->
-            <TextView
-                android:id="@+id/tv_navi_exit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3px"
-                android:includeFontPadding="false"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="@color/foreground_tertiary"
-                android:textSize="17px" />
-
-            <!-- 车头方向（hint层级，17px tertiary） -->
-            <TextView
-                android:id="@+id/tv_navi_direction"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3px"
-                android:includeFontPadding="false"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="@color/foreground_tertiary"
-                android:textSize="17px" />
-
-            <!-- 剩余距离和时间行：水平排列 -->
+            <!-- 剩余距离和时间行 -->
             <LinearLayout
                 android:id="@+id/navi_row_eta"
                 android:layout_width="wrap_content"
@@ -155,10 +92,8 @@
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:text=""
                     android:textColor="@color/foreground_tertiary"
                     android:textSize="17px" />
-
                 <TextView
                     android:id="@+id/tv_navi_time"
                     android:layout_width="wrap_content"
@@ -166,24 +101,11 @@
                     android:layout_marginStart="14px"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:text=""
                     android:textColor="@color/foreground_tertiary"
                     android:textSize="17px" />
             </LinearLayout>
 
-            <!-- 电子眼/服务区提醒（hint层级，17px tertiary） -->
-            <TextView
-                android:id="@+id/tv_navi_alert"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3px"
-                android:includeFontPadding="false"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="@color/foreground_tertiary"
-                android:textSize="17px" />
+            <TextView android:id="@+id/tv_navi_alert" style="@style/NaviHint" />
         </LinearLayout>
     </LinearLayout>
 </RelativeLayout>
