@@ -785,7 +785,7 @@ class SettingsActivity : Activity() {
         order: ArrayList<String>,
         persistKey: String
     ) {
-        val rv = androidx.recyclerview.widget.RecyclerView(this).apply {
+        val rv = WrapRecyclerView(this).apply {
             layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
             isNestedScrollingEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER

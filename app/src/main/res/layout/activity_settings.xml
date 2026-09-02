@@ -228,7 +228,7 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <androidx.recyclerview.widget.RecyclerView
+                        <com.android.launcher37.WrapRecyclerView
                             android:id="@+id/box_apps"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"

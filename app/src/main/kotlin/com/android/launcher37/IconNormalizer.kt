@@ -178,7 +178,7 @@ object IconNormalizer {
     internal fun normalizeDrawable(c: Context, d: Drawable?, bgOverride: Int? = null): Drawable? {
         if (d == null) return null
         return try {
-            if (d is AdaptiveIconDrawable) return normalizeAdaptive(c, d)
+            if (d is AdaptiveIconDrawable) return normalizeAdaptive(c, d, bgOverride)
             val w = d.intrinsicWidth
             val h = d.intrinsicHeight
             if (w <= 0 || h <= 0) return d
@@ -253,12 +253,18 @@ object IconNormalizer {
         return out
     }
 
-    private fun normalizeAdaptive(c: Context, d: AdaptiveIconDrawable): Drawable {
+    private fun normalizeAdaptive(c: Context, d: AdaptiveIconDrawable, bgOverride: Int? = null): Drawable {
         val out = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
         val cv = Canvas(out)
-        d.background?.let {
-            it.setBounds(0, 0, NORM_SIZE, NORM_SIZE)
-            it.draw(cv)
+        if (bgOverride != null) {
+            // 自定义底色：以纯色圆角底替换自适应图标自带的背景层
+            val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgOverride }
+            cv.drawRoundRect(RectF(0f, 0f, NORM_SIZE.toFloat(), NORM_SIZE.toFloat()), CORNER_RADIUS, CORNER_RADIUS, bg)
+        } else {
+            d.background?.let {
+                it.setBounds(0, 0, NORM_SIZE, NORM_SIZE)
+                it.draw(cv)
+            }
         }
         d.foreground?.let {
             val fw = it.intrinsicWidth
