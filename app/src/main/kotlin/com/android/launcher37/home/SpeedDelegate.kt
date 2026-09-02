@@ -18,10 +18,10 @@ import com.android.launcher37.SysProps
  * 车速区域与导航行序统一在 navi_panel 容器中动态渲染，支持排序。
  * 每个元素独立字号 + 独立显隐，导航/巡航模式分别设置。
  *
- * 数据源优先级：
- * 1. AmapNaviListener：导航/巡航时高德广播的 CUR_SPEED
- * 2. IPC（[SpeedClient]）回退：高德无导航/巡航数据时用实时 GPS 车速
- * 高德导航/巡航结束时清除高德缓存，自动回退 MS；ACC 关时归零复位。
+ * 数据源仲裁（每次数据更新重新决策）：
+ * 1. MS IPC（[SpeedClient]）：GPS 车速 >1 km/h 时优先（>1 视为定位有效）
+ * 2. AmapNaviListener：MS 无效（≤1）或无数据时，用高德导航/巡航广播的 CUR_SPEED
+ * 高德导航/巡航结束时清除高德缓存；ACC 关时归零复位。
  */
 class SpeedDelegate(
     private val activity: android.app.Activity,
@@ -30,10 +30,10 @@ class SpeedDelegate(
     private val mMiles: Boolean = isMiles(activity)
     private var mSpeedClient: SpeedClient? = null
 
-    // MS IPC 最新车速（回退源）
+    // MS IPC 最新车速
     private var mIpcSpeed: Int = 0
 
-    // 高德最新车速；null = 高德当前无导航/巡航数据 → 回退 [mIpcSpeed]
+    // 高德最新车速；null = 高德当前无导航/巡航数据
     private var mAmapSpeed: Int? = null
 
     // 当前模式：false=导航, true=巡航
@@ -277,11 +277,11 @@ class SpeedDelegate(
         else activity.resources.getColor(R.color.foreground_secondary, activity.theme)
     }
 
-    // ── SpeedClient 回调（MS 回退源：仅高德无数据时上屏） ──────────
+    // ── SpeedClient 回调（MS 优先源，>1 视为有效） ────────────────
 
     override fun onSpeedChanged(kmh: Int) {
         mIpcSpeed = kmh
-        if (mAmapSpeed == null) applySpeed(kmh)
+        applySpeed(resolveSpeed())
     }
 
     override fun onAccOff() {
@@ -291,27 +291,34 @@ class SpeedDelegate(
         applySpeed(0)
     }
 
-    // ── AmapNaviListener 回调（高德优先源） ───────────────────────
+    // ── AmapNaviListener 回调 ────────────────────────────────────
 
     override fun onNaviInfo(info: AmapNaviListener.NaviInfo) {
         mAmapSpeed = info.curSpeed
-        applySpeed(info.curSpeed)
+        applySpeed(resolveSpeed())
     }
 
     override fun onCruiseInfo(info: AmapNaviListener.CruiseInfo) {
         mAmapSpeed = info.curSpeed
-        applySpeed(info.curSpeed)
+        applySpeed(resolveSpeed())
     }
 
     override fun onNavigationEnded() {
         mAmapSpeed = null
-        applySpeed(mIpcSpeed)
+        applySpeed(resolveSpeed())
     }
 
     override fun onCruiseEnded() {
         mAmapSpeed = null
-        applySpeed(mIpcSpeed)
+        applySpeed(resolveSpeed())
     }
+
+    /**
+     * 车速仲裁：MS GPS 车速 >[IPC_MIN_VALID] km/h 优先（实时性好）；
+     * MS 无效（未定位/静止噪声）或无数据时用高德，高德也没有才回落 MS 值。
+     */
+    private fun resolveSpeed(): Int =
+        if (mIpcSpeed > IPC_MIN_VALID) mIpcSpeed else (mAmapSpeed ?: mIpcSpeed)
 
     private fun applySpeed(kmh: Int) {
         val target = if (mMiles) (kmh * MILE_RATIO).toInt() else kmh
@@ -358,6 +365,9 @@ class SpeedDelegate(
     companion object {
         private const val KEY_MILES = "persist.sys.isMiles"
         private const val MILE_RATIO = 0.62f
+
+        /** MS IPC 车速有效性阈值：>此值视为定位有效（SpeedClient 已把 1km/h 噪声归 0） */
+        private const val IPC_MIN_VALID = 1
 
         /** 车速区域相关的 item key 集合 */
         private val SPEED_ITEM_KEYS = setOf("speed", "speed_unit", "limit", "traffic")
