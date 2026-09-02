@@ -153,30 +153,19 @@ class LauncherActivity : Activity() {
     // #endregion
 
     /**
-     * 快照当前系统顶部任务（包名 + displayId），供 onNewIntent 判定"触发前用户是否在本桌面"。
+     * 快照当前系统顶部任务包名，供 onNewIntent 判定"触发前用户是否在本桌面"。
      *
      * 关键事实（emulator-5554 API 28 实测）：
      * - 高德跑在本 launcher 的 VirtualDisplay 上时，系统"顶部任务"是 VD 上的高德任务，
-     *   它会把主屏 launcher 挤成 paused+失焦 —— 但用户视觉上仍在桌面；
-     * - 此刻 getRunningTasks 恰好返回该 VD 任务（top=amapauto, display=VD id），
-     *   而浏览器等真正盖顶的其他 App 返回 display 0 的任务 —— 以此区分。
+     *   它会把主屏 launcher 挤成 paused+失焦 —— 但用户视觉上仍在桌面（不触发 onStop）；
+     * - 此刻 getRunningTasks 恰好返回该 VD 任务（top=amapauto），
+     *   而浏览器等真正盖顶的其他 App 返回自身包名 —— 以此辅助区分。
      */
     private fun snapshotTop() {
         try {
             val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
-            val t = am.getRunningTasks(1).firstOrNull() ?: return
-            sLastPauseTopPkg = t.topActivity?.packageName
-            sLastPauseTopDisplay = taskDisplayId(t)
+            sLastPauseTopPkg = am.getRunningTasks(1).firstOrNull()?.topActivity?.packageName
         } catch (_: Exception) { }
-    }
-
-    /** RunningTaskInfo 的 displayId：API 29+ 有 getDisplayId()/字段，28 上反射探测，失败回退主屏。 */
-    private fun taskDisplayId(task: android.app.ActivityManager.RunningTaskInfo): Int = try {
-        task.javaClass.getMethod("getDisplayId").invoke(task) as? Int
-            ?: android.view.Display.DEFAULT_DISPLAY
-    } catch (_: Throwable) {
-        try { task.javaClass.getField("displayId").getInt(task) }
-        catch (_: Throwable) { android.view.Display.DEFAULT_DISPLAY }
     }
 
     override fun onResume() {
@@ -184,7 +173,6 @@ class LauncherActivity : Activity() {
         // 快照重置为自身：resume 即回到顶部，旧的"抢焦者"快照已过期
         // （否则 HOME 回桌面后，am start 会读到浏览器等陈旧快照误走悬浮）。
         sLastPauseTopPkg = packageName
-        sLastPauseTopDisplay = android.view.Display.DEFAULT_DISPLAY
         android.util.Log.i("VDFocusDbg", "onResume fg=${sLauncherForeground} focus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus top=${dbgTop()}")
         super.onResume()
         if (mAppDrawerPending && ::views.isInitialized) {
@@ -206,7 +194,7 @@ class LauncherActivity : Activity() {
         // 而其他 App 真盖顶随后必然 onStop。onNewIntent 据此区分两种"失焦"。
         sLauncherStopped = false
         snapshotTop()
-        android.util.Log.i("VDFocusDbg", "onPause focus=$mHasFocus -> lastPauseHadFocus=$sLastPauseHadFocus lastTop=$sLastPauseTopPkg@$sLastPauseTopDisplay top=${dbgTop()}")
+        android.util.Log.i("VDFocusDbg", "onPause focus=$mHasFocus -> lastPauseHadFocus=$sLastPauseHadFocus lastTop=$sLastPauseTopPkg top=${dbgTop()}")
         super.onPause()
     }
 
@@ -256,11 +244,10 @@ class LauncherActivity : Activity() {
             //   而浏览器等真盖顶必经 onStop（API 28 无任务 displayId，用此区分 VD/盖顶）。
             // 快照在 onPause/onStop 都会刷新（已 paused 后被盖顶只触发 onStop），
             // onResume 时重置为自身，避免 HOME 回桌面后读到陈旧快照。
-            val vdId = try { pip.vdDisplayId() } catch (_: Throwable) { -1 }
             val onDesktop = sLastPauseHadFocus
                 || sLastPauseTopPkg == packageName
                 || !sLauncherStopped
-            android.util.Log.i("VDFocusDbg", "am-start path: onDesktop=$onDesktop (hadFocus=$sLastPauseHadFocus topPkg=$sLastPauseTopPkg topDisplay=$sLastPauseTopDisplay stopped=$sLauncherStopped vdId=$vdId)")
+            android.util.Log.i("VDFocusDbg", "am-start path: onDesktop=$onDesktop (hadFocus=$sLastPauseHadFocus topPkg=$sLastPauseTopPkg stopped=$sLauncherStopped)")
             if (onDesktop) {
                 if (AppDrawer.isShowing() || DrawerOverlay.isShowing()) {
                     AppDrawer.dismissIfShowing()
@@ -345,10 +332,6 @@ class LauncherActivity : Activity() {
         /** 最后一次 onPause/onStop 时系统顶部任务的包名（抢焦者快照）。 */
         @Volatile
         var sLastPauseTopPkg: String? = null
-
-        /** 最后一次 onPause/onStop 时系统顶部任务所在 displayId（-1 未知）。 */
-        @Volatile
-        var sLastPauseTopDisplay: Int = -1
 
         /** launcher 是否处于 stopped（被其他 App 真盖顶）。VD 抢焦只 pause 不 stop，据此区分二者。 */
         @Volatile

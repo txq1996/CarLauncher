@@ -48,8 +48,8 @@ android {
         }
     }
 
-    // 发布型 release 的混淆 / AdbDebug 默认值（本地不混淆、可调 AdbDebug）；
-// CI 通过 -PminifyRelease=true 走完整 R8 + 关 AdbDebug（详见 release.yml）。
+    // 发布型 release 的混淆开关（本地不混淆）；
+// CI 通过 -PminifyRelease=true 走完整 R8（详见 release.yml）。
     val minifyRelease: Boolean = (project.findProperty("minifyRelease") as String?)?.toBoolean() == true
     buildTypes {
         release {
@@ -59,12 +59,9 @@ android {
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             }
             signingConfig = signingConfigs.getByName("platform")
-            // AdbDebug：本地默认开启（不混淆时不走反射也无所谓），CI minify 时强制关闭。
-            buildConfigField("boolean", "ADB_DEBUG", (!minifyRelease).toString())
         }
         debug {
             signingConfig = signingConfigs.getByName("platform")
-            buildConfigField("boolean", "ADB_DEBUG", "true")
         }
     }
 

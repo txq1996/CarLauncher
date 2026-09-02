@@ -535,24 +535,6 @@
                             android:textSize="19px" />
 
                         <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16px"
-                            android:text="ADB 调试入口"
-                            android:textColor="@color/foreground"
-                            android:textSize="23px"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_adb_debug_status"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:text="不支持 debug"
-                            android:textColor="@color/foreground_secondary"
-                            android:textSize="17px" />
-
-                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="24px"

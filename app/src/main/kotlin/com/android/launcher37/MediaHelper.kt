@@ -38,7 +38,7 @@ class MediaHelper(
 
         /**
          * 最后一个 evaluate 后所有正在播放的包名集合。仅供 debug 反射读取
-         * （如 [AdbDebug] 的 `/dump` 拿 MediaHelper 状态）—— 不参与业务逻辑。
+         * —— 不参与业务逻辑。
          * 业务应使用实例的 [playingPackages] getter（保证多实例时不会串）。
          */
         @Volatile

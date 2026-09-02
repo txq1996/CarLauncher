@@ -31,8 +31,6 @@ import java.util.concurrent.CopyOnWriteArrayList
  * 与 NaviTextClient 关系：同一广播 action 由各自 receiver 独立 registerReceiver，
  * Android 框架会向所有 receiver 派发同一 intent，因此可共存互不干扰。
  * 本类额外提供 TMC/车道线/区间测速/巡航多灯 JSON，以及车速（CUR_SPEED）和红绿灯全字段。
- *
- * 调试：通过 [AdbDebug] 的 `/dump?kl=...AmapNaviListener` 直接看所有缓存字段与最后一次值。
  */
 object AmapNaviListener {
 
@@ -174,7 +172,7 @@ object AmapNaviListener {
         fun onTrafficLightHidden() {}
     }
 
-    // ── 缓存：原子引用写，最后值读取无锁（AdbDebug /dump 可看） ─────
+    // ── 缓存：原子引用写，最后值读取无锁 ─────
     @Volatile @JvmField var lastNaviInfo: NaviInfo? = null // 【部分已用】见NaviInfo各字段标注
     @Volatile @JvmField var lastCruiseInfo: CruiseInfo? = null // 【已用】巡航全量
     @Volatile @JvmField var lastTrafficLight: TrafficLightInfo? = null // 【已用】单灯
@@ -191,7 +189,7 @@ object AmapNaviListener {
     /** 路口放大图1=有 EXTRA_CROSS_MAP【未用】已存档未上UI */
     @Volatile @JvmField var crossMapActive: Boolean = false
 
-    /** 收包总数（包含所有 KEY_TYPE），用于 AdbDebug 健康检查 */
+    /** 收包总数（包含所有 KEY_TYPE），用于健康检查 */
     @Volatile @JvmField var broadcastCount: Long = 0
     @Volatile @JvmField var lastKeyType: Int = 0
     @Volatile @JvmField var lastReceiveAt: Long = 0
@@ -211,7 +209,7 @@ object AmapNaviListener {
     /**
      * 启动监听（幂等）。同进程内多次调用只注册一次。
      *
-     * 设计成幂等的原因：LauncherApp.onCreate 默认就会调，但 AdbDebug 调试页可能也想直接拉起；
+     * 设计成幂等的原因：LauncherApp.onCreate 默认就会调，调试页也可能想直接拉起；
      * 重复 registerReceiver 会抛 IllegalArgumentException，必须先 try/catch。
      */
     @JvmStatic
@@ -340,7 +338,7 @@ object AmapNaviListener {
             return
         }
         lastTrafficLight = TrafficLightInfo(status, dir, countdown)
-        // lightsData 非空 = 巡航多灯 JSON；同时也缓存并回调，便于 AdbDebug / 调试页直接看
+        // lightsData 非空 = 巡航多灯 JSON；同时也缓存并回调，便于调试页直接看
         if (!lightsData.isNullOrEmpty()) {
             lastCruiseTrafficLights = lightsData
             post { listeners.forEach { runCatching { it.onCruiseTrafficLights(lightsData) } } }
@@ -384,7 +382,7 @@ object AmapNaviListener {
             val info = lastNaviInfo!!
             post { listeners.forEach { runCatching { it.onNaviInfo(info) } } }
         } else {
-            // ICON=0 = 巡航数据：单独缓存一份以便 AdbDebug / 上层直接读 speed/road/camera
+            // ICON=0 = 巡航数据：单独缓存一份以便上层直接读 speed/road/camera
             val cruise = CruiseInfo(
                 curSpeed = asInt(extras.get("CUR_SPEED"), 0),
                 curRoadName = extras.getString("CUR_ROAD_NAME") ?: "未知道路",

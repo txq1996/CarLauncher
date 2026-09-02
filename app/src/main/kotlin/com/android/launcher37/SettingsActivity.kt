@@ -160,9 +160,6 @@ class SettingsActivity : Activity() {
         // ── 通用 ───────────────────────
         const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
         const val KEY_HOME_DIRECT_APP_DRAWER = "home_direct_app_drawer"
-
-        // ── ADB 调试入口 ───────────────────────
-        const val KEY_ADB_DEBUG = "adb_debug_enabled"
     }
 
     private lateinit var mTabs: Array<TextView>
@@ -293,7 +290,7 @@ class SettingsActivity : Activity() {
     /**
      * 重建 LauncherActivity 让刚才改的设置生效（`onCreate` 走 `SettingsSnapshot.load` 重新读 SP）。
      * `CLEAR_TASK + NEW_TASK` 保证 task 内所有 Activity（含自己）被销毁后，用新 Intent 重新
-     * 启动 LauncherActivity —— 进程保留，AdbDebug / PipService 不受影响。`onCreate` 会把
+     * 启动 LauncherActivity —— 进程保留，PipService 不受影响。`onCreate` 会把
      * 5 个 delegate 全部重新构造，新 SP 字段自然生效。
      */
     private fun restartLauncher() {
@@ -586,7 +583,6 @@ class SettingsActivity : Activity() {
 
     private fun bindGeneralTab() {
         bindCheck(R.id.cb_home_direct_drawer, KEY_HOME_DIRECT_APP_DRAWER)
-        bindAdbDebugToggle()
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()
         val btn = findViewById<Button>(R.id.btn_check_update)
@@ -609,24 +605,6 @@ class SettingsActivity : Activity() {
         })
         mUpdater = updater
         btn.setOnClickListener { updater.checkManually() }
-    }
-
-    /**
-     * 绑定 ADB 调试入口状态行。仅展示当前开关状态（默认开启）：
-     * - 已开启：监听 0.0.0.0:10837（同网段可直连，无鉴权）
-     * - 已关闭（修改后下次进程重启生效）
-     *
-     * CI release 走 -PminifyRelease=true 时，整段方法被 R8 视为死代码消除，
-     * 状态文字保持 layout 默认 `tv_adb_debug_status` 的「不支持 debug」。
-     */
-    private fun bindAdbDebugToggle() {
-        if (!BuildConfig.ADB_DEBUG) return
-        val status = findViewById<TextView>(R.id.tv_adb_debug_status)
-        status.text = if (prefs().getBoolean(KEY_ADB_DEBUG, true)) {
-            "已开启：监听 0.0.0.0:10837（同网段可直连，无鉴权）"
-        } else {
-            "已关闭（修改后下次进程重启生效）"
-        }
     }
 
     /**

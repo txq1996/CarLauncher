@@ -10,8 +10,8 @@ name: release
 # **不**主动 install 到任何模拟器/真机 —— adb install 步骤是开发者
 # 本地动作，CI 端不参与。
 #
-# CI 走 -PminifyRelease=true 启用完整 R8 + 关闭 AdbDebug（详见 app/build.gradle.kts）。
-# 本地 `gradlew assembleRelease` 默认不混淆 + 启 AdbDebug 便于调试。
+# CI 走 -PminifyRelease=true 启用完整 R8（详见 app/build.gradle.kts）。
+# 本地 `gradlew assembleRelease` 默认不混淆便于调试。
 on:
   push:
     branches: [ "**" ]
@@ -57,7 +57,7 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Assemble release (R8 enabled, AdbDebug stripped)
+      - name: Assemble release (R8 enabled)
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease -PminifyRelease=true

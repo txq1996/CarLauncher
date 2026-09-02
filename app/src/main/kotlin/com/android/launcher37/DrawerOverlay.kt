@@ -25,24 +25,12 @@ object DrawerOverlay {
     private var sOverlayRoot: ViewGroup? = null
     private var sWindowManager: WindowManager? = null
     private var sDismissAction: Runnable? = null
-    private var sDismissListeners: MutableList<Runnable> = mutableListOf()
     private var sStatsRunnable: Runnable? = null
 
     private const val POPUP_W = 1000
     private const val POPUP_H = 620
 
     fun isShowing(): Boolean = sOverlayRoot != null
-
-    fun addOnDismissListener(l: Runnable) { sDismissListeners.add(l) }
-    fun removeOnDismissListener(l: Runnable) { sDismissListeners.remove(l) }
-
-    private fun notifyDismiss() {
-        val ls = sDismissListeners.toList()
-        sDismissListeners.clear()
-        for (r in ls) r.run()
-        sDismissAction?.run()
-        sDismissAction = null
-    }
 
     fun dismiss() {
         val wm = sWindowManager
@@ -59,7 +47,8 @@ object DrawerOverlay {
         sOverlayRoot = null
         sWindowManager = null
         stopStatsTicker()
-        notifyDismiss()
+        sDismissAction?.run()
+        sDismissAction = null
     }
 
     fun toggle(ctx: Context) {
@@ -73,8 +62,8 @@ object DrawerOverlay {
                 AppDrawer.addOnDismissListener(object : Runnable {
                     override fun run() {
                         AppDrawer.removeOnDismissListener(this)
-                        dismissAction?.run()
-                        notifyDismiss()
+                        sDismissAction?.run()
+                        sDismissAction = null
                     }
                 })
                 sDismissAction = dismissAction
@@ -231,14 +220,14 @@ object DrawerOverlay {
                 SplitRepository.remove(appCtx, idx)
                 Toast.makeText(appCtx, "已删除分屏项", Toast.LENGTH_SHORT).show()
                 SharedExecutor.io().execute {
-                    val adapter = DrawerAdapter(appCtx, AppQuery.launcherEntriesSorted(appCtx), Store.v2Buttons(appCtx), false, labelSize, iconSize)
+                    val adapter = DrawerAdapter(appCtx, AppQuery.launcherEntriesSorted(appCtx), Store.v2Buttons(appCtx), false, iconSizePx = iconSize)
                     grid.post { grid.adapter = adapter }
                 }
             }
             true
         }
         SharedExecutor.io().execute {
-            val adapter = DrawerAdapter(appCtx, AppQuery.launcherEntriesSorted(appCtx), Store.v2Buttons(appCtx), false, labelSize, iconSize)
+            val adapter = DrawerAdapter(appCtx, AppQuery.launcherEntriesSorted(appCtx), Store.v2Buttons(appCtx), false, iconSizePx = iconSize)
             grid.post { grid.adapter = adapter }
         }
     }
@@ -320,7 +309,6 @@ object DrawerOverlay {
         apps: List<android.content.pm.ResolveInfo>,
         dockBtns: List<Store.V2Button>,
         dockMode: Boolean,
-        private val labelSizePx: Int = 17,
         private val iconSizePx: Int = 64
     ) : android.widget.BaseAdapter() {
         private val mContext: Context = context
@@ -371,9 +359,7 @@ object DrawerOverlay {
             lp.width = iconSizePx
             lp.height = iconSizePx
             iv.layoutParams = lp
-            val tv = cell.findViewById<View>(R.id.drawer_label) as TextView
-            tv.text = labels[position]
-            tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, labelSizePx.toFloat())
+            (cell.findViewById<View>(R.id.drawer_label) as TextView).text = labels[position]
             cell.tag = tags[position]
             return cell
         }

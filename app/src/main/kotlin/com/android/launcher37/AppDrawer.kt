@@ -209,14 +209,14 @@ object AppDrawer {
                 val idx = tagStr.substring(SPLIT_PREFIX.length).toInt()
                 if (pickCallback == null) {
                     removeSplitItem(activity, idx)
-                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null, labelSize, iconSize)
+                    grid.adapter = DrawerAdapter(activity, loadApps(activity), Store.v2Buttons(activity), pickCallback != null, iconSizePx = iconSize)
                 }
             }
             true
         }
 
         SharedExecutor.io().execute {
-            val adapter = DrawerAdapter(activity.applicationContext, loadApps(activity.applicationContext), dockBtns, pickCallback != null, labelSize, iconSize)
+            val adapter = DrawerAdapter(activity.applicationContext, loadApps(activity.applicationContext), dockBtns, pickCallback != null, iconSizePx = iconSize)
             grid.post {
                 if (!activity.isDestroyed && !activity.isFinishing) grid.adapter = adapter
             }
@@ -237,10 +237,6 @@ object AppDrawer {
             dockBtns.add(btn)
         }
     }
-
-    private fun isFeatureTag(tag: String): Boolean =
-        tag == TAG_SETTINGS || tag == TAG_HOME || tag == TAG_COMPANY
-            || tag == TAG_CLEAN || tag == TAG_SPLIT_NEW
 
     private fun hasDockItem(btns: List<Store.V2Button>, type: String, action: String?): Boolean {
         for (b in btns) {
@@ -331,7 +327,6 @@ object AppDrawer {
         apps: List<ResolveInfo>,
         dockBtns: List<Store.V2Button>,
         dockMode: Boolean,
-        private val labelSizePx: Int = 17,
         private val iconSizePx: Int = 64
     ) : BaseAdapter() {
         private val mContext: Context = context
@@ -389,7 +384,12 @@ object AppDrawer {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val cell = convertView
                 ?: LayoutInflater.from(mContext).inflate(R.layout.item_drawer_cell, parent, false)
-            cell.findViewById<ImageView>(R.id.drawer_icon).setImageDrawable(icons[position])
+            val iv = cell.findViewById<ImageView>(R.id.drawer_icon)
+            iv.setImageDrawable(icons[position])
+            val lp = iv.layoutParams
+            lp.width = iconSizePx
+            lp.height = iconSizePx
+            iv.layoutParams = lp
             (cell.findViewById<View>(R.id.drawer_label) as TextView).text = labels[position]
             cell.tag = tags[position]
             return cell

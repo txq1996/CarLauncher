@@ -8,4 +8,3 @@
 # - Kotlin metadata 由 AGP 默认规则保留。
 #
 # 仅 CI（-PminifyRelease=true）走本规则；本地默认 minify=false 不读此文件。
-# CI 走 R8 时 AdbDebug 由 BuildConfig.ADB_DEBUG=false 完全短路，被 shrink 剔除。
