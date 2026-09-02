@@ -129,7 +129,13 @@ class LauncherActivity : Activity() {
         dockBar = DockBar(this, views.dockGrid)
         dockBar.setCleanAction { cleanMemory() }
         val showLabel = snapshot.show(SettingsActivity.KEY_SHOW_DOCK_LABEL, true)
-        dockBar.setCellStyle(showIcon = true, showLabel = showLabel, iconSize = 44, labelSize = 14)
+        dockBar.setCellStyle(
+            showIcon = true, showLabel = showLabel,
+            iconSize = snapshot.size(SettingsActivity.KEY_DOCK_ICON_SIZE, 44),
+            labelSize = 14,
+            cellHeightPx = snapshot.size(SettingsActivity.KEY_DOCK_HEIGHT, 80)
+        )
+        dockBar.setColumns(snapshot.size(SettingsActivity.KEY_DOCK_COLUMNS, 10))
 
         applyStatusBarVisibility()
         layout.applyTheme()

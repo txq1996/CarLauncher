@@ -74,6 +74,12 @@ class DockBar(
     private var mIconSize = 44
     private var mLabelSize = 14
 
+    /** 格子高度（px）：跟随底栏高度，保证内容在行内垂直居中 */
+    private var mCellHeightPx = 80
+
+    /** 可见图标数量（Grid 列数）：条目超出时截断，保持单行 */
+    private var mColumns = 10
+
     /**
      * Monotonic refresh token: each call to [refresh] bumps it by 1; the
      * SharedExecutor task captures the value at submit time and skips the UI
@@ -89,11 +95,19 @@ class DockBar(
 
     fun setCleanAction(r: Runnable?) { mCleanAction = r }
 
-    fun setCellStyle(showIcon: Boolean, showLabel: Boolean, iconSize: Int, labelSize: Int) {
+    /** 设置可见图标数量（Grid 列数，5~10），超出部分截断 */
+    fun setColumns(n: Int) {
+        mColumns = n.coerceIn(1, MAX_DOCK_BUTTONS + 1)
+        mGrid.numColumns = mColumns
+        mAdapter.notifyDataSetChanged()
+    }
+
+    fun setCellStyle(showIcon: Boolean, showLabel: Boolean, iconSize: Int, labelSize: Int, cellHeightPx: Int = mCellHeightPx) {
         mShowIcon = showIcon
         mShowLabel = showLabel
         mIconSize = iconSize
         mLabelSize = labelSize
+        mCellHeightPx = cellHeightPx
         refresh()
     }
 
@@ -107,6 +121,9 @@ class DockBar(
         lp.height = mIconSize
         icon.layoutParams = lp
         label.setTextSize(TypedValue.COMPLEX_UNIT_PX, mLabelSize.toFloat())
+        // 格子高度跟随底栏高度（单行 Grid：格高=行高=Grid 高），
+        // 否则行高 80px 贴顶排布，底栏调高后内容垂直不居中
+        cell.layoutParams.height = mCellHeightPx
     }
 
     /**
@@ -307,7 +324,8 @@ class DockBar(
     /** 底栏适配器：第 1 格固定「全部应用」 + 自定义格 + 末尾添加按钮 */
     private inner class DockAdapter : AddTailAdapter<Store.V2Button>(MAX_DOCK_BUTTONS) {
 
-        override fun getCount(): Int = customCount() + 1
+        /** 总格数不超过列数，保持单行显示 */
+        override fun getCount(): Int = minOf(customCount() + 1, mColumns)
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             if (position == 0) {

@@ -1,6 +1,7 @@
 package com.android.launcher37
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -35,6 +36,8 @@ class SettingsActivity : Activity() {
         const val KEY_SPEED_CARD_W = "layout_speed_card_w"
         const val KEY_MUSIC_CARD_H = "layout_music_card_h"
         const val KEY_DOCK_HEIGHT = "dock_height"
+        const val KEY_DOCK_ICON_SIZE = "dock_icon_size"
+        const val KEY_DOCK_COLUMNS = "dock_columns"
 
         // ── 车速区域显隐（导航模式） ────────────────
         const val KEY_SHOW_NAVI_SPEED = "show_navi_speed"
@@ -133,7 +136,7 @@ class SettingsActivity : Activity() {
         /** int 尺寸快照表（key 顺序与默认值一一对应） */
         val INT_KEYS = arrayOf(
             KEY_PAGE_PADDING, KEY_CARD_GAP,
-            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H, KEY_DOCK_HEIGHT,
+            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H, KEY_DOCK_HEIGHT, KEY_DOCK_ICON_SIZE, KEY_DOCK_COLUMNS,
             KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
             KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC,
             KEY_TS_NAVI_TURN, KEY_TS_NAVI_ROAD, KEY_TS_NAVI_DEST,
@@ -145,7 +148,7 @@ class SettingsActivity : Activity() {
         )
 
         val INT_DEFAULTS = intArrayOf(
-            10, 10, 260, 180, 80,
+            10, 10, 260, 180, 80, 44, 10,
             110, 20, 17, 36,
             110, 20, 17, 36,
             36, 26, 15, 17, 17, 17, 17, 17, 17,
@@ -336,6 +339,8 @@ class SettingsActivity : Activity() {
         val box = findViewById<LinearLayout>(R.id.box_dock_seeks)
         box.removeAllViews()
         bindSeek(box, "底栏高度", KEY_DOCK_HEIGHT, 80, 60, 120)
+        bindSeek(box, "底栏图标大小", KEY_DOCK_ICON_SIZE, 44, 32, 64)
+        bindSeek(box, "底栏图标数量", KEY_DOCK_COLUMNS, 10, 5, 10, unit = "个")
     }
 
     private fun bindSpeedTab() {
@@ -554,7 +559,7 @@ class SettingsActivity : Activity() {
     }
 
     /** px 滑条行：范围 [min,max]，拖动即写 SP，右侧实时显示当前值 */
-    private fun bindSeek(box: LinearLayout, name: String, key: String, def: Int, min: Int, max: Int) {
+    private fun bindSeek(box: LinearLayout, name: String, key: String, def: Int, min: Int, max: Int, unit: String = "px") {
         val row = LayoutInflater.from(this).inflate(R.layout.item_seek_row, box, false)
         row.findViewById<TextView>(R.id.seek_name).text = name
         val valTv = row.findViewById<TextView>(R.id.seek_value)
@@ -562,9 +567,9 @@ class SettingsActivity : Activity() {
         val cur = prefs().getInt(key, def)
         picker.setRange(min, max, 1)
         picker.setValue(cur)
-        valTv.text = "${cur}px"
+        valTv.text = "$cur$unit"
         picker.setOnValueChangeListener { _, newVal ->
-            valTv.text = "${newVal}px"
+            valTv.text = "$newVal$unit"
             prefs().edit().putInt(key, newVal).apply()
         }
         box.addView(row)
@@ -582,7 +587,22 @@ class SettingsActivity : Activity() {
                 mTvUpdateStatus?.text = "正在检查更新…"
             }
             override fun onUpdateFound(info: UpdateChecker.UpdateInfo) {
-                mTvUpdateStatus?.text = "发现新版本 v${info.versionName} (code=${info.versionCode})，开始下载…"
+                mTvUpdateStatus?.text = "发现新版本 v${info.versionName} (code=${info.versionCode})，等待确认"
+                try {
+                    AlertDialog.Builder(this@SettingsActivity)
+                        .setTitle("发现新版本 v${info.versionName}")
+                        .setMessage("是否立即下载并安装？")
+                        .setPositiveButton("立即更新") { _, _ ->
+                            mTvUpdateStatus?.text = "开始下载…"
+                            mUpdater?.confirmUpdate()
+                        }
+                        .setNegativeButton("稍后") { _, _ ->
+                            mTvUpdateStatus?.text = "已取消，可重新检查更新"
+                        }
+                        .show()
+                } catch (e: Exception) {
+                    mTvUpdateStatus?.text = "弹窗失败：${e.message}"
+                }
             }
             override fun onUpToDate() {
                 mTvUpdateStatus?.text = "已是最新版本"

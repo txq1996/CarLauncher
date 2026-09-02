@@ -53,6 +53,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  * 报 `UID xxx does not have permission` 并 crash。PackageInstaller session 走
  * system_server 内部路径，不依赖 URI grant。self-update 时 framework 走
  * `installPackageLI` 静默路径（不弹 dialog）；非 self-update 场景会弹系统确认框。
+ *
+ * 确认流程：检查发现新版本后**不自动下载**，仅回调 [Listener.onUpdateFound]
+ * 并挂起待确认（[mPending]）；调用方弹窗让用户确认后调 [confirmUpdate]
+ * 才开始下载安装。
  */
 class UpdateChecker(
     private val mApp: Application,
@@ -126,6 +130,9 @@ class UpdateChecker(
     private val mDownloading = AtomicBoolean(false)
     private val mCancelled = AtomicBoolean(false)
 
+    /** 已发现待用户确认的更新；确认后由 [confirmUpdate] 消费并清空 */
+    @Volatile private var mPending: UpdateInfo? = null
+
     /**
      * 异步任务走 [SharedExecutor]（AGENTS #5 不允许 newSingleThreadExecutor）。
      * 单跑约束用 [mDownloading] 守护（双重提交会被 `if (mDownloading.get()) return` 拦截）。
@@ -157,6 +164,23 @@ class UpdateChecker(
             return
         }
         doCheckAndInstall(isAuto = false)
+    }
+
+    /**
+     * 用户在确认弹窗点"立即更新"后调用：开始下载并安装 [mPending] 的更新。
+     * 无待确认更新或已在下载中时静默忽略。
+     */
+    fun confirmUpdate() {
+        val info = mPending ?: return
+        if (mDownloading.get()) return
+        mExecutor.execute {
+            try {
+                downloadAndInstall(info)
+            } catch (e: Throwable) {
+                Log.e(TAG, "[Updater] download failed in confirmUpdate", e)
+                postError("下载更新失败：${e.message ?: e.javaClass.simpleName}")
+            }
+        }
     }
 
     /**
@@ -216,8 +240,9 @@ class UpdateChecker(
                 return
             }
             Log.i(TAG, "[Updater] new version found by $basis: name=${info.versionName} code=${info.versionCode} (size=${info.sizeBytes}B)")
+            // 挂起待确认：由调用方弹窗，用户确认后调 [confirmUpdate] 才开始下载安装
+            mPending = info
             postFound(info)
-            downloadAndInstall(info)
         } catch (e: Exception) {
             Log.e(TAG, "[Updater] queryAndInstall exception", e)
             postError("检查更新失败：${e.message ?: e.javaClass.simpleName}")
@@ -280,6 +305,7 @@ class UpdateChecker(
     }
 
     private fun downloadAndInstall(info: UpdateInfo) {
+        mPending = null
         mDownloading.set(true)
         val apk = File(mApp.cacheDir, UPDATE_FILE)
         if (apk.exists()) apk.delete()
