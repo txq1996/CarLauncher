@@ -55,6 +55,16 @@
         <item name="android:buttonTint">@color/foreground</item>
     </style>
 
+    <!-- 设置页主题按钮（重启桌面/选择音乐应用等）：56px 高、18px 字，水平 20px 内边距 -->
+    <style name="ThemeButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">56px</item>
+        <item name="android:paddingStart">20px</item>
+        <item name="android:paddingEnd">20px</item>
+        <item name="android:textColor">@color/foreground</item>
+        <item name="android:textSize">18px</item>
+    </style>
+
     <!-- 设置面板子容器（box_*_seeks 等） -->
     <style name="SeekBox">
         <item name="android:layout_width">match_parent</item>

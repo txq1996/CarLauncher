@@ -4,10 +4,9 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.os.Build
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
@@ -617,7 +616,7 @@ class SettingsActivity : Activity() {
         ).apply { topMargin = dpToPx(2) })
     }
 
-    /** 分区之间仅留分隔线（导航/巡航两个列表的视觉分隔，标题已按要求去掉） */
+    /** 分区标题（导航/巡航）：标题文字区分两个列表，非首个分区前加分隔线 */
     private fun renderSectionHeader(box: LinearLayout, title: String) {
         if (box.childCount > 0) {
             val div = View(this).apply {
@@ -626,6 +625,15 @@ class SettingsActivity : Activity() {
             }
             box.addView(div)
         }
+        val tv = TextView(this).apply {
+            text = title
+            setTextColor(resources.getColor(R.color.foreground, theme))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dpToPx(23).toFloat())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dpToPx(8) }
+        }
+        box.addView(tv)
     }
 
     /**
@@ -907,31 +915,20 @@ class SettingsActivity : Activity() {
     }
 
     /**
-     * 构造"当前版本"信息字符串（用于通用 tab 顶部 TextView）。
-     * 内容：
-     *  - versionName（来自 packageInfo）
-     *  - versionCode（构建 epoch 秒数；更新检查以此为唯一对比基准）
-     *  - 构建时间（北京时间，Asia/Shanghai，从 BuildConfig.BUILD_TIME_EPOCH 读）
+     * 构造"当前版本"信息字符串（用于通用 tab 版本行 TextView，与"检查更新"按钮同行）。
+     * 内容：versionName（来自 packageInfo）+ 构建时间（北京时间，从 BuildConfig.BUILD_TIME_EPOCH 读）。
      */
     private fun buildVersionInfo(): String {
-        val (vn, vc) = try {
-            val pi = packageManager.getPackageInfo(packageName, 0)
-            val vname = pi.versionName ?: "?"
-            val vcode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                pi.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                pi.versionCode.toLong()
-            }
-            vname to vcode
-        } catch (e: PackageManager.NameNotFoundException) {
-            "?" to 0L
+        val vn = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+        } catch (_: Exception) {
+            "?"
         }
         val buildEpoch = BuildConfig.BUILD_TIME_EPOCH
         val cstFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("Asia/Shanghai")
         }
         val buildTimeCst = cstFmt.format(Date(buildEpoch * 1000L))
-        return "当前版本：v$vn  (code=$vc)  构建：$buildTimeCst (北京时间)"
+        return "当前版本：v$vn  构建：$buildTimeCst"
     }
 }
