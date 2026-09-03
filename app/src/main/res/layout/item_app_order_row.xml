@@ -39,16 +39,6 @@
         android:textColor="@color/foreground"
         android:textSize="20px" />
 
-    <!-- 图标底色色块：点击弹颜色选择器（日/夜不同色） -->
-    <View
-        android:id="@+id/icon_bg_swatch"
-        android:layout_width="36px"
-        android:layout_height="36px"
-        android:layout_marginStart="8px"
-        android:background="@drawable/bg_color_swatch"
-        android:clickable="true"
-        android:focusable="true" />
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 色块背景：圆角 + 边框（与卡片底色区分） -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="@color/surface_variant" />
-    <stroke android:width="2px" android:color="@color/foreground_tertiary" />
-    <corners android:radius="4px" />
-</shape>

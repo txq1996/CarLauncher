@@ -32,10 +32,10 @@ object IconNormalizer {
     private const val SPLIT_SLANT_BOTTOM = NORM_SIZE * 0.375f
 
     @JvmStatic
-    fun normalizedIcon(c: Context, id: String, bgOverride: Int? = null): Drawable? {
-        val key = "id:$id:bg:$bgOverride"
+    fun normalizedIcon(c: Context, id: String): Drawable? {
+        val key = "id:$id"
         IconCache.normalizedCache().get(key)?.let { return it }
-        val n = normalizeDrawable(c, Store.icon(c, id), bgOverride)
+        val n = normalizeDrawable(c, Store.icon(c, id))
         if (n != null) IconCache.normalizedCache().put(key, n)
         return n
     }
@@ -64,11 +64,11 @@ object IconNormalizer {
     }
 
     @JvmStatic
-    fun normalizedSplitIcon(c: Context, leftId: String, rightId: String, bgOverride: Int? = null): Drawable? {
-        val key = "split:$leftId|$rightId:bg:$bgOverride"
+    fun normalizedSplitIcon(c: Context, leftId: String, rightId: String): Drawable? {
+        val key = "split:$leftId|$rightId"
         IconCache.normalizedCache().get(key)?.let { return it }
-        val left = normalizedIcon(c, leftId, bgOverride)
-        val right = normalizedIcon(c, rightId, bgOverride)
+        val left = normalizedIcon(c, leftId)
+        val right = normalizedIcon(c, rightId)
         if (left !is BitmapDrawable || right !is BitmapDrawable) {
             return left ?: right
         }
@@ -77,7 +77,7 @@ object IconNormalizer {
         val out = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
         val cv = Canvas(out)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        drawBgGradient(c, cv, bgOverride)
+        drawBgGradient(c, cv)
         val size = (NORM_SIZE * 0.80f).toInt()
         val top = (NORM_SIZE - size) / 2
         val leftClip = android.graphics.Path().apply {
@@ -102,8 +102,8 @@ object IconNormalizer {
     }
 
     @JvmStatic
-    fun normalizedEmoji(c: Context, emoji: String, bgOverride: Int? = null): Drawable? {
-        val key = "emoji:$emoji:bg:$bgOverride"
+    fun normalizedEmoji(c: Context, emoji: String): Drawable? {
+        val key = "emoji:$emoji"
         IconCache.normalizedCache().get(key)?.let { return it }
         val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
             textSize = 100f
@@ -116,21 +116,16 @@ object IconNormalizer {
         p.getTextBounds(emoji, 0, emoji.length, bounds)
         val out = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
         val cv = Canvas(out)
-        val bgPaint = if (bgOverride != null) {
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgOverride }
-        } else {
-            // 先离屏渲染 emoji 采样主色，用于背景渐变
-            val tmp = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
-            Canvas(tmp).drawText(
-                emoji,
-                (NORM_SIZE - bounds.width()) / 2f - bounds.left,
-                (NORM_SIZE - bounds.height()) / 2f - bounds.top,
-                p
-            )
-            val sp = sampledGradientPaint(c, tmp)
-            tmp.recycle()
-            sp
-        }
+        // 先离屏渲染 emoji 采样主色，用于背景渐变
+        val tmp = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
+        Canvas(tmp).drawText(
+            emoji,
+            (NORM_SIZE - bounds.width()) / 2f - bounds.left,
+            (NORM_SIZE - bounds.height()) / 2f - bounds.top,
+            p
+        )
+        val bgPaint = sampledGradientPaint(c, tmp)
+        tmp.recycle()
         cv.drawRoundRect(RectF(0f, 0f, NORM_SIZE.toFloat(), NORM_SIZE.toFloat()), CORNER_RADIUS, CORNER_RADIUS, bgPaint)
         cv.drawText(
             emoji,
@@ -175,15 +170,15 @@ object IconNormalizer {
         }
     }
 
-    internal fun normalizeDrawable(c: Context, d: Drawable?, bgOverride: Int? = null): Drawable? {
+    internal fun normalizeDrawable(c: Context, d: Drawable?): Drawable? {
         if (d == null) return null
         return try {
-            if (d is AdaptiveIconDrawable) return normalizeAdaptive(c, d, bgOverride)
+            if (d is AdaptiveIconDrawable) return normalizeAdaptive(c, d)
             val w = d.intrinsicWidth
             val h = d.intrinsicHeight
             if (w <= 0 || h <= 0) return d
             val bmp = renderFitCenter(d, w, h)
-            val result = if (needsBackdrop(bmp)) withBackdrop(c, bmp, bgOverride) else rounded(bmp)
+            val result = if (needsBackdrop(bmp)) withBackdrop(c, bmp) else rounded(bmp)
             bmp.recycle()
             BitmapDrawable(c.resources, result)
         } catch (e: Exception) {
@@ -202,69 +197,58 @@ object IconNormalizer {
         return false
     }
 
-    private fun withBackdrop(c: Context, src: Bitmap, bgOverride: Int? = null): Bitmap {
+    private fun withBackdrop(c: Context, src: Bitmap): Bitmap {
         val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
         val cv = Canvas(out)
         val bg = Paint(Paint.ANTI_ALIAS_FLAG)
-        if (bgOverride != null) {
-            // 自定义底色：纯色背景（不采样图标主色）
-            bg.color = bgOverride
-        } else {
-            // 自动采样：从图标像素提取主色生成渐变
-            val px = IntArray(src.width * src.height)
-            src.getPixels(px, 0, src.width, 0, 0, src.width, src.height)
-            var r = 0; var g = 0; var b = 0; var n = 0
-            var i = 0
-            while (i < px.size) {
-                if ((px[i] ushr 24) >= 24) {
-                    r += (px[i] shr 16) and 0xFF
-                    g += (px[i] shr 8) and 0xFF
-                    b += px[i] and 0xFF
-                    n++
-                }
-                i += 7
+        // 从图标像素提取主色生成渐变
+        val px = IntArray(src.width * src.height)
+        src.getPixels(px, 0, src.width, 0, 0, src.width, src.height)
+        var r = 0; var g = 0; var b = 0; var n = 0
+        var i = 0
+        while (i < px.size) {
+            if ((px[i] ushr 24) >= 24) {
+                r += (px[i] shr 16) and 0xFF
+                g += (px[i] shr 8) and 0xFF
+                b += px[i] and 0xFF
+                n++
             }
-            var avgR = if (n > 0) r / n else 230
-            var avgG = if (n > 0) g / n else 232
-            var avgB = if (n > 0) b / n else 237
-            var max = maxOf(avgR, avgG, avgB)
-            if (max == 0) max = 1
-            if (max < BACKDROP_MIN_BRIGHTNESS) {
-                val k = BACKDROP_MIN_BRIGHTNESS / max.toFloat()
-                avgR = minOf(255, (avgR * k).toInt())
-                avgG = minOf(255, (avgG * k).toInt())
-                avgB = minOf(255, (avgB * k).toInt())
-            }
-            val topR = minOf(255, (avgR * 1.15f + 8).toInt())
-            val topG = minOf(255, (avgG * 1.15f + 8).toInt())
-            val topB = minOf(255, (avgB * 1.15f + 8).toInt())
-            val botR = (avgR * 0.82f).toInt()
-            val botG = (avgG * 0.82f).toInt()
-            val botB = (avgB * 0.82f).toInt()
-            val topColor = 0xFF000000.toInt() or (topR shl 16) or (topG shl 8) or topB
-            val botColor = 0xFF000000.toInt() or (botR shl 16) or (botG shl 8) or botB
-            bg.shader = LinearGradient(
-                0f, 0f, 0f, src.height.toFloat(),
-                topColor, botColor, Shader.TileMode.CLAMP
-            )
+            i += 7
         }
+        var avgR = if (n > 0) r / n else 230
+        var avgG = if (n > 0) g / n else 232
+        var avgB = if (n > 0) b / n else 237
+        var max = maxOf(avgR, avgG, avgB)
+        if (max == 0) max = 1
+        if (max < BACKDROP_MIN_BRIGHTNESS) {
+            val k = BACKDROP_MIN_BRIGHTNESS / max.toFloat()
+            avgR = minOf(255, (avgR * k).toInt())
+            avgG = minOf(255, (avgG * k).toInt())
+            avgB = minOf(255, (avgB * k).toInt())
+        }
+        val topR = minOf(255, (avgR * 1.15f + 8).toInt())
+        val topG = minOf(255, (avgG * 1.15f + 8).toInt())
+        val topB = minOf(255, (avgB * 1.15f + 8).toInt())
+        val botR = (avgR * 0.82f).toInt()
+        val botG = (avgG * 0.82f).toInt()
+        val botB = (avgB * 0.82f).toInt()
+        val topColor = 0xFF000000.toInt() or (topR shl 16) or (topG shl 8) or topB
+        val botColor = 0xFF000000.toInt() or (botR shl 16) or (botG shl 8) or botB
+        bg.shader = LinearGradient(
+            0f, 0f, 0f, src.height.toFloat(),
+            topColor, botColor, Shader.TileMode.CLAMP
+        )
         cv.drawRoundRect(RectF(0f, 0f, src.width.toFloat(), src.height.toFloat()), CORNER_RADIUS, CORNER_RADIUS, bg)
         cv.drawBitmap(src, 0f, 0f, null)
         return out
     }
 
-    private fun normalizeAdaptive(c: Context, d: AdaptiveIconDrawable, bgOverride: Int? = null): Drawable {
+    private fun normalizeAdaptive(c: Context, d: AdaptiveIconDrawable): Drawable {
         val out = Bitmap.createBitmap(NORM_SIZE, NORM_SIZE, Bitmap.Config.ARGB_8888)
         val cv = Canvas(out)
-        if (bgOverride != null) {
-            // 自定义底色：以纯色圆角底替换自适应图标自带的背景层
-            val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgOverride }
-            cv.drawRoundRect(RectF(0f, 0f, NORM_SIZE.toFloat(), NORM_SIZE.toFloat()), CORNER_RADIUS, CORNER_RADIUS, bg)
-        } else {
-            d.background?.let {
-                it.setBounds(0, 0, NORM_SIZE, NORM_SIZE)
-                it.draw(cv)
-            }
+        d.background?.let {
+            it.setBounds(0, 0, NORM_SIZE, NORM_SIZE)
+            it.draw(cv)
         }
         d.foreground?.let {
             val fw = it.intrinsicWidth
@@ -300,12 +284,9 @@ object IconNormalizer {
     /**
      * 在画布上绘制 surfaceVariant→outline 渐变 + 圆角的图标背景卡（共享 NORM_SIZE × NORM_SIZE 尺寸）。
      */
-    private fun drawBgGradient(c: Context, cv: Canvas, bgOverride: Int? = null) {
-        val bg = Paint(Paint.ANTI_ALIAS_FLAG)
-        if (bgOverride != null) {
-            bg.color = bgOverride
-        } else {
-            bg.shader = LinearGradient(
+    private fun drawBgGradient(c: Context, cv: Canvas) {
+        val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
                 0f, 0f, 0f, NORM_SIZE.toFloat(),
                 c.resources.getColor(R.color.surface_variant),
                 c.resources.getColor(R.color.divider),
