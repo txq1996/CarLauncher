@@ -27,17 +27,15 @@ data class WidgetSpec(
 /** Widget 类型常量 */
 object WidgetTypes {
     const val TIME = "time"
-    const val MUSIC = "music"
     const val LYRICS = "lyrics"
     const val SPEED = "speed"
-    const val DOCK = "dock"
     const val VD = "vd"
     const val APPLIST = "applist"
 
     /** 设计器"添加"列表（显示名 + 类型） */
     val CATALOG: List<Pair<String, String>> = listOf(
         "时间" to TIME,
-        "歌词" to LYRICS,
+        "音乐" to LYRICS,
         "车速/导航" to SPEED,
         "VD 应用窗口" to VD,
         "应用列表" to APPLIST

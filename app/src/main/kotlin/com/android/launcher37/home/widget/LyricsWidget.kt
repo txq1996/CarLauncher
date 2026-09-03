@@ -37,7 +37,7 @@ import com.android.launcher37.home.SdcardMusicStore
  */
 class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec, R.layout.card_lyrics) {
 
-    override val displayName = "歌词"
+    override val displayName = "音乐"
 
     /** 播放控制（与音乐 Widget 同一条 MediaSession 控制链路） */
     private val callback = object : MediaHelper.UiCallback {
@@ -76,6 +76,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     private val lineGap: Int get() = cfgInt(CFG_GAP, 15)
 
     override val props: List<WidgetProp> = listOf(
+        WidgetProp(CFG_MUSIC_PKG, "绑定音乐应用", PropType.CHOICE, "", choices = launcherChoices()),
         WidgetProp(CFG_SHOW_TRACK, "显示歌名", PropType.BOOL, "1"),
         WidgetProp(CFG_SHOW_ARTIST, "显示作者", PropType.BOOL, "1"),
         WidgetProp(CFG_SHOW_BAR, "显示进度", PropType.BOOL, "1"),
@@ -83,8 +84,22 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         WidgetProp(CFG_LINES, "歌词行数", PropType.INT, "10", min = 3, max = 15),
         WidgetProp(CFG_SIZE_CUR, "当前句字号", PropType.INT, "20", min = 10, max = 50),
         WidgetProp(CFG_SIZE_OTHER, "其他行字号", PropType.INT, "15", min = 10, max = 50),
-        WidgetProp(CFG_GAP, "行间距", PropType.INT, "15", min = 0, max = 30)
+        WidgetProp(CFG_GAP, "行间距", PropType.INT, "7", min = 0, max = 30)
     )
+
+    /** 全部可启动应用（label to packageName，字典序）供绑定选择 */
+    private fun launcherChoices(): List<Pair<String, String>> = try {
+        activity.packageManager.queryIntentActivities(
+            android.content.Intent(android.content.Intent.ACTION_MAIN)
+                .addCategory(android.content.Intent.CATEGORY_LAUNCHER), 0
+        ).mapNotNull { ri ->
+            val label = ri.loadLabel(activity.packageManager)?.toString()
+                ?: return@mapNotNull null
+            label to ri.activityInfo.packageName
+        }.sortedBy { it.first }
+    } catch (_: Throwable) {
+        emptyList()
+    }
 
     private class LrcLine(val timeMs: Long, val text: String)
 
@@ -120,10 +135,9 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         progress = findViewById(R.id.lyrics_progress)
         ivCover = findViewById(R.id.iv_lyrics_cover)
         boxLines = findViewById(R.id.box_lyrics_lines)
-        // 歌曲信息区：未绑定先选择；已绑定 → 启动音乐 app，播放后自动返回桌面
+        // 歌曲信息区：点击 = 启动/唤醒音乐 app（默认 QQ 音乐），播放后自动返回桌面；长按换绑
         findViewById<View>(R.id.box_lyrics_info)?.setOnClickListener {
-            val pkg = boundPkg()
-            if (pkg == null) pickMusicApp() else musicLauncher.onButton(mediaHelper::togglePlay, pkg)
+            musicLauncher.onButton(mediaHelper::togglePlay, boundPkg())
         }
         findViewById<View>(R.id.box_lyrics_info)?.setOnLongClickListener { pickMusicApp(); true }
         findViewById<View>(R.id.btn_lyrics_prev)?.setOnClickListener {
@@ -135,7 +149,18 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         findViewById<View>(R.id.btn_lyrics_next)?.setOnClickListener {
             musicLauncher.onButton(mediaHelper::next, boundPkg())
         }
+        refreshAppBadge()
         buildLineViews()
+    }
+
+    /** 左上角角标：显示当前绑定音乐 app 的图标与名称 */
+    private fun refreshAppBadge() {
+        val pkg = boundPkg()
+        findViewById<ImageView>(R.id.iv_lyrics_app_icon)?.setImageDrawable(
+            Store.normalizedIcon(activity, pkg)
+        )
+        findViewById<TextView>(R.id.tv_lyrics_app_name)?.text =
+            Store.label(activity, pkg)
     }
 
     override fun onSpecApplied() {
@@ -159,6 +184,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
 
     override fun onPropChanged(key: String, value: String) {
         onSpecApplied()
+        if (key == CFG_MUSIC_PKG) refreshAppBadge()
         buildLineViews()
         refreshLines()
     }
@@ -185,15 +211,17 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
             activity.resources.getDrawable(R.drawable.progress_music)
     }
 
-    // ── 绑定 / 唤醒（与音乐 Widget 同一全局绑定 music_app_pkg） ──
+    // ── 绑定 / 唤醒（绑定存实例 config；未绑定时默认 QQ 音乐车机版） ──
 
-    private fun boundMusicId(): String? =
-        com.android.launcher37.Prefs.of(activity).getString(MUSIC_APP_KEY, null)
+    private fun boundPkg(): String =
+        (spec.config[CFG_MUSIC_PKG] ?: DEFAULT_MUSIC_PKG)
+            .substringBefore('/')
+            .takeIf { it.isNotEmpty() } ?: DEFAULT_MUSIC_PKG
 
     private fun pickMusicApp() {
         MusicAppPicker.pick(activity, "选择音乐应用") { pkgCls ->
             if (pkgCls.contains("/") && pkgCls.substringBefore('/').isNotEmpty()) {
-                com.android.launcher37.Prefs.of(activity).edit().putString(MUSIC_APP_KEY, pkgCls).apply()
+                WidgetHost.instance?.updateConfig(spec.id, CFG_MUSIC_PKG, pkgCls)
                 toast("已绑定：${pkgCls.substringBefore('/')}")
             } else {
                 toast("绑定失败：无效的应用")
@@ -203,11 +231,6 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
 
     private fun toast(msg: String) =
         android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_SHORT).show()
-
-    private fun boundPkg(): String? {
-        val id = com.android.launcher37.Prefs.of(activity).getString("music_app_pkg", null)
-        return id?.substringBefore('/')?.takeIf { it.isNotEmpty() }
-    }
 
     /** 0.5 秒后回到桌面，使刚进入的音乐 app 转入后台 */
     private fun returnToHome() {
@@ -350,6 +373,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     /**
      * 刷新歌词窗口：当前句 = curSize+bold+主色（+翻译副行），其余 = otherSize+副色。
      * 纯文本歌词（mPlain）在中间行整段显示。
+     * 窗口默认显示歌词中段；播放中当前句居中，靠近首尾时贴边（不越界、不出空行）。
      */
     private fun refreshLines() {
         if (mRows.isEmpty()) return
@@ -357,6 +381,12 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         val secondary = activity.resources.getColor(R.color.foreground_secondary, activity.theme)
         val tertiary = activity.resources.getColor(R.color.foreground_tertiary, activity.theme)
         val eff = effectiveCount
+        // 窗口起始行：未播放 → 歌词中段；播放中 → 当前句居中并 clamp 到有效范围
+        val winStart = if (mCurIndex < 0) {
+            ((mLines.size - eff) / 2).coerceAtLeast(0)
+        } else {
+            (mCurIndex - (eff - 1) / 2).coerceIn(0, maxOf(0, mLines.size - eff))
+        }
         for ((i, row) in mRows.withIndex()) {
             // 有翻译时超出有效行数的行隐藏（原文/译文各占一行，行数减半）
             if (i >= eff) {
@@ -375,7 +405,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
                 continue
             }
             row.main.maxLines = 1
-            val lineIdx = mCurIndex - (eff - 1) / 2 + i
+            val lineIdx = winStart + i
             val isCur = lineIdx == mCurIndex
             val text = if (lineIdx in mLines.indices) mLines[lineIdx].text else ""
             row.main.text = text
@@ -423,9 +453,11 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     }
 
     companion object {
-        private const val MUSIC_APP_KEY = "music_app_pkg"
+        /** 默认绑定的音乐 app：QQ 音乐车机版（属性面板/长按可改） */
+        const val DEFAULT_MUSIC_PKG = "com.tencent.qqmusiccar"
 
         // 实例外观属性 config 键
+        const val CFG_MUSIC_PKG = "music_pkg"
         const val CFG_SHOW_TRACK = "lyrics_show_track"
         const val CFG_SHOW_ARTIST = "lyrics_show_artist"
         const val CFG_SHOW_BAR = "lyrics_show_bar"

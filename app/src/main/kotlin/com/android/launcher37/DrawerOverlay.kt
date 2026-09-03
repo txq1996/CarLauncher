@@ -173,7 +173,7 @@ object DrawerOverlay {
                     Toast.makeText(appCtx, msg, Toast.LENGTH_SHORT).show()
                 },
                 onSplitNew = {
-                    Toast.makeText(appCtx, "请到桌面底栏添加分屏", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(appCtx, "请长按桌面应用列表条目添加分屏", Toast.LENGTH_SHORT).show()
                 }
             )
         }

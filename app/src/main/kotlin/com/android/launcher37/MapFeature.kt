@@ -11,7 +11,6 @@ internal object MapFeature {
     /** map action -> emoji */
     val HOME_EMOJI = "\uD83C\uDFE1"       // house
     val COMPANY_EMOJI = "\uD83D\uDCBC"     // briefcase
-    val STOP_EMOJI = "\uD83D\uDED1"        // stop sign
 
     /** standalone (no map action) */
     val CLEAN_EMOJI = "\uD83E\uDDF9"       // mop

@@ -2,7 +2,7 @@
 
     <!-- ═══ 设置页共享样式 ═══ -->
 
-    <!-- Tab 按钮（布局/时间/车速/音乐/底栏/通用） -->
+    <!-- Tab 按钮（布局/应用/通用） -->
     <style name="Tab">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">60px</item>
@@ -17,15 +17,6 @@
         <item name="android:fillViewport">true</item>
         <item name="android:scrollbars">none</item>
         <item name="android:visibility">gone</item>
-    </style>
-
-    <!-- 分节标题（"布局参数"/"卡片显示"/"字体大小" 等） -->
-    <style name="SectionHeader">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@color/foreground</item>
-        <item name="android:textSize">23px</item>
-        <item name="android:textStyle">bold</item>
     </style>
 
     <!-- CheckBox 行（与全部应用行同风格：64px 圆角卡片）：名称居左、勾选框居右 -->
@@ -55,7 +46,7 @@
         <item name="android:buttonTint">@color/foreground</item>
     </style>
 
-    <!-- 设置页主题按钮（重启桌面/选择音乐应用等）：56px 高、18px 字，水平 20px 内边距 -->
+    <!-- 设置页主题按钮（重启桌面/布局设计等）：56px 高、18px 字，水平 20px 内边距 -->
     <style name="ThemeButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">56px</item>
@@ -63,14 +54,6 @@
         <item name="android:paddingEnd">20px</item>
         <item name="android:textColor">@color/foreground</item>
         <item name="android:textSize">18px</item>
-    </style>
-
-    <!-- 设置面板子容器（box_*_seeks 等） -->
-    <style name="SeekBox">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">8px</item>
-        <item name="android:orientation">vertical</item>
     </style>
 
     <!-- ═══ 导航面板共享样式 ═══ -->
@@ -86,22 +69,6 @@
         <item name="android:maxLines">1</item>
         <item name="android:textColor">@color/foreground_tertiary</item>
         <item name="android:textSize">17px</item>
-    </style>
-
-    <!-- ═══ 抽屉/底栏格子共享样式 ═══ -->
-
-    <!-- 图标 + 标签的垂直格子（抽屉/底栏通用） -->
-    <style name="CellIcon">
-        <item name="android:scaleType">centerInside</item>
-    </style>
-
-    <style name="CellLabel">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:ellipsize">end</item>
-        <item name="android:gravity">center</item>
-        <item name="android:maxLines">1</item>
-        <item name="android:textColor">@color/foreground</item>
     </style>
 
 </resources>

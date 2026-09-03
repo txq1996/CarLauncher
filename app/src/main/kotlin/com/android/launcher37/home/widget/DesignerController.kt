@@ -36,6 +36,10 @@ class DesignerController(
 ) {
     companion object {
         private const val HANDLE_PX = 28
+
+        /** 新添加 VD 的默认绑定应用：高德地图车机版 */
+        private const val DEFAULT_VD_PKG = "com.autonavi.amapauto"
+
         // 缩放手柄方位标志
         private const val H_L = 1
         private const val H_T = 2
@@ -163,10 +167,12 @@ class DesignerController(
             .setItems(catalog.map { it.first }.toTypedArray()) { _, which ->
                 val type = catalog[which].second
                 if (type == WidgetTypes.VD) {
-                    // VD 添加时必须选择承载的 App（不绑定则不添加）
-                    showVdAppPicker { pkg ->
-                        val widget = host.addWidget(WidgetTypes.VD, pkg)
-                        if (widget != null) select(widget.spec.id)
+                    // 默认绑定高德车机版（属性面板可改）；高德已被同页 VD 占用时弹选择器
+                    val widget = host.addWidget(WidgetTypes.VD, DEFAULT_VD_PKG)
+                    if (widget != null) select(widget.spec.id)
+                    else showVdAppPicker { pkg ->
+                        val w = host.addWidget(WidgetTypes.VD, pkg)
+                        if (w != null) select(w.spec.id)
                     }
                 } else {
                     val widget = host.addWidget(type, null)

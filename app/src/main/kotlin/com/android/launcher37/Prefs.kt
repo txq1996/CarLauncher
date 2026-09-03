@@ -22,16 +22,4 @@ object Prefs {
      */
     @JvmStatic
     fun of(c: Context): SharedPreferences = c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-
-    /**
-     * 字符串设置项便捷读取。
-     *
-     * @param c   任意 Context
-     * @param key 设置项 key
-     * @param def 未设置时的默认值
-     * @return 当前值或默认值
-     */
-    @JvmStatic
-    fun getString(c: Context, key: String, def: String?): String? =
-        of(c).getString(key, def)
 }
