@@ -26,4 +26,13 @@
         <item name="android:colorControlActivated">@color/foreground_secondary</item>
         <item name="android:colorControlHighlight">@color/surface_highlight</item>
     </style>
+
+    <!--
+        LauncherActivity 专用：禁用窗口切换动画。
+        悬浮窗触发走 am start（singleTask 会被拉到前台再退回），默认 Material 窗口动画
+        会在原 App 上播放"任务切换"动画；置空 windowAnimationStyle 彻底消除该切换动画。
+    -->
+    <style name="Theme.Launcher37.NoAnim" parent="Theme.Launcher37">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

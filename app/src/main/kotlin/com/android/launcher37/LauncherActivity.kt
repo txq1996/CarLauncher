@@ -54,6 +54,7 @@ class LauncherActivity : Activity() {
             // 用内存前台标志区分：启动前不在本 launcher（其他 App）弹悬浮，在桌面弹 AppDrawer
             if (!sLauncherForeground) {
                 super.onCreate(savedInstanceState)
+                hideWindowForOverlay()
                 startService(Intent(this, DrawerService::class.java))
                 finish()
                 return
@@ -279,6 +280,7 @@ class LauncherActivity : Activity() {
                 return
             }
             // 其他 App 上：悬浮切换，不返桌面
+            hideWindowForOverlay()
             if (DrawerOverlay.isShowing()) {
                 DrawerOverlay.dismiss()
             } else {
@@ -347,6 +349,18 @@ class LauncherActivity : Activity() {
     }
 
     fun cleanMemory() = MemoryCleaner.cleanFromUi(this)
+
+    /**
+     * 浮窗切换路径：让 launcher 窗口保持不可见（透明背景 + 隐藏内容），
+     * 避免 am start 拉前台时在原 App 上闪出桌面/背景。仅本浮窗路径调用，
+     * 随后即 finish/moveTaskToBack，无需恢复。
+     */
+    private fun hideWindowForOverlay() {
+        try {
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            findViewById<android.view.View>(android.R.id.content)?.visibility = android.view.View.INVISIBLE
+        } catch (_: Exception) {}
+    }
 
     companion object {
         /** 本 launcher 是否曾进入前台（onResume=true / onPause=false）。仅用于 onCreate 冷启动兜底判定。 */
