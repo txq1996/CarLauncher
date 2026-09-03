@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 滑条行（与全部应用行同风格：64px 圆角卡片、20px 字体） -->
+<!-- 字体滑条行（SeekBar）：64px 圆角卡片、20px 字体，范围 10~50（车速 10~150） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="64px"
@@ -33,10 +33,11 @@
         android:textSize="15px" />
 
     <SeekBar
-        android:id="@+id/seek_bar"
+        android:id="@+id/font_seek"
         android:layout_width="500px"
         android:layout_height="wrap_content"
         android:layout_marginStart="8px"
+        android:max="50"
         android:paddingStart="8px"
         android:paddingEnd="8px"
         android:progressTint="@color/foreground"

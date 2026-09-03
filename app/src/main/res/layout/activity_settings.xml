@@ -8,48 +8,22 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
+        android:layout_height="match_parent"
         android:orientation="horizontal">
 
-        <TextView
-            android:layout_width="0px"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="桌面设置"
-            android:textColor="@color/foreground"
-            android:textSize="24px"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/btn_restart_launcher"
-            style="@style/ThemeButton"
-            android:text="重启桌面" />
-    </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0px"
-        android:layout_marginTop="20px"
-        android:layout_weight="1">
-
+        <!-- ── 左侧 Tab 栏 + 重启按钮 ── -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/tab_box"
+            android:layout_width="140px"
             android:layout_height="match_parent"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <!-- ── 左侧 Tab 栏 ── -->
-            <LinearLayout
-                android:id="@+id/tab_box"
-                android:layout_width="140px"
-                android:layout_height="match_parent"
-                android:orientation="vertical">
-
-                <ScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:fillViewport="true"
-                    android:scrollbars="none">
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0px"
+                android:layout_weight="1"
+                android:fillViewport="true"
+                android:scrollbars="none">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -65,6 +39,13 @@
                         <TextView android:id="@+id/tab_general" style="@style/Tab" android:text="通用" />
                     </LinearLayout>
                 </ScrollView>
+
+                <Button
+                    android:id="@+id/btn_restart_launcher"
+                    style="@style/ThemeButton"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="12px"
+                    android:text="重启桌面" />
             </LinearLayout>
 
             <FrameLayout
@@ -83,6 +64,10 @@
 
                         <LinearLayout android:id="@+id/box_layout_seeks" style="@style/SeekBox" />
 
+                        <LinearLayout style="@style/CheckRow">
+                            <TextView style="@style/CheckRowLabel" android:text="显示左侧栏" />
+                            <CheckBox android:id="@+id/cb_show_left_col" style="@style/CheckRowCheck" />
+                        </LinearLayout>
                         <LinearLayout style="@style/CheckRow">
                             <TextView style="@style/CheckRowLabel" android:text="显示状态栏" />
                             <CheckBox android:id="@+id/cb_hide_status_bar" style="@style/CheckRowCheck" />
@@ -246,6 +231,21 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
+                        <LinearLayout
+                            android:id="@+id/box_drawer_seeks"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="40px"
+                            android:layout_marginTop="12px"
+                            android:text="设置抽屉与悬浮窗的图标大小、间距、字体大小，下次打开时生效"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
+
                         <com.android.launcher37.WrapRecyclerView
                             android:id="@+id/box_apps"
                             android:layout_width="match_parent"
@@ -261,21 +261,6 @@
                             android:layout_marginStart="40px"
                             android:layout_marginTop="12px"
                             android:text="排序和隐藏在下次打开抽屉时生效，无需重启桌面；隐藏的应用仍可添加到底栏和分屏"
-                            android:textColor="@color/foreground_secondary"
-                            android:textSize="15px" />
-
-                        <LinearLayout
-                            android:id="@+id/box_drawer_seeks"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="40px"
-                            android:layout_marginTop="12px"
-                            android:text="设置抽屉与悬浮窗的图标大小、间距、字体大小，下次打开时生效"
                             android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
                     </LinearLayout>
@@ -329,6 +314,5 @@
                     </LinearLayout>
                 </ScrollView>
             </FrameLayout>
-        </LinearLayout>
-    </FrameLayout>
+    </LinearLayout>
 </LinearLayout>

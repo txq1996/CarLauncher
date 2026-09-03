@@ -49,9 +49,22 @@
         android:minHeight="0px"
         android:padding="8px" />
 
-    <com.android.launcher37.NumberPickerView
-        android:id="@+id/picker_font"
+    <TextView
+        android:id="@+id/font_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10px" />
+        android:layout_marginStart="8px"
+        android:includeFontPadding="false"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="15px" />
+
+    <SeekBar
+        android:id="@+id/font_seek"
+        android:layout_width="500px"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6px"
+        android:paddingStart="8px"
+        android:paddingEnd="8px"
+        android:progressTint="@color/foreground"
+        android:thumbTint="@color/foreground" />
 </LinearLayout>

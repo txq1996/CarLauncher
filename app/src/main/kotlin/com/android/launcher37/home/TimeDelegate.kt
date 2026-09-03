@@ -25,6 +25,21 @@ class TimeDelegate(
     private val fmtDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     private val fmtDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val fmtHm = SimpleDateFormat("HH:mm", Locale.getDefault())
+    /** 自定义格式缓存（pattern 变化时重建） */
+    private var customPattern: String? = null
+    private var customFmt: SimpleDateFormat? = null
+
+    /** 自定义时间格式（非空则优先于预设） */
+    private fun customPattern(ctx: android.content.Context): String? =
+        Prefs.of(ctx).getString(SettingsActivity.KEY_TIME_FORMAT_CUSTOM, null)?.takeIf { it.isNotBlank() }
+
+    private fun customFormatter(pattern: String): SimpleDateFormat {
+        if (customPattern != pattern || customFmt == null) {
+            customPattern = pattern
+            customFmt = SimpleDateFormat(pattern, Locale.getDefault())
+        }
+        return customFmt!!
+    }
 
     fun start() {
         applyLayout()
@@ -51,20 +66,33 @@ class TimeDelegate(
 
     private fun scheduleNext() {
         handler.removeCallbacks(ticker)
-        val fmt = Prefs.of(views.cardTime.context).getInt(SettingsActivity.KEY_TIME_FORMAT, 1)
-        val delay = if (fmt == 1 || fmt == 3) 1000L else 60000L - System.currentTimeMillis() % 60000L
+        val ctx = views.cardTime.context
+        val custom = customPattern(ctx)
+        val hasSeconds = custom?.contains("s") == true || custom?.contains("S") == true
+        val delay = if (hasSeconds) 1000L else {
+            if (custom != null) 60000L - System.currentTimeMillis() % 60000L
+            else {
+                val fmt = Prefs.of(ctx).getInt(SettingsActivity.KEY_TIME_FORMAT, 1)
+                if (fmt == 1 || fmt == 3) 1000L else 60000L - System.currentTimeMillis() % 60000L
+            }
+        }
         handler.postDelayed(ticker, delay)
     }
 
     private fun updateTime() {
         val ctx = views.cardTime.context
-        val fmtIdx = Prefs.of(ctx).getInt(SettingsActivity.KEY_TIME_FORMAT, 1)
         val now = Date()
-        val text = when (fmtIdx) {
-            1 -> fmtHms.format(now)
-            2 -> fmtDateTime.format(now)
-            3 -> fmtDate.format(now) + "\n" + fmtHms.format(now)
-            else -> fmtHm.format(now)
+        val custom = customPattern(ctx)
+        val text = if (custom != null) {
+            customFormatter(custom).format(now)
+        } else {
+            val fmtIdx = Prefs.of(ctx).getInt(SettingsActivity.KEY_TIME_FORMAT, 1)
+            when (fmtIdx) {
+                1 -> fmtHms.format(now)
+                2 -> fmtDateTime.format(now)
+                3 -> fmtDate.format(now) + "\n" + fmtHms.format(now)
+                else -> fmtHm.format(now)
+            }
         }
         views.tvTime.text = text
     }

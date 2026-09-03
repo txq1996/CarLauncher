@@ -48,6 +48,9 @@ class LayoutDelegate(
         val dockH = snapshot.size(SettingsActivity.KEY_DOCK_HEIGHT, 80)
         views.dockGrid.layoutParams.height = dockH
         // 卡片显隐
+        val showLeft = snapshot.show(SettingsActivity.KEY_SHOW_LEFT_COLUMN, true)
+        views.leftCol.visibility = if (showLeft) View.VISIBLE else View.GONE
+        views.gapCol.visibility = if (showLeft) View.VISIBLE else View.GONE
         val showTime = snapshot.show(SettingsActivity.KEY_SHOW_TIME, false)
         val showSpeed = snapshot.show(SettingsActivity.KEY_SHOW_SPEED_CARD, true)
         val showMusic = snapshot.show(SettingsActivity.KEY_SHOW_MUSIC_CARD, true)

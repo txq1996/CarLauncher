@@ -13,6 +13,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.RadioGroup
+import android.widget.SeekBar
 import android.widget.TextView
 import com.android.launcher37.home.NaviPanelDelegate
 import java.text.SimpleDateFormat
@@ -67,6 +68,7 @@ class SettingsActivity : Activity() {
         const val KEY_SHOW_MUSIC_TIME = "show_music_time"
         const val KEY_SHOW_MUSIC_BAR = "show_music_bar"
         // 卡片显隐
+        const val KEY_SHOW_LEFT_COLUMN = "show_left_column"
         const val KEY_SHOW_SPEED_CARD = "show_speed_card"
         const val KEY_SHOW_MUSIC_CARD = "show_music_card"
         const val KEY_SHOW_TIME = "show_time"
@@ -76,6 +78,8 @@ class SettingsActivity : Activity() {
         const val KEY_TIME_CARD_H = "time_card_h"
         const val KEY_TS_TIME = "ts_time"
         const val KEY_TIME_FORMAT = "time_format"
+        /** 自定义时间格式（SimpleDateFormat 模板；空=使用 KEY_TIME_FORMAT 预设） */
+        const val KEY_TIME_FORMAT_CUSTOM = "time_format_custom"
 
         /** bool 开关全集（SettingsSnapshot.load 按 key=true 缺省快照） */
         val SHOW_KEYS = arrayOf(
@@ -87,6 +91,7 @@ class SettingsActivity : Activity() {
             KEY_SHOW_CRUISE_ROAD, KEY_SHOW_CRUISE_DIRECTION, KEY_SHOW_CRUISE_ALERT,
             KEY_SHOW_MUSIC_TITLE, KEY_SHOW_MUSIC_ARTIST, KEY_SHOW_MUSIC_TIME,
             KEY_SHOW_MUSIC_BAR,
+            KEY_SHOW_LEFT_COLUMN,
             KEY_SHOW_SPEED_CARD, KEY_SHOW_MUSIC_CARD, KEY_SHOW_TIME,
             KEY_SHOW_DOCK, KEY_SHOW_DOCK_LABEL
         )
@@ -150,7 +155,7 @@ class SettingsActivity : Activity() {
         )
 
         val INT_DEFAULTS = intArrayOf(
-            10, 10, 260, 180, 80, 44, 10,
+            5, 5, 260, 180, 80, 44, 10,
             110, 20, 17, 36,
             110, 20, 17, 36,
             36, 26, 15, 17, 17, 17, 17, 17, 17,
@@ -159,7 +164,7 @@ class SettingsActivity : Activity() {
             60, 28, 1,
             64, 8, 17,
             75, 75,
-            250, 250
+            200, 200
         )
 
         // ── 行序键（持久化到 SP）─────────────────
@@ -210,7 +215,7 @@ class SettingsActivity : Activity() {
         val orderable: Boolean
     )
 
-    /** 车速卡字号 key：范围 [0,150]；其余 [0,250] */
+    /** 车速卡字号 key：范围 [10,150]；其余字体 [10,50] */
     private val FONT_RANGE_SMALL = setOf(
         KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
         KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC
@@ -340,12 +345,13 @@ class SettingsActivity : Activity() {
 
     private fun bindLayoutTab() {
         val box = findViewById<LinearLayout>(R.id.box_layout_seeks)
-        bindSeek(box, "页面边距", KEY_PAGE_PADDING, 10, 0, 40)
-        bindSeek(box, "部件间距", KEY_CARD_GAP, 10, 0, 40)
-        bindSeek(box, "左侧栏宽度", KEY_SPEED_CARD_W, 260, 220, 400)
-        bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 180, 140, 300)
-        bindSeek(box, "时间卡高度", KEY_TIME_CARD_H, 60, 40, 200)
+        bindSeek(box, "页面边距", KEY_PAGE_PADDING, 5, 0, 30)
+        bindSeek(box, "部件间距", KEY_CARD_GAP, 5, 0, 30)
+        bindSeek(box, "左侧栏宽度", KEY_SPEED_CARD_W, 260, 100, 400)
+        bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 180, 100, 400)
+        bindSeek(box, "时间卡高度", KEY_TIME_CARD_H, 60, 30, 100)
         // 卡片显隐（布局内统一，显示时间在车速上方）
+        bindCheck(R.id.cb_show_left_col, KEY_SHOW_LEFT_COLUMN)
         val cbStatus = findViewById<CheckBox>(R.id.cb_hide_status_bar)
         val hide = prefs().getBoolean(KEY_HIDE_STATUS_BAR, false)
         cbStatus.isChecked = !hide
@@ -362,9 +368,9 @@ class SettingsActivity : Activity() {
         bindCheck(R.id.cb_show_dock_label, KEY_SHOW_DOCK_LABEL)
         val box = findViewById<LinearLayout>(R.id.box_dock_seeks)
         box.removeAllViews()
-        bindSeek(box, "底栏高度", KEY_DOCK_HEIGHT, 80, 60, 120)
-        bindSeek(box, "底栏图标大小", KEY_DOCK_ICON_SIZE, 44, 32, 64)
-        bindSeek(box, "底栏图标数量", KEY_DOCK_COLUMNS, 10, 5, 10, unit = "个")
+        bindSeek(box, "底栏高度", KEY_DOCK_HEIGHT, 80, 30, 120)
+        bindSeek(box, "底栏图标大小", KEY_DOCK_ICON_SIZE, 44, 25, 120)
+        bindSeek(box, "底栏图标数量", KEY_DOCK_COLUMNS, 10, 1, 30, unit = "个")
     }
 
     // ── 应用选项卡（抽屉排序与隐藏 + 全部应用外观） ──────────────────────
@@ -559,9 +565,9 @@ class SettingsActivity : Activity() {
         box.removeAllViews()
         bindSeek(box, "窗口宽度", KEY_DRAWER_WIDTH_PCT, 75, 50, 95, unit = "%")
         bindSeek(box, "窗口高度", KEY_DRAWER_HEIGHT_PCT, 75, 50, 95, unit = "%")
-        bindSeek(box, "图标大小", KEY_DRAWER_ICON_SIZE, 64, 40, 120)
+        bindSeek(box, "图标大小", KEY_DRAWER_ICON_SIZE, 64, 50, 250)
         bindSeek(box, "间距", KEY_DRAWER_ICON_GAP, 8, 0, 40)
-        bindSeek(box, "字体大小", KEY_DRAWER_LABEL_SIZE, 17, 12, 40)
+        bindFontSeek(box, "字体大小", KEY_DRAWER_LABEL_SIZE, 17)
     }
 
     private fun bindSpeedTab() {
@@ -685,12 +691,24 @@ class SettingsActivity : Activity() {
                 check.visibility = View.INVISIBLE
             }
 
-            // 车速卡字号上限 150（与桌面坐标系下像素硬限制一致），其余 250
-            holder.picker.setRange(0, if (item.fontKey in FONT_RANGE_SMALL) 150 else 250, 1)
-            holder.picker.setValue(prefs().getInt(item.fontKey, item.fontDefault))
-            holder.picker.setOnValueChangeListener { _, newVal ->
-                prefs().edit().putInt(item.fontKey, newVal).apply()
-            }
+            // 字号 SeekBar：车速卡范围 [10,150]，其余 [10,50]
+            val fontMax = if (item.fontKey in FONT_RANGE_SMALL) 150 else 50
+            val fontVal = holder.fontValue
+            val bar = holder.fontSeek
+            bar.max = fontMax - 10
+            val cur = prefs().getInt(item.fontKey, item.fontDefault).coerceIn(10, fontMax)
+            bar.progress = cur - 10
+            fontVal.text = "$cur px"
+            bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                    if (!fromUser) return
+                    val v = progress + 10
+                    fontVal.text = "$v px"
+                    prefs().edit().putInt(item.fontKey, v).apply()
+                }
+                override fun onStartTrackingTouch(sb: SeekBar) {}
+                override fun onStopTrackingTouch(sb: SeekBar) {}
+            })
 
             holder.drag.setOnTouchListener { _, e ->
                 if (e.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
@@ -704,7 +722,8 @@ class SettingsActivity : Activity() {
         inner class VH(v: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(v) {
             val label: TextView = v.findViewById(R.id.item_label)
             val check: CheckBox = v.findViewById(R.id.item_check)
-            val picker: NumberPickerView = v.findViewById(R.id.picker_font)
+            val fontSeek: SeekBar = v.findViewById(R.id.font_seek)
+            val fontValue: TextView = v.findViewById(R.id.font_value)
             val drag: TextView = v.findViewById(R.id.btn_drag)
         }
 
@@ -756,9 +775,9 @@ class SettingsActivity : Activity() {
 
     private fun bindMusicTab() {
         val box = findViewById<LinearLayout>(R.id.box_music_seeks)
-        bindSeek(box, "歌曲名", KEY_TS_MUSIC_TITLE, 24, 14, 40)
-        bindSeek(box, "歌手名", KEY_TS_MUSIC_ARTIST, 15, 10, 28)
-        bindSeek(box, "进度时间", KEY_TS_MUSIC_TIME, 15, 10, 28)
+        bindFontSeek(box, "歌曲名", KEY_TS_MUSIC_TITLE, 24)
+        bindFontSeek(box, "歌手名", KEY_TS_MUSIC_ARTIST, 15)
+        bindFontSeek(box, "进度时间", KEY_TS_MUSIC_TIME, 15)
 
         bindCheck(R.id.cb_music_title, KEY_SHOW_MUSIC_TITLE)
         bindCheck(R.id.cb_music_artist, KEY_SHOW_MUSIC_ARTIST)
@@ -819,25 +838,57 @@ class SettingsActivity : Activity() {
     private fun bindTimeTab() {
         val box = findViewById<LinearLayout>(R.id.box_time_seeks)
         box.removeAllViews()
-        bindSeek(box, "时间字号", KEY_TS_TIME, 28, 14, 60)
+        bindFontSeek(box, "时间字号", KEY_TS_TIME, 28)
         val tvFormat = findViewById<TextView>(R.id.tv_time_format)
+        fun presetLabel(fmt: Int): String = when (fmt) {
+            0 -> "HH:mm"
+            1 -> "HH:mm:ss"
+            2 -> "yyyy-MM-dd HH:mm"
+            3 -> "yyyy-MM-dd\\nHH:mm:ss (换行)"
+            else -> "HH:mm:ss"
+        }
         fun refreshFormatLabel() {
-            val fmt = prefs().getInt(KEY_TIME_FORMAT, 1)
-            val label = when (fmt) {
-                0 -> "HH:mm"
-                1 -> "HH:mm:ss"
-                2 -> "yyyy-MM-dd HH:mm"
-                3 -> "yyyy-MM-dd\\nHH:mm:ss (换行)"
-                else -> "HH:mm:ss"
+            val custom = prefs().getString(KEY_TIME_FORMAT_CUSTOM, "")
+            tvFormat.text = if (!custom.isNullOrBlank()) {
+                "时间格式：$custom（自定义，点击修改）"
+            } else {
+                val label = presetLabel(prefs().getInt(KEY_TIME_FORMAT, 1))
+                "时间格式：$label（点击修改或切换）"
             }
-            tvFormat.text = "时间格式：$label（点击切换）"
         }
         refreshFormatLabel()
         tvFormat.setOnClickListener {
-            val cur = prefs().getInt(KEY_TIME_FORMAT, 1)
-            val next = (cur + 1) % 4
-            prefs().edit().putInt(KEY_TIME_FORMAT, next).apply()
-            refreshFormatLabel()
+            val input = android.widget.EditText(this).apply {
+                setText(prefs().getString(KEY_TIME_FORMAT_CUSTOM, ""))
+                hint = "HH:mm:ss"
+                setSingleLine()
+            }
+            val tip = TextView(this).apply {
+                text = "输入 SimpleDateFormat 格式，如 HH:mm 或 yyyy-MM-dd HH:mm\n可用：yyyy 年 MM 月 dd 日 HH 时 mm 分 ss 秒\n含秒时每秒刷新；留空则使用预设格式"
+                setTextColor(resources.getColor(R.color.foreground_secondary, theme))
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 34f)
+                setPadding(0, 0, 0, 24)
+            }
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(64, 32, 64, 0)
+                addView(tip)
+                addView(input)
+            }
+            AlertDialog.Builder(this)
+                .setTitle("自定义时间格式")
+                .setView(box)
+                .setPositiveButton("确定") { _, _ ->
+                    prefs().edit().putString(KEY_TIME_FORMAT_CUSTOM, input.text.toString().trim()).apply()
+                    refreshFormatLabel()
+                }
+                .setNeutralButton("切换预设") { _, _ ->
+                    val next = (prefs().getInt(KEY_TIME_FORMAT, 1) + 1) % 4
+                    prefs().edit().putInt(KEY_TIME_FORMAT, next).putString(KEY_TIME_FORMAT_CUSTOM, "").apply()
+                    refreshFormatLabel()
+                }
+                .setNegativeButton("取消", null)
+                .show()
         }
     }
 
@@ -851,20 +902,53 @@ class SettingsActivity : Activity() {
         }
     }
 
-    /** px 滑条行：范围 [min,max]，拖动即写 SP，右侧实时显示当前值 */
-    private fun bindSeek(box: LinearLayout, name: String, key: String, def: Int, min: Int, max: Int, unit: String = "px") {
+    /** 滑条行（SeekBar）：范围 [min,max] 步进 step，拖动即写 SP，右侧实时显示当前值 */
+    private fun bindSeek(box: LinearLayout, name: String, key: String, def: Int, min: Int, max: Int, unit: String = "px", step: Int = 1) {
         val row = LayoutInflater.from(this).inflate(R.layout.item_seek_row, box, false)
         row.findViewById<TextView>(R.id.seek_name).text = name
         val valTv = row.findViewById<TextView>(R.id.seek_value)
-        val picker = row.findViewById<NumberPickerView>(R.id.seek_picker)
-        val cur = prefs().getInt(key, def)
-        picker.setRange(min, max, 1)
-        picker.setValue(cur)
+        val bar = row.findViewById<SeekBar>(R.id.seek_bar)
+        val cur = prefs().getInt(key, def).coerceIn(min, max)
+        bar.max = (max - min) / step
+        bar.progress = (cur - min) / step
         valTv.text = "$cur$unit"
-        picker.setOnValueChangeListener { _, newVal ->
-            valTv.text = "$newVal$unit"
-            prefs().edit().putInt(key, newVal).apply()
-        }
+        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val v = min + progress * step
+                valTv.text = "$v$unit"
+                prefs().edit().putInt(key, v).apply()
+            }
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        })
+        box.addView(row)
+    }
+
+    /**
+     * 字体滑条行（SeekBar）：字体范围 [10,50]（车速卡 [10,150]），
+     * 拖动即写 SP，右侧实时显示当前值。
+     */
+    private fun bindFontSeek(box: LinearLayout, name: String, key: String, def: Int) {
+        val max = if (key in FONT_RANGE_SMALL) 150 else 50
+        val row = LayoutInflater.from(this).inflate(R.layout.item_font_seek_row, box, false)
+        row.findViewById<TextView>(R.id.seek_name).text = name
+        val valTv = row.findViewById<TextView>(R.id.seek_value)
+        val bar = row.findViewById<SeekBar>(R.id.font_seek)
+        val cur = prefs().getInt(key, def).coerceIn(10, max)
+        bar.max = max - 10
+        bar.progress = cur - 10
+        valTv.text = "$cur px"
+        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val v = progress + 10
+                valTv.text = "$v px"
+                prefs().edit().putInt(key, v).apply()
+            }
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        })
         box.addView(row)
     }
 
@@ -873,8 +957,8 @@ class SettingsActivity : Activity() {
     private fun bindGeneralTab() {
         bindCheck(R.id.cb_home_direct_drawer, KEY_HOME_DIRECT_APP_DRAWER)
         val box = findViewById<LinearLayout>(R.id.box_general_seeks)
-        bindSeek(box, "桌面拉起延迟", KEY_PIP_START_DELAY, 250, 0, 1000, unit = "毫秒")
-        bindSeek(box, "VD拉起延迟", KEY_VD_LAUNCH_DELAY, 250, 0, 1000, unit = "毫秒")
+        bindSeek(box, "桌面拉起延迟", KEY_PIP_START_DELAY, 200, 0, 1000, unit = "毫秒", step = 10)
+        bindSeek(box, "VD拉起延迟", KEY_VD_LAUNCH_DELAY, 200, 0, 1000, unit = "毫秒", step = 10)
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()
         val btn = findViewById<Button>(R.id.btn_check_update)
