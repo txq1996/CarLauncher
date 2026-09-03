@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- VD 窗口卡：真嵌入 VirtualDisplay（:pip 独立进程多槽位），可配置任意 App，可多实例。
+     底部标签显示当前绑定的应用名。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/card_vd"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_pip_frame">
+
+    <FrameLayout
+        android:id="@+id/vd_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <TextView
+        android:id="@+id/tv_vd_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#66000000"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:padding="6px"
+        android:text="VD：未选择应用"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="15px" />
+</FrameLayout>

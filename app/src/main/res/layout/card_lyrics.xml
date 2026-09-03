@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 歌词模块卡：右栏容器第一个模块。
-     结构：标题行 / 专辑封面（有封面时显示）/ 歌词区（动态行数+双语）/ 播放控制按钮（底部）。 -->
+     结构：歌曲信息（歌名/作者，点击绑定或唤醒音乐app）/ 专辑封面（有封面时显示）/
+     歌词区（动态行数+双语）/ 时间+进度条 / 播放控制按钮（底部）。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/card_lyrics"
     android:layout_width="match_parent"
@@ -9,15 +10,42 @@
     android:orientation="vertical"
     android:padding="12px">
 
-    <TextView
-        android:id="@+id/tv_lyrics_title"
+    <!-- 歌曲信息区：点击唤醒已绑定音乐app（未绑定先选择），长按重新绑定 -->
+    <LinearLayout
+        android:id="@+id/box_lyrics_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:text="歌词"
-        android:textColor="@color/foreground"
-        android:textSize="17px"
-        android:textStyle="bold" />
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_lyrics_track"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="未在播放"
+            android:textColor="@color/foreground"
+            android:textSize="20px"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_lyrics_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4px"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="@color/foreground_tertiary"
+            android:textSize="14px" />
+    </LinearLayout>
 
     <ImageView
         android:id="@+id/iv_lyrics_cover"
@@ -29,7 +57,7 @@
         android:contentDescription="专辑封面"
         android:visibility="gone" />
 
-    <!-- 歌词区：行数动态（KEY_LYRICS_LINES），当前句高亮 + 翻译副行 -->
+    <!-- 歌词区：行数动态（CFG_LINES），当前句高亮 + 翻译副行 -->
     <LinearLayout
         android:id="@+id/box_lyrics_lines"
         android:layout_width="match_parent"
@@ -37,6 +65,46 @@
         android:layout_weight="2"
         android:gravity="center"
         android:orientation="vertical" />
+
+    <!-- 时间 + 进度条 -->
+    <RelativeLayout
+        android:id="@+id/box_lyrics_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6px">
+
+        <TextView
+            android:id="@+id/lyrics_cur_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="00:00"
+            android:textColor="@color/foreground_tertiary"
+            android:textSize="14px" />
+
+        <TextView
+            android:id="@+id/lyrics_total_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="00:00"
+            android:textColor="@color/foreground_tertiary"
+            android:textSize="14px" />
+    </RelativeLayout>
+
+    <ProgressBar
+        android:id="@+id/lyrics_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6px"
+        android:layout_marginTop="4px"
+        android:max="1000"
+        android:progress="0"
+        android:progressDrawable="@drawable/progress_music" />
 
     <!-- 播放控制（与左侧音乐卡同款按钮，置底） -->
     <LinearLayout

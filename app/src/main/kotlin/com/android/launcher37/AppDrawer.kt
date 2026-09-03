@@ -17,25 +17,16 @@ import android.widget.TextView
 import android.widget.Toast
 
 /**
- * 全部应用弹窗 + 底栏选择模式。
+ * 全部应用弹窗。
  *
- * 弹窗结构（1000×620 居中）：
+ * 弹窗结构（宽高按屏幕百分比）：
  * - 标题栏（关闭按钮）
- * - GridView 5 列大格子（92px 图标 + 17px 名称，纯色卡片）
+ * - GridView 大格子（图标 + 名称，纯色卡片）
  *
- * 模式：
- * - 全部应用模式（[show]）：点击显式组件启动；首部固定「桌面设置」入口
- * - 底栏模式（[showForDock]）：点击直接回调 [OnDockPick]，让调用方写入底栏
- *
- * 列表首部按当前模式去重（已加入底栏的不再显示在选择器中）。
- * 适配器 / 统计栏 / 普通模式点击分发 / 分屏增删与 [DrawerOverlay] 共用
- * （[DrawerAdapter] / [DrawerStats] / [DrawerActions]）。
+ * 内容（[DrawerAdapter]）：功能项 + 已保存布局 + 分屏 + 应用；
+ * 点击分发 / 分屏增删与 [DrawerOverlay] 共用（[DrawerActions]）。
  */
 object AppDrawer {
-
-    fun interface OnDockPick {
-        fun onPicked(button: Store.V2Button)
-    }
 
     private var sPopup: PopupWindow? = null
     private var sDismissListeners: MutableList<Runnable> = mutableListOf()
@@ -53,13 +44,9 @@ object AppDrawer {
         return (dm.heightPixels * pct / 100f).toInt()
     }
 
-    fun showForDock(activity: Activity, title: String, callback: OnDockPick) {
-        showInternal(activity, title, callback)
-    }
-
     fun show(activity: Activity) {
         Dbg.i("VDFocusDbg") { "AppDrawer.show()" }  // debug-point lifecy-v1
-        showInternal(activity, null, null)
+        showInternal(activity)
     }
 
     fun isShowing(): Boolean = sPopup?.isShowing == true
@@ -93,13 +80,7 @@ object AppDrawer {
         }
     }
 
-    /** dock 模式：选中后回调 + 关弹窗（消除 6 处 pickCallback != null 重复） */
-    private fun pickAndClose(cb: OnDockPick, btn: Store.V2Button) {
-        cb.onPicked(btn)
-        sPopup?.takeIf { it.isShowing }?.dismiss()
-    }
-
-    private fun showInternal(activity: Activity, dockTitle: String?, dockCallback: OnDockPick?) {
+    private fun showInternal(activity: Activity) {
         dismissIfShowing()
         val themed: Context = HoloPopup.themedContext(activity)
         val content: View = LayoutInflater.from(themed).inflate(R.layout.dialog_app_drawer, null)
@@ -113,16 +94,12 @@ object AppDrawer {
         val titleSize = p.getInt(SettingsActivity.KEY_TS_TIME, 28)
         val labelSize = p.getInt(SettingsActivity.KEY_DRAWER_LABEL_SIZE, 17)
         val tvTitle = content.findViewById<TextView>(R.id.tv_drawer_title)
-        tvTitle.text = dockTitle ?: "全部应用"
+        tvTitle.text = "全部应用"
         tvTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, titleSize.toFloat())
         val tvStats = content.findViewById<TextView>(R.id.tv_drawer_stats)
-        // 标题栏系统状态：仅全部应用模式显示，dock选择模式隐藏
-        tvStats.visibility = if (dockCallback == null) View.VISIBLE else View.GONE
         tvStats.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, (labelSize * 0.9f).toFloat())
-        if (dockCallback == null) {
-            DrawerStats.start(activity, tvStats) {
-                popup.isShowing && !activity.isDestroyed && !activity.isFinishing
-            }
+        DrawerStats.start(activity, tvStats) {
+            popup.isShowing && !activity.isDestroyed && !activity.isFinishing
         }
         popup.setOnDismissListener {
             if (sPopup === popup) sPopup = null
@@ -131,51 +108,29 @@ object AppDrawer {
         }
         val grid = content.findViewById<GridView>(R.id.drawer_grid)
         content.findViewById<View>(R.id.btn_drawer_close).setOnClickListener { popup.dismiss() }
-        val dockBtns = Store.v2Buttons(activity)
-        val pickCallback: OnDockPick? = dockCallback
 
         grid.onItemClickListener = AdapterView.OnItemClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String ?: return@OnItemClickListener
-            if (pickCallback != null) {
-                handleDockPick(activity, tagStr, pickCallback)
-            } else {
-                DrawerActions.handleNormal(
-                    activity, tagStr, dockBtns,
-                    onDismiss = { popup.dismiss() },
-                    onClean = { MemoryCleaner.cleanFromUi(activity) },
-                    onSplitNew = { pickNewSplitItem(activity, popup) }
-                )
-            }
+            DrawerActions.handleNormal(
+                activity, tagStr,
+                onDismiss = { popup.dismiss() },
+                onClean = { MemoryCleaner.cleanFromUi(activity) },
+                onSplitNew = { pickNewSplitItem(activity, popup) }
+            )
         }
 
         grid.onItemLongClickListener = AdapterView.OnItemLongClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String
-            if (pickCallback == null && tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
+            if (tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
                 val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull() ?: return@OnItemLongClickListener true
-                DrawerActions.removeSplitAndRefresh(activity, grid, idx, dockMode = false)
+                DrawerActions.removeSplitAndRefresh(activity, grid, idx)
             }
             true
         }
 
         DrawerActions.loadAdapterAsync(
-            activity.applicationContext, grid, dockCallback != null
+            activity.applicationContext, grid
         ) { !activity.isDestroyed && !activity.isFinishing }
-    }
-
-    /** dock 模式点击分发：所有格子都只回调，不执行动作（split_new 仅普通模式存在） */
-    private fun handleDockPick(activity: Activity, tagStr: String, cb: OnDockPick) {
-        when {
-            tagStr == DrawerAdapter.TAG_SETTINGS -> pickAndClose(cb, Store.V2Button.settings())
-            tagStr == DrawerAdapter.TAG_HOME -> pickAndClose(cb, Store.V2Button.map("home"))
-            tagStr == DrawerAdapter.TAG_COMPANY -> pickAndClose(cb, Store.V2Button.map("company"))
-            tagStr == DrawerAdapter.TAG_CLEAN -> pickAndClose(cb, Store.V2Button.clean())
-            tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX) -> {
-                val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull() ?: return
-                val pair = SplitRepository.get(activity, idx)
-                if (pair != null) pickAndClose(cb, Store.V2Button.split(pair[0], pair[1]))
-            }
-            else -> pickAndClose(cb, Store.V2Button.app(tagStr))
-        }
     }
 
     // ── 分屏选择器 ──────────────────────────

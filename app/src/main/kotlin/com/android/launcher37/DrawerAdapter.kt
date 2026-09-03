@@ -8,17 +8,15 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.ImageView
 import android.widget.TextView
+import com.android.launcher37.home.widget.LayoutRepository
 
 /**
  * 抽屉网格适配器（AppDrawer 弹窗与 DrawerOverlay 悬浮窗共用）：
- * 功能固定项 + 已保存分屏 + 普通应用。
- * dockMode（底栏选择模式）下去重已在底栏的项。
+ * 功能固定项 + 已保存布局 + 已保存分屏 + 普通应用。
  */
 internal class DrawerAdapter(
     context: Context,
     apps: List<ResolveInfo>,
-    dockBtns: List<Store.V2Button>,
-    dockMode: Boolean,
     private val iconSizePx: Int = 64,
     private val labelSizePx: Int = 17
 ) : BaseAdapter() {
@@ -28,44 +26,38 @@ internal class DrawerAdapter(
     private val tags = ArrayList<String>()
 
     init {
-        if (!dockMode || !hasDockItem(dockBtns, "settings", null)) {
-            val t = TAG_SETTINGS
-            labels.add("桌面设置"); icons.add(Store.normalizedEmoji(context, MapFeature.SETTINGS_EMOJI)); tags.add(t)
-        }
-        if (!dockMode || !hasDockItem(dockBtns, "map", "home")) {
-            val t = TAG_HOME
-            labels.add("回家"); icons.add(Store.normalizedEmoji(context, MapFeature.HOME_EMOJI)); tags.add(t)
-        }
-        if (!dockMode || !hasDockItem(dockBtns, "map", "company")) {
-            val t = TAG_COMPANY
-            labels.add("公司"); icons.add(Store.normalizedEmoji(context, MapFeature.COMPANY_EMOJI)); tags.add(t)
-        }
-        if (!dockMode || !hasDockItem(dockBtns, "clean", null)) {
-            val t = TAG_CLEAN
-            labels.add("清理"); icons.add(Store.normalizedEmoji(context, MapFeature.CLEAN_EMOJI)); tags.add(t)
-        }
-        if (!dockMode) {
-            val tSplit = TAG_SPLIT_NEW
-            labels.add("分屏"); icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI)); tags.add(tSplit)
-            val tHome = TAG_GOHOME
-            labels.add("返回主页"); icons.add(Store.normalizedEmoji(context, MapFeature.GOHOME_EMOJI)); tags.add(tHome)
-            val tRestart = TAG_RESTART
-            labels.add("重启桌面"); icons.add(Store.normalizedEmoji(context, MapFeature.RESTART_EMOJI)); tags.add(tRestart)
+        val tSettings = TAG_SETTINGS
+        labels.add("桌面设置"); icons.add(Store.normalizedEmoji(context, MapFeature.SETTINGS_EMOJI)); tags.add(tSettings)
+        val tHome = TAG_HOME
+        labels.add("回家"); icons.add(Store.normalizedEmoji(context, MapFeature.HOME_EMOJI)); tags.add(tHome)
+        val tCompany = TAG_COMPANY
+        labels.add("公司"); icons.add(Store.normalizedEmoji(context, MapFeature.COMPANY_EMOJI)); tags.add(tCompany)
+        val tClean = TAG_CLEAN
+        labels.add("清理"); icons.add(Store.normalizedEmoji(context, MapFeature.CLEAN_EMOJI)); tags.add(tClean)
+        val tSplit = TAG_SPLIT_NEW
+        labels.add("分屏"); icons.add(Store.normalizedEmoji(context, MapFeature.SPLIT_EMOJI)); tags.add(tSplit)
+        val tGohome = TAG_GOHOME
+        labels.add("返回主页"); icons.add(Store.normalizedEmoji(context, MapFeature.GOHOME_EMOJI)); tags.add(tGohome)
+        val tRestart = TAG_RESTART
+        labels.add("重启桌面"); icons.add(Store.normalizedEmoji(context, MapFeature.RESTART_EMOJI)); tags.add(tRestart)
+        // 已保存布局（内置 + 用户）：点击切换桌面布局
+        for (name in LayoutRepository.listNames(context)) {
+            labels.add(name)
+            icons.add(Store.normalizedGlyphIcon(context, R.drawable.ic_layout))
+            tags.add("$LAYOUT_PREFIX$name")
         }
         val splits = SplitRepository.load(context)
         for (i in splits.indices) {
             val pair = splits[i]
-            if (dockMode && dockBtns.any { it == Store.V2Button.split(pair[0], pair[1]) }) continue
             val t = "$SPLIT_PREFIX$i"
             labels.add("${Store.label(context, pair[0])}|${Store.label(context, pair[1])}")
             icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1])); tags.add(t)
         }
         for (ri in apps) {
             val id = "${ri.activityInfo.packageName}/${ri.activityInfo.name}"
-            if (dockMode && hasDockItem(dockBtns, "app", id)) continue
             labels.add(Store.label(context, id)); icons.add(Store.normalizedIcon(context, id)); tags.add(id)
         }
-        if (!dockMode) applyUserHidden()
+        applyUserHidden()
         applyUserOrder()
     }
 
@@ -140,13 +132,6 @@ internal class DrawerAdapter(
         internal const val TAG_GOHOME = "feat_gohome"
         internal const val TAG_RESTART = "feat_restart"
         internal const val SPLIT_PREFIX = "split:"
-
-        /** 底栏中是否已存在该类按钮（type 匹配，action 为 null 时只看 type） */
-        internal fun hasDockItem(btns: List<Store.V2Button>, type: String, action: String?): Boolean {
-            for (b in btns) {
-                if (type == b.type && (action == null || action == b.action)) return true
-            }
-            return false
-        }
+        internal const val LAYOUT_PREFIX = "layout:"
     }
 }

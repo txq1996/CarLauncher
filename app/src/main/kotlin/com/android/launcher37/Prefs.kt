@@ -7,8 +7,7 @@ import android.content.SharedPreferences
  * 桌面设置（`SharedPreferences`）统一入口。
  *
  * 所有设置项统一存在 [FILE]（`"launcher37_config"`）下，
- * 通过 `SettingsActivity` 即时写入，由 [com.android.launcher37.home.SettingsSnapshot]
- * 在 `LauncherActivity.onCreate` 一次性快照读出。修改设置后需重启桌面生效。
+ * 通过 `SettingsActivity` 即时写入，各读取方（Widget/抽屉/悬浮窗）按需读取。
  */
 object Prefs {
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 车速卡：所有内容合并到一个容器，整体水平垂直居中。
-     导航/巡航区（navi_panel）：由 SpeedDelegate + NaviPanelDelegate 动态 removeAllViews + addView，
-     行序/字号/显隐由 SettingsSnapshot 驱动。 -->
+     导航/巡航区（navi_panel）由 SpeedWidget 动态重建，
+     行序/字号/显隐由实例 config 驱动。 -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/card_speed"
     android:layout_width="match_parent"

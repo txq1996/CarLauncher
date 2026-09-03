@@ -12,45 +12,25 @@ import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
-import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.TextView
-import com.android.launcher37.home.NaviPanelDelegate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
 /**
- * 桌面设置：左侧选项卡（布局/车速/音乐/通用）+ 右侧内容面板。
+ * 桌面设置：左侧选项卡（布局/应用/通用）+ 右侧内容面板。
  *
- * 尺寸类参数为 px 滑条，全部即时写入 `launcher37_config`，
- * 关闭桌面设置后自动重启桌面生效（LauncherActivity.onCreate 快照）。
+ * 主页各部件（时间/音乐/歌词/车速/底栏/VD）的外观属性已全部移交主页设计器
+ * （每个实例独立存于布局 JSON 的 config），此处仅保留：布局入口、应用抽屉排序与
+ * 外观、通用（直达抽屉/延迟/更新）。尺寸类参数为 px 滑条，全部即时写入
+ * `launcher37_config`。
  */
 class SettingsActivity : Activity() {
 
     companion object {
-        // ── 布局（px）─────────────────
-        const val KEY_PAGE_PADDING = "layout_page_padding"
-        const val KEY_CARD_GAP = "layout_card_gap"
-        const val KEY_SPEED_CARD_W = "layout_speed_card_w"
-        const val KEY_MUSIC_CARD_H = "layout_music_card_h"
-        /** 右侧栏（歌词等模块容器）宽度 px */
-        const val KEY_RIGHT_COL_W = "right_col_w"
-        const val KEY_DOCK_HEIGHT = "dock_height"
-        const val KEY_DOCK_ICON_SIZE = "dock_icon_size"
-        const val KEY_DOCK_COLUMNS = "dock_columns"
-
-        // ── 车速区域显隐（导航模式） ────────────────
-        const val KEY_SHOW_NAVI_SPEED = "show_navi_speed"
-        const val KEY_SHOW_NAVI_KMH = "show_navi_kmh"
-        const val KEY_SHOW_NAVI_LIMIT = "show_navi_limit"
-        const val KEY_SHOW_NAVI_TRAFFIC = "show_navi_traffic"
-        // ── 车速区域显隐（巡航模式） ────────────────
-        const val KEY_SHOW_CRUISE_SPEED = "show_cruise_speed"
-        const val KEY_SHOW_CRUISE_KMH = "show_cruise_kmh"
-        const val KEY_SHOW_CRUISE_LIMIT = "show_cruise_limit"
-        const val KEY_SHOW_CRUISE_TRAFFIC = "show_cruise_traffic"
+        // ── 车速/导航行显隐键（SpeedWidget 实例 config 键名复用） ─────
         // 导航行显隐（每个字段独立）
         const val KEY_SHOW_NAVI_TURN = "show_navi_turn"
         const val KEY_SHOW_NAVI_ROAD = "show_navi_road"
@@ -65,58 +45,10 @@ class SettingsActivity : Activity() {
         const val KEY_SHOW_CRUISE_ROAD = "show_cruise_road"
         const val KEY_SHOW_CRUISE_DIRECTION = "show_cruise_direction"
         const val KEY_SHOW_CRUISE_ALERT = "show_cruise_alert"
-        const val KEY_SHOW_MUSIC_TITLE = "show_music_title"
-        const val KEY_SHOW_MUSIC_ARTIST = "show_music_artist"
-        const val KEY_SHOW_MUSIC_TIME = "show_music_time"
-        const val KEY_SHOW_MUSIC_BAR = "show_music_bar"
-        // 卡片显隐
-        const val KEY_SHOW_LEFT_COLUMN = "show_left_column"
-        const val KEY_SHOW_LYRICS = "show_lyrics"
-        /** 歌词显示行数（右栏歌词卡） */
-        const val KEY_LYRICS_LINES = "lyrics_lines"
-        /** 歌词行间距 px（右栏歌词卡） */
-        const val KEY_LYRICS_GAP = "lyrics_gap"
-        const val KEY_SHOW_SPEED_CARD = "show_speed_card"
-        const val KEY_SHOW_MUSIC_CARD = "show_music_card"
-        const val KEY_SHOW_TIME = "show_time"
-        const val KEY_SHOW_DOCK = "show_dock"
-        const val KEY_SHOW_DOCK_LABEL = "show_dock_label"
         // 时间
-        const val KEY_TIME_CARD_H = "time_card_h"
         const val KEY_TS_TIME = "ts_time"
-        const val KEY_TIME_FORMAT = "time_format"
-        /** 自定义时间格式（SimpleDateFormat 模板；空=使用 KEY_TIME_FORMAT 预设） */
-        const val KEY_TIME_FORMAT_CUSTOM = "time_format_custom"
 
-        /** bool 开关全集（SettingsSnapshot.load 按 key=true 缺省快照） */
-        val SHOW_KEYS = arrayOf(
-            KEY_SHOW_NAVI_SPEED, KEY_SHOW_NAVI_KMH, KEY_SHOW_NAVI_LIMIT, KEY_SHOW_NAVI_TRAFFIC,
-            KEY_SHOW_CRUISE_SPEED, KEY_SHOW_CRUISE_KMH, KEY_SHOW_CRUISE_LIMIT, KEY_SHOW_CRUISE_TRAFFIC,
-            KEY_SHOW_NAVI_TURN, KEY_SHOW_NAVI_ROAD, KEY_SHOW_NAVI_DEST,
-            KEY_SHOW_NAVI_ETA, KEY_SHOW_NAVI_ETA_TEXT, KEY_SHOW_NAVI_LIGHT_COUNT,
-            KEY_SHOW_NAVI_EXIT, KEY_SHOW_NAVI_DIRECTION, KEY_SHOW_NAVI_ALERT,
-            KEY_SHOW_CRUISE_ROAD, KEY_SHOW_CRUISE_DIRECTION, KEY_SHOW_CRUISE_ALERT,
-            KEY_SHOW_MUSIC_TITLE, KEY_SHOW_MUSIC_ARTIST, KEY_SHOW_MUSIC_TIME,
-            KEY_SHOW_MUSIC_BAR,
-            KEY_SHOW_LEFT_COLUMN,
-            KEY_SHOW_LYRICS,
-            KEY_SHOW_SPEED_CARD, KEY_SHOW_MUSIC_CARD, KEY_SHOW_TIME,
-            KEY_SHOW_DOCK, KEY_SHOW_DOCK_LABEL
-        )
-
-        /** 首次安装无 SP 值时的默认显隐（其余未列出项默认 true） */
-        val SHOW_DEFAULTS: Map<String, Boolean> = mapOf(
-            KEY_SHOW_NAVI_DEST to false,
-            KEY_SHOW_NAVI_ETA_TEXT to false,
-            KEY_SHOW_NAVI_LIGHT_COUNT to false,
-            KEY_SHOW_NAVI_EXIT to false,
-            KEY_SHOW_NAVI_DIRECTION to false,
-            KEY_SHOW_CRUISE_DIRECTION to false,
-            KEY_SHOW_TIME to false,
-            KEY_SHOW_LYRICS to false
-        )
-
-        // ── 字号/尺寸（px，int）──────────────────
+        // ── 字号/尺寸（px，int）──
         // 车速区域字号（导航模式）
         const val KEY_TS_NAVI_SPEED = "ts_navi_speed"
         const val KEY_TS_NAVI_KMH = "ts_navi_kmh"
@@ -141,51 +73,10 @@ class SettingsActivity : Activity() {
         const val KEY_TS_CRUISE_ROAD = "ts_cruise_road"
         const val KEY_TS_CRUISE_DIRECTION = "ts_cruise_direction"
         const val KEY_TS_CRUISE_ALERT = "ts_cruise_alert"
-        // 音乐
+        // 音乐（AppDrawer 列表标题字号沿用）
         const val KEY_TS_MUSIC_TITLE = "ts_music_title"
-        const val KEY_TS_MUSIC_ARTIST = "ts_music_artist"
-        const val KEY_TS_MUSIC_TIME = "ts_music_time"
-        /** 歌词当前句字号（右栏歌词卡） */
-        const val KEY_TS_LYRICS = "ts_lyrics"
-        /** 歌词非当前句字号（右栏歌词卡） */
-        const val KEY_TS_LYRICS_OTHER = "ts_lyrics_other"
 
-        /** int 尺寸快照表（key 顺序与默认值一一对应） */
-        val INT_KEYS = arrayOf(
-            KEY_PAGE_PADDING, KEY_CARD_GAP,
-            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H, KEY_RIGHT_COL_W,
-            KEY_DOCK_HEIGHT, KEY_DOCK_ICON_SIZE, KEY_DOCK_COLUMNS,
-            KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
-            KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC,
-            KEY_TS_NAVI_TURN, KEY_TS_NAVI_ROAD, KEY_TS_NAVI_DEST,
-            KEY_TS_NAVI_ETA, KEY_TS_NAVI_ETA_TEXT, KEY_TS_NAVI_LIGHT_COUNT,
-            KEY_TS_NAVI_EXIT, KEY_TS_NAVI_DIRECTION, KEY_TS_NAVI_ALERT,
-            KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
-            KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME, KEY_TS_LYRICS,
-            KEY_TS_LYRICS_OTHER,
-            KEY_LYRICS_LINES, KEY_LYRICS_GAP,
-            KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT,
-            KEY_DRAWER_ICON_SIZE, KEY_DRAWER_ICON_GAP, KEY_DRAWER_LABEL_SIZE,
-            KEY_DRAWER_WIDTH_PCT, KEY_DRAWER_HEIGHT_PCT,
-            KEY_PIP_START_DELAY, KEY_VD_LAUNCH_DELAY
-        )
-
-        val INT_DEFAULTS = intArrayOf(
-            5, 5, 260, 180, 250, 80, 44, 10,
-            110, 20, 17, 36,
-            110, 20, 17, 36,
-            36, 26, 15, 17, 17, 17, 17, 17, 17,
-            26, 17, 17,
-            24, 15, 15, 20,
-            15,
-            10, 15,
-            60, 28, 1,
-            64, 8, 17,
-            75, 75,
-            200, 200
-        )
-
-        // ── 行序键（持久化到 SP）─────────────────
+        // ── 行序键（车速/导航行序，存于 WidgetSpec.config）──
         const val KEY_NAVI_ORDER = "navi_row_order"
         const val KEY_CRUISE_ORDER = "cruise_row_order"
 
@@ -205,71 +96,19 @@ class SettingsActivity : Activity() {
         const val KEY_PIP_START_DELAY = "pip_start_delay"
         /** PipService 拉起/拉回任务前的延迟毫秒（0=立即；恢复 d4584a0 删除的 LAUNCH_DELAY_MS=500） */
         const val KEY_VD_LAUNCH_DELAY = "vd_launch_delay"
+
+        /** 车速卡字号 key：范围 [10,150]；其余字体 [10,50] */
+        private val FONT_RANGE_SMALL = setOf(
+            KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
+            KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC
+        )
     }
 
     private lateinit var mTabs: Array<TextView>
     private lateinit var mPanels: Array<View>
     private lateinit var mTabActiveBg: GradientDrawable
-    /** 导航全部行序（车速 + 行序，持久化 navi_row_order） */
-    private val mNaviOrder: ArrayList<String> = ArrayList()
-    /** 巡航全部行序（车速 + 行序，持久化 cruise_row_order） */
-    private val mCruiseOrder: ArrayList<String> = ArrayList()
     private var mUpdater: UpdateChecker? = null
     private var mTvUpdateStatus: TextView? = null
-
-    /** 设置页导航分区子标题 */
-    private var mTvNaviHeader: TextView? = null
-    /** 设置页巡航分区子标题 */
-    private var mTvCruiseHeader: TextView? = null
-
-    // ── 设置项定义：key, 显示名, 字号 key, 默认字号, 显示开关 key（空=无开关）, 默认显隐, 是否可排序 ──
-    private data class SettingItem(
-        val key: String,
-        val label: String,
-        val fontKey: String,
-        val fontDefault: Int,
-        val showKey: String,
-        val showDefault: Boolean,
-        val orderable: Boolean
-    )
-
-    /** 车速卡字号 key：范围 [10,150]；其余字体 [10,50] */
-    private val FONT_RANGE_SMALL = setOf(
-        KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
-        KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC
-    )
-
-    /**
-     * 导航模式全部设置项（车速 + 行序），统一排序。
-     */
-    private val naviAllItems: List<SettingItem> = listOf(
-        SettingItem("speed",         "车速数字",      KEY_TS_NAVI_SPEED,        110, KEY_SHOW_NAVI_SPEED,        true, true),
-        SettingItem("speed_unit",    "车速单位",      KEY_TS_NAVI_KMH,          20,  KEY_SHOW_NAVI_KMH,          true, true),
-        SettingItem("limit",         "道路限速",      KEY_TS_NAVI_LIMIT,        17,  KEY_SHOW_NAVI_LIMIT,        true, true),
-        SettingItem("traffic",       "红绿灯倒计时",  KEY_TS_NAVI_TRAFFIC_SEC,  36,  KEY_SHOW_NAVI_TRAFFIC,      true, true),
-        SettingItem("navi_turn",     "转向图标与距离", KEY_TS_NAVI_TURN,         36,  KEY_SHOW_NAVI_TURN,         true, true),
-        SettingItem("navi_road",     "路名",          KEY_TS_NAVI_ROAD,         26,  KEY_SHOW_NAVI_ROAD,         true, true),
-        SettingItem("navi_dest",     "终点名称",      KEY_TS_NAVI_DEST,         15,  KEY_SHOW_NAVI_DEST,         false, true),
-        SettingItem("navi_eta",      "剩余距离与时间",  KEY_TS_NAVI_ETA,          17,  KEY_SHOW_NAVI_ETA,          true, true),
-        SettingItem("navi_eta_text", "预计到达时间",   KEY_TS_NAVI_ETA_TEXT,     17,  KEY_SHOW_NAVI_ETA_TEXT,     false, true),
-        SettingItem("navi_light_count","剩余红绿灯数", KEY_TS_NAVI_LIGHT_COUNT,  17,  KEY_SHOW_NAVI_LIGHT_COUNT,  false, true),
-        SettingItem("navi_exit",     "出口信息",      KEY_TS_NAVI_EXIT,         17,  KEY_SHOW_NAVI_EXIT,         false, true),
-        SettingItem("navi_direction","车头方向",      KEY_TS_NAVI_DIRECTION,    17,  KEY_SHOW_NAVI_DIRECTION,    false, true),
-        SettingItem("navi_alert",    "电子眼/服务区", KEY_TS_NAVI_ALERT,        17,  KEY_SHOW_NAVI_ALERT,        true, true)
-    )
-
-    /**
-     * 巡航模式全部设置项（车速 + 行序），统一排序。
-     */
-    private val cruiseAllItems: List<SettingItem> = listOf(
-        SettingItem("speed",             "车速数字",      KEY_TS_CRUISE_SPEED,        110, KEY_SHOW_CRUISE_SPEED,        true, true),
-        SettingItem("speed_unit",        "车速单位",      KEY_TS_CRUISE_KMH,          20,  KEY_SHOW_CRUISE_KMH,          true, true),
-        SettingItem("limit",             "道路限速",      KEY_TS_CRUISE_LIMIT,        17,  KEY_SHOW_CRUISE_LIMIT,        true, true),
-        SettingItem("traffic",           "红绿灯倒计时",  KEY_TS_CRUISE_TRAFFIC_SEC,  36,  KEY_SHOW_CRUISE_TRAFFIC,      true, true),
-        SettingItem("cruise_road",       "当前路名",      KEY_TS_CRUISE_ROAD,         26,  KEY_SHOW_CRUISE_ROAD,         true, true),
-        SettingItem("cruise_direction",  "车头方向",      KEY_TS_CRUISE_DIRECTION,    17,  KEY_SHOW_CRUISE_DIRECTION,    false, true),
-        SettingItem("cruise_alert",      "电子眼/服务区", KEY_TS_CRUISE_ALERT,        17,  KEY_SHOW_CRUISE_ALERT,        true, true)
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -281,19 +120,11 @@ class SettingsActivity : Activity() {
         }
         mTabs = arrayOf(
             findViewById(R.id.tab_layout),
-            findViewById(R.id.tab_speed),
-            findViewById(R.id.tab_music),
-            findViewById(R.id.tab_time),
-            findViewById(R.id.tab_dock),
             findViewById(R.id.tab_apps),
             findViewById(R.id.tab_general)
         )
         mPanels = arrayOf(
             findViewById(R.id.panel_layout),
-            findViewById(R.id.panel_speed),
-            findViewById(R.id.panel_music),
-            findViewById(R.id.panel_time),
-            findViewById(R.id.panel_dock),
             findViewById(R.id.panel_apps),
             findViewById(R.id.panel_general)
         )
@@ -304,10 +135,6 @@ class SettingsActivity : Activity() {
         switchTab(0)
 
         bindLayoutTab()
-        bindSpeedTab()
-        bindMusicTab()
-        bindTimeTab()
-        bindDockTab()
         bindAppsTab()
         bindDrawerLooks()
         bindGeneralTab()
@@ -333,10 +160,9 @@ class SettingsActivity : Activity() {
     }
 
     /**
-     * 重建 LauncherActivity 让刚才改的设置生效（`onCreate` 走 `SettingsSnapshot.load` 重新读 SP）。
+     * 重建 LauncherActivity 让刚才改的设置生效（`onCreate` 重新读 SP）。
      * `CLEAR_TASK + NEW_TASK` 保证 task 内所有 Activity（含自己）被销毁后，用新 Intent 重新
-     * 启动 LauncherActivity —— 进程保留，PipService 不受影响。`onCreate` 会把
-     * 5 个 delegate 全部重新构造，新 SP 字段自然生效。
+     * 启动 LauncherActivity —— 进程保留，PipService 不受影响。
      */
     private fun restartLauncher() {
         val intent = Intent(this, LauncherActivity::class.java).apply {
@@ -362,35 +188,16 @@ class SettingsActivity : Activity() {
     }
 
     private fun bindLayoutTab() {
-        val box = findViewById<LinearLayout>(R.id.box_layout_seeks)
-        bindSeek(box, "页面边距", KEY_PAGE_PADDING, 5, 0, 30)
-        bindSeek(box, "部件间距", KEY_CARD_GAP, 5, 0, 30)
-        bindSeek(box, "左侧栏宽度", KEY_SPEED_CARD_W, 260, 100, 400)
-        bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 180, 100, 400)
-        bindSeek(box, "右侧栏宽度", KEY_RIGHT_COL_W, 250, 100, 400)
-        bindSeek(box, "时间卡高度", KEY_TIME_CARD_H, 60, 30, 100)
-        // 卡片显隐（布局内统一，显示时间在车速上方）
-        bindCheck(R.id.cb_show_left_col, KEY_SHOW_LEFT_COLUMN)
-        bindCheck(R.id.cb_show_lyrics, KEY_SHOW_LYRICS)
-        val cbStatus = findViewById<CheckBox>(R.id.cb_hide_status_bar)
-        val hide = prefs().getBoolean(KEY_HIDE_STATUS_BAR, false)
-        cbStatus.isChecked = !hide
-        cbStatus.setOnCheckedChangeListener { _, isChecked ->
-            prefs().edit().putBoolean(KEY_HIDE_STATUS_BAR, !isChecked).apply()
+        // 卡片显隐/尺寸/状态栏已全部移交主页设计器（布局 JSON 持久化 / 工具栏开关），
+        // 此处仅保留设计入口
+        findViewById<Button>(R.id.btn_layout_design).setOnClickListener {
+            // 主页即设计器：以设计模式拉起桌面（singleTask，运行中走 onNewIntent）
+            startActivity(
+                android.content.Intent(this, LauncherActivity::class.java)
+                    .putExtra(LauncherActivity.EXTRA_DESIGNER, true)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
-        bindCheck(R.id.cb_show_time, KEY_SHOW_TIME)
-        bindCheck(R.id.cb_show_speed_card, KEY_SHOW_SPEED_CARD)
-        bindCheck(R.id.cb_show_music_card, KEY_SHOW_MUSIC_CARD)
-        bindCheck(R.id.cb_show_dock, KEY_SHOW_DOCK)
-    }
-
-    private fun bindDockTab() {
-        bindCheck(R.id.cb_show_dock_label, KEY_SHOW_DOCK_LABEL)
-        val box = findViewById<LinearLayout>(R.id.box_dock_seeks)
-        box.removeAllViews()
-        bindSeek(box, "底栏高度", KEY_DOCK_HEIGHT, 80, 30, 120)
-        bindSeek(box, "底栏图标大小", KEY_DOCK_ICON_SIZE, 44, 25, 120)
-        bindSeek(box, "底栏图标数量", KEY_DOCK_COLUMNS, 10, 1, 30, unit = "个")
     }
 
     // ── 应用选项卡（抽屉排序与隐藏 + 全部应用外观） ──────────────────────
@@ -590,337 +397,11 @@ class SettingsActivity : Activity() {
         bindFontSeek(box, "字体大小", KEY_DRAWER_LABEL_SIZE, 17)
     }
 
-    private fun bindSpeedTab() {
-        val box = findViewById<LinearLayout>(R.id.box_all_settings)
-
-        // 导航全部行序（车速 + 行序）
-        val naviDefaultOrder = NaviPanelDelegate.DEFAULT_NAVI_ORDER
-        val naviSaved = prefs().getString(KEY_NAVI_ORDER, naviDefaultOrder)!!
-        mNaviOrder.clear()
-        mNaviOrder.addAll(naviSaved.split(",").filter { it.isNotBlank() })
-
-        val cruiseDefaultOrder = NaviPanelDelegate.DEFAULT_CRUISE_ORDER
-        val cruiseSaved = prefs().getString(KEY_CRUISE_ORDER, cruiseDefaultOrder)!!
-        mCruiseOrder.clear()
-        mCruiseOrder.addAll(cruiseSaved.split(",").filter { it.isNotBlank() })
-
-        rebuildSpeedPanel(box)
-    }
-
-    /**
-     * 整屏渲染：[ 导航 ] → 全部设置项（车速+行序） → [ 巡航 ] → 全部设置项（车速+行序）。
-     * 两个分区各挂一个 RecyclerView：长按行（或 ≡ 手柄）拖拽排序。
-     */
-    private fun rebuildSpeedPanel(box: LinearLayout) {
-        box.removeAllViews()
-        // ── 导航区 ──
-        renderSectionHeader(box, "导航")
-        addSpeedOrderList(box, naviAllItems, mNaviOrder, KEY_NAVI_ORDER)
-        // ── 巡航区 ──
-        renderSectionHeader(box, "巡航")
-        addSpeedOrderList(box, cruiseAllItems, mCruiseOrder, KEY_CRUISE_ORDER)
-    }
-
-    /** 分区行列表：RecyclerView + ItemTouchHelper 长按拖拽（与"应用"tab 交互一致） */
-    private fun addSpeedOrderList(
-        box: LinearLayout,
-        all: List<SettingItem>,
-        order: ArrayList<String>,
-        persistKey: String
-    ) {
-        val rv = WrapRecyclerView(this).apply {
-            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
-            isNestedScrollingEnabled = false
-            overScrollMode = View.OVER_SCROLL_NEVER
-        }
-        val adapter = SpeedOrderAdapter(all, order, persistKey)
-        rv.adapter = adapter
-        adapter.touchHelper = androidx.recyclerview.widget.ItemTouchHelper(adapter.DragCallback())
-        adapter.touchHelper!!.attachToRecyclerView(rv)
-        box.addView(rv, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dpToPx(2) })
-    }
-
-    /** 分区标题（导航/巡航）：标题文字区分两个列表，非首个分区前加分隔线 */
-    private fun renderSectionHeader(box: LinearLayout, title: String) {
-        if (box.childCount > 0) {
-            val div = View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1)).apply { topMargin = dpToPx(12) }
-                setBackgroundColor(resources.getColor(R.color.divider, theme))
-            }
-            box.addView(div)
-        }
-        val tv = TextView(this).apply {
-            text = title
-            setTextColor(resources.getColor(R.color.foreground, theme))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dpToPx(23).toFloat())
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dpToPx(8) }
-        }
-        box.addView(tv)
-    }
-
-    /**
-     * 车速区行适配器：label + 显示 checkbox + 字号 picker，长按行（或 ≡ 手柄）拖拽排序。
-     * rows 顺序 = order 列表顺序；拖动交换同步 order，松手持久化 [persistKey]。
-     */
-    private inner class SpeedOrderAdapter(
-        private val all: List<SettingItem>,
-        private val order: ArrayList<String>,
-        private val persistKey: String
-    ) : androidx.recyclerview.widget.RecyclerView.Adapter<SpeedOrderAdapter.VH>() {
-
-        /** 各分区自己的 ItemTouchHelper（onBind 手柄 startDrag 用） */
-        var touchHelper: androidx.recyclerview.widget.ItemTouchHelper? = null
-
-        private val rows = ArrayList<SettingItem>()
-        private var mDragDirty = false
-
-        init {
-            for (key in order) all.firstOrNull { it.key == key }?.let { rows.add(it) }
-        }
-
-        fun move(from: Int, to: Int) {
-            java.util.Collections.swap(rows, from, to)
-            notifyItemMoved(from, to)
-            order.clear()
-            order.addAll(rows.map { it.key })
-            mDragDirty = true
-        }
-
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH =
-            VH(layoutInflater.inflate(R.layout.item_speed_setting, parent, false))
-
-        override fun getItemCount(): Int = rows.size
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val item = rows[position]
-            holder.label.text = item.label
-
-            val check = holder.check
-            if (item.showKey.isNotEmpty()) {
-                check.visibility = View.VISIBLE
-                check.setOnCheckedChangeListener(null)
-                check.isChecked = prefs().getBoolean(item.showKey, item.showDefault)
-                check.setOnCheckedChangeListener { _, checked ->
-                    prefs().edit().putBoolean(item.showKey, checked).apply()
-                }
-            } else {
-                check.visibility = View.INVISIBLE
-            }
-
-            // 字号 SeekBar：车速卡范围 [10,150]，其余 [10,50]
-            val fontMax = if (item.fontKey in FONT_RANGE_SMALL) 150 else 50
-            val fontVal = holder.fontValue
-            val bar = holder.fontSeek
-            bar.max = fontMax - 10
-            val cur = prefs().getInt(item.fontKey, item.fontDefault).coerceIn(10, fontMax)
-            bar.progress = cur - 10
-            fontVal.text = "$cur px"
-            bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
-                    if (!fromUser) return
-                    val v = progress + 10
-                    fontVal.text = "$v px"
-                    prefs().edit().putInt(item.fontKey, v).apply()
-                }
-                override fun onStartTrackingTouch(sb: SeekBar) {}
-                override fun onStopTrackingTouch(sb: SeekBar) {}
-            })
-
-            holder.drag.setOnTouchListener { _, e ->
-                if (e.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
-                    touchHelper?.startDrag(holder)
-                    return@setOnTouchListener true
-                }
-                false
-            }
-        }
-
-        inner class VH(v: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(v) {
-            val label: TextView = v.findViewById(R.id.item_label)
-            val check: CheckBox = v.findViewById(R.id.item_check)
-            val fontSeek: SeekBar = v.findViewById(R.id.font_seek)
-            val fontValue: TextView = v.findViewById(R.id.font_value)
-            val drag: TextView = v.findViewById(R.id.btn_drag)
-        }
-
-        inner class DragCallback : androidx.recyclerview.widget.ItemTouchHelper.Callback() {
-            override fun getMovementFlags(
-                rv: androidx.recyclerview.widget.RecyclerView,
-                vh: androidx.recyclerview.widget.RecyclerView.ViewHolder
-            ): Int = androidx.recyclerview.widget.ItemTouchHelper.Callback.makeMovementFlags(
-                androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0)
-
-            override fun isLongPressDragEnabled(): Boolean = true
-
-            override fun onMove(
-                rv: androidx.recyclerview.widget.RecyclerView,
-                from: androidx.recyclerview.widget.RecyclerView.ViewHolder,
-                to: androidx.recyclerview.widget.RecyclerView.ViewHolder
-            ): Boolean {
-                move(from.bindingAdapterPosition, to.bindingAdapterPosition)
-                return true
-            }
-
-            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
-
-            override fun onSelectedChanged(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder?, action: Int) {
-                super.onSelectedChanged(vh, action)
-                // 拖起浮起：放大 + 抬升，落位还原
-                if (action == androidx.recyclerview.widget.ItemTouchHelper.ACTION_STATE_DRAG) {
-                    vh?.itemView?.animate()?.scaleX(1.04f)?.scaleY(1.04f)
-                        ?.translationZ(12f)?.setDuration(80)?.start()
-                }
-            }
-
-            override fun clearView(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
-                super.clearView(rv, vh)
-                vh.itemView.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(120).start()
-                if (mDragDirty) {
-                    mDragDirty = false
-                    saveOrder(persistKey, order)
-                }
-            }
-        }
-    }
-
-    private fun saveOrder(key: String, list: ArrayList<String>) {
-        prefs().edit().putString(key, list.joinToString(",")).apply()
-    }
-
-    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density + 0.5f).toInt()
-
-    private fun bindMusicTab() {
-        val box = findViewById<LinearLayout>(R.id.box_music_seeks)
-        bindFontSeek(box, "歌曲名", KEY_TS_MUSIC_TITLE, 24)
-        bindFontSeek(box, "歌手名", KEY_TS_MUSIC_ARTIST, 15)
-        bindFontSeek(box, "进度时间", KEY_TS_MUSIC_TIME, 15)
-        bindFontSeek(box, "当前歌词", KEY_TS_LYRICS, 20)
-        bindFontSeek(box, "其他歌词", KEY_TS_LYRICS_OTHER, 15)
-        bindSeek(box, "歌词行数", KEY_LYRICS_LINES, 5, 3, 15)
-        bindSeek(box, "歌词间距", KEY_LYRICS_GAP, 4, 0, 30)
-
-        bindCheck(R.id.cb_music_title, KEY_SHOW_MUSIC_TITLE)
-        bindCheck(R.id.cb_music_artist, KEY_SHOW_MUSIC_ARTIST)
-        bindCheck(R.id.cb_music_time, KEY_SHOW_MUSIC_TIME)
-        bindCheck(R.id.cb_music_bar, KEY_SHOW_MUSIC_BAR)
-
-        refreshMusicAppRow()
-        findViewById<Button>(R.id.btn_pick_music_app).setOnClickListener { pickMusicApp() }
-    }
-
-    private fun refreshMusicAppRow() {
-        val iv = findViewById<android.widget.ImageView>(R.id.iv_music_app_icon)
-        val tv = findViewById<TextView>(R.id.tv_music_app_name)
-        val btn = findViewById<Button>(R.id.btn_pick_music_app)
-        val id = prefs().getString("music_app_pkg", null)
-        if (id.isNullOrEmpty()) {
-            iv.setImageDrawable(null)
-            tv.text = "未绑定"
-            btn.text = "选择"
-        } else {
-            val icon = Store.normalizedIcon(this, id) ?: try { packageManager.getApplicationIcon(Store.pkgOf(id)) } catch (_: Exception) { null }
-            if (icon != null) iv.setImageDrawable(icon) else iv.setImageDrawable(null)
-            tv.text = Store.label(this, id)
-            btn.text = "更换"
-        }
-    }
-
-    private fun pickMusicApp() {
-        val themed = HoloPopup.themedContext(this)
-        val list = android.widget.ListView(themed)
-        val popup = HoloPopup.showWithWidth(this, HoloPopup.titledPanel(themed, "选择音乐应用", list), HoloPopup.WIDTH_SMALL)
-        val entries = AppQuery.launcherEntries(this, null)
-        SharedExecutor.io().execute {
-            val adapter = object : android.widget.BaseAdapter() {
-                val labels = entries.map { Store.label(this@SettingsActivity, AppQuery.appId(it)) }
-                val icons = entries.map { Store.normalizedIcon(this@SettingsActivity, AppQuery.appId(it)) }
-                override fun getCount() = entries.size
-                override fun getItem(p: Int) = entries[p]
-                override fun getItemId(p: Int) = p.toLong()
-                override fun getView(pos: Int, cv: android.view.View?, parent: android.view.ViewGroup): android.view.View {
-                    val v = cv ?: LayoutInflater.from(this@SettingsActivity).inflate(R.layout.item_app, parent, false)
-                    v.findViewById<android.widget.ImageView>(R.id.app_icon).setImageDrawable(icons[pos])
-                    v.findViewById<TextView>(R.id.app_name).text = labels[pos]
-                    return v
-                }
-            }
-            list.post { if (!isDestroyed && !isFinishing) list.adapter = adapter }
-        }
-        list.onItemClickListener = android.widget.AdapterView.OnItemClickListener { _, _, pos, _ ->
-            popup.dismiss()
-            val ri = entries[pos]
-            val pkgCls = AppQuery.appId(ri)
-            prefs().edit().putString("music_app_pkg", pkgCls).apply()
-            refreshMusicAppRow()
-        }
-    }
-
-    private fun bindTimeTab() {
-        val box = findViewById<LinearLayout>(R.id.box_time_seeks)
-        box.removeAllViews()
-        bindFontSeek(box, "时间字号", KEY_TS_TIME, 28)
-        val tvFormat = findViewById<TextView>(R.id.tv_time_format)
-        fun presetLabel(fmt: Int): String = when (fmt) {
-            0 -> "HH:mm"
-            1 -> "HH:mm:ss"
-            2 -> "yyyy-MM-dd HH:mm"
-            3 -> "yyyy-MM-dd\\nHH:mm:ss (换行)"
-            else -> "HH:mm:ss"
-        }
-        fun refreshFormatLabel() {
-            val custom = prefs().getString(KEY_TIME_FORMAT_CUSTOM, "")
-            tvFormat.text = if (!custom.isNullOrBlank()) {
-                "时间格式：$custom（自定义，点击修改）"
-            } else {
-                val label = presetLabel(prefs().getInt(KEY_TIME_FORMAT, 1))
-                "时间格式：$label（点击修改或切换）"
-            }
-        }
-        refreshFormatLabel()
-        tvFormat.setOnClickListener {
-            val input = android.widget.EditText(this).apply {
-                setText(prefs().getString(KEY_TIME_FORMAT_CUSTOM, ""))
-                hint = "HH:mm:ss"
-                setSingleLine()
-            }
-            val tip = TextView(this).apply {
-                text = "输入 SimpleDateFormat 格式，如 HH:mm 或 yyyy-MM-dd HH:mm\n可用：yyyy 年 MM 月 dd 日 HH 时 mm 分 ss 秒\n含秒时每秒刷新；留空则使用预设格式"
-                setTextColor(resources.getColor(R.color.foreground_secondary, theme))
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, 34f)
-                setPadding(0, 0, 0, 24)
-            }
-            val box = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(64, 32, 64, 0)
-                addView(tip)
-                addView(input)
-            }
-            AlertDialog.Builder(this)
-                .setTitle("自定义时间格式")
-                .setView(box)
-                .setPositiveButton("确定") { _, _ ->
-                    prefs().edit().putString(KEY_TIME_FORMAT_CUSTOM, input.text.toString().trim()).apply()
-                    refreshFormatLabel()
-                }
-                .setNeutralButton("切换预设") { _, _ ->
-                    val next = (prefs().getInt(KEY_TIME_FORMAT, 1) + 1) % 4
-                    prefs().edit().putInt(KEY_TIME_FORMAT, next).putString(KEY_TIME_FORMAT_CUSTOM, "").apply()
-                    refreshFormatLabel()
-                }
-                .setNegativeButton("取消", null)
-                .show()
-        }
-    }
-
     private fun prefs(): SharedPreferences = Prefs.of(this)
 
     private fun bindCheck(viewId: Int, key: String) {
         val cb = findViewById<CheckBox>(viewId)
-        cb.isChecked = prefs().getBoolean(key, SHOW_DEFAULTS[key] ?: true)
+        cb.isChecked = prefs().getBoolean(key, true)
         cb.setOnCheckedChangeListener { _, isChecked ->
             prefs().edit().putBoolean(key, isChecked).apply()
         }

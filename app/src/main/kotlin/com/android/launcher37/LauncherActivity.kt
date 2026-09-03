@@ -3,48 +3,36 @@ package com.android.launcher37
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.view.WindowManager
-import android.widget.GridView
-import com.android.launcher37.home.HomeModules
-import com.android.launcher37.home.HomeViews
-import com.android.launcher37.home.LayoutDelegate
-import com.android.launcher37.home.LyricsDelegate
-import com.android.launcher37.home.MusicDelegate
-import com.android.launcher37.home.NaviPanelDelegate
-import com.android.launcher37.home.SettingsSnapshot
-import com.android.launcher37.home.SpeedDelegate
 import com.android.launcher37.home.UpdateDelegate
+import com.android.launcher37.home.widget.LyricsWidget
+import com.android.launcher37.home.widget.PageHost
 
 /**
  * Home launcher activity (singleTask).
  * 直接启动时若开启 home_direct_app_drawer，则像 autodock 一样走 Service 悬浮，不建 1x1 窗口，不返桌面。
+ *
+ * 主页 = 单页 Widget 画布（[PageHost]）：Time/Music/Lyrics/Speed/Dock/VD 六类
+ * Widget 绝对定位摆放，命名布局持久化（保存/打开），设计器模式（EXTRA_DESIGNER）
+ * 直接在主页拖动/缩放/增删 Widget。
  */
 class LauncherActivity : Activity() {
 
-    private lateinit var views: HomeViews
-    private lateinit var snapshot: SettingsSnapshot
-    private lateinit var layout: LayoutDelegate
-    private lateinit var speed: SpeedDelegate
-    private lateinit var navi: NaviPanelDelegate
-    private lateinit var music: MusicDelegate
-    private lateinit var lyrics: LyricsDelegate
-    private lateinit var time: com.android.launcher37.home.TimeDelegate
-    private lateinit var update: UpdateDelegate
-
-    internal lateinit var dockBar: DockBar
-        private set
-    internal lateinit var pip: PipController
-        private set
-    internal val mediaHelper: MediaHelper get() = music.mediaHelper()
-
-    private var mNeedPipSync: Boolean = false
+    private var host: PageHost? = null
+    private var update: UpdateDelegate? = null
+    private var mDesignMode: Boolean = false
     private var mHasFocus: Boolean = false
     private var mAppDrawerPending: Boolean = false
+    private var mNeedVdSync: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 用内存焦点状态 sLauncherForeground 判定“启动前是否在本 launcher”：
+        // 设计模式入口（设置页）：跳过 direct/悬浮分支，直接以桌面形态进入
+        val designerRequested = intent?.getBooleanExtra(EXTRA_DESIGNER, false) == true
+        // 用内存焦点状态 sLauncherForeground 判定"启动前是否在本 launcher"：
         // 冷启动（新进程）默认 false → 走悬浮；进程存活的重建保留原焦点状态。
-        val direct = Prefs.of(this).getBoolean(SettingsActivity.KEY_HOME_DIRECT_APP_DRAWER, true)
+        val direct = !designerRequested &&
+            Prefs.of(this).getBoolean(SettingsActivity.KEY_HOME_DIRECT_APP_DRAWER, true)
         val fromHome = intent?.hasCategory(Intent.CATEGORY_HOME) == true
         if (direct && !fromHome) {
             if (DrawerOverlay.isShowing() || AppDrawer.isShowing()) {
@@ -72,111 +60,28 @@ class LauncherActivity : Activity() {
         super.onCreate(savedInstanceState)
         IconCache.clearNormalized()
         setContentView(R.layout.activity_main)
-        buildUi()
-    }
-
-    /** 构建桌面 UI：设置快照 + 模块填充 + view 树引用 + 全部 delegate + 底栏 + PIP placeholder（onCreate/rebuildUi 共用） */
-    private fun buildUi() {
-        snapshot = SettingsSnapshot.load(this)
-        val gapPx = snapshot.size(SettingsActivity.KEY_CARD_GAP, 5)
-        // 模块化填充：左/右栏按注册表 inflate 卡片，模块间插 KEY_CARD_GAP 间距
-        val leftGaps = HomeModules.fill(
-            this, findViewById(R.id.left_col), HomeModules.LEFT_DEFAULT, gapPx
-        )
-        HomeModules.fill(this, findViewById(R.id.right_col), HomeModules.RIGHT_DEFAULT, gapPx)
-        views = HomeViews(
-            contentRoot = findViewById(R.id.page_content),
-            pageContent = findViewById(R.id.page_content),
-            leftCol = findViewById(R.id.left_col),
-            gapTimeSpeed = leftGaps.getOrElse(0) { HomeModules.blankGap(this) },
-            gapSpeedMusic = leftGaps.getOrElse(1) { HomeModules.blankGap(this) },
-            gapDock = findViewById(R.id.gap_dock),
-            gapCol = findViewById(R.id.gap_col),
-            cardTime = findViewById(R.id.card_time),
-            cardSpeed = findViewById(R.id.card_speed),
-            cardMusic = findViewById(R.id.card_music),
-            musicInfo = findViewById(R.id.music_info),
-            musicTimeRow = findViewById(R.id.music_time_row),
-            dockGrid = findViewById(R.id.dock_grid) as GridView,
-            pipPlaceholder = findViewById(R.id.pip_placeholder),
-            tvMusicName = findViewById(R.id.tv_music_name),
-            tvArtist = findViewById(R.id.tv_artist),
-            curTime = findViewById(R.id.music_cur_time),
-            totalTime = findViewById(R.id.music_total_time),
-            musicProgress = findViewById(R.id.music_progress),
-            btnPlayPause = findViewById(R.id.btn_playpause),
-            btnPrev = findViewById(R.id.btn_prev),
-            btnNext = findViewById(R.id.btn_next),
-            naviPanel = findViewById(R.id.navi_panel),
-            naviRowTurn = findViewById(R.id.navi_row_turn),
-            naviRowEta = findViewById(R.id.navi_row_eta),
-            ivTurnIcon = findViewById(R.id.iv_turn_icon),
-            tvNaviDist = findViewById(R.id.tv_navi_dist),
-            tvNaviRoad = findViewById(R.id.tv_navi_road),
-            tvNaviDest = findViewById(R.id.tv_navi_dest),
-            tvNaviTime = findViewById(R.id.tv_navi_time),
-            tvNaviRemain = findViewById(R.id.tv_navi_remain),
-            tvNaviAlert = findViewById(R.id.tv_navi_alert),
-            tvNaviEtaText = findViewById(R.id.tv_navi_eta_text),
-            tvNaviLightCount = findViewById(R.id.tv_navi_light_count),
-            tvNaviExit = findViewById(R.id.tv_navi_exit),
-            tvNaviDirection = findViewById(R.id.tv_navi_direction),
-            tvTime = findViewById(R.id.tv_time),
-            rightCol = findViewById(R.id.right_col),
-            gapRightCol = findViewById(R.id.gap_right_col),
-            cardLyrics = findViewById(R.id.card_lyrics),
-            tvLyricsTitle = findViewById(R.id.tv_lyrics_title),
-            ivLyricsCover = findViewById(R.id.iv_lyrics_cover),
-            boxLyricsLines = findViewById(R.id.box_lyrics_lines),
-            btnLyricsPrev = findViewById(R.id.btn_lyrics_prev),
-            btnLyricsPlay = findViewById(R.id.btn_lyrics_play),
-            btnLyricsNext = findViewById(R.id.btn_lyrics_next)
-        )
-
-        layout = LayoutDelegate(this, views).also { it.apply(snapshot) }
-        time = com.android.launcher37.home.TimeDelegate(views).also { it.applyLayout() }
-        speed = SpeedDelegate(this, views)
-        music = MusicDelegate(
-            this, views,
-            appPicker = { dockBar.pickApp(SELECT_MUSIC_TITLE, null) { picked -> music.onMusicPicked(picked) } }
-        ).also { it.bindListeners() }
-        lyrics = LyricsDelegate(
-            this, views,
-            lineCount = snapshot.size(SettingsActivity.KEY_LYRICS_LINES, 10),
-            curSize = snapshot.size(SettingsActivity.KEY_TS_LYRICS, 20),
-            otherSize = snapshot.size(SettingsActivity.KEY_TS_LYRICS_OTHER, 15),
-            lineGap = snapshot.size(SettingsActivity.KEY_LYRICS_GAP, 15),
-            controls = object : LyricsDelegate.Controls {
-                override fun prev() { music.onMusicButton(music.mediaHelper()::prev) }
-                override fun togglePlay() { music.onMusicButton(music.mediaHelper()::togglePlay) }
-                override fun next() { music.onMusicButton(music.mediaHelper()::next) }
-            }
-        ).also {
-            it.bindListeners()
-            music.lyricsDelegate = it
-        }
-        navi = NaviPanelDelegate(this, views, { snapshot }, speed)
+        val container = findViewById<android.widget.FrameLayout>(R.id.widget_container)
+        host = PageHost(this, container)
+        host?.onDesignerExit = { exitDesign() }
+        host?.onToggleStatusBar = { applyStatusBarVisibility() }
+        (application as LauncherApp).activeHost = host
         update = UpdateDelegate(application, this)
-        speed.bind()
-
-        pip = (application as LauncherApp).pipController
-            ?: PipController(applicationContext, views.pipPlaceholder).also {
-                (application as LauncherApp).pipController = it
+        // 注意：mDesignMode 不在此提前置 true，否则 enterDesign() 的 `if (mDesignMode) return`
+        // 会让首次进入直接返回（工具栏不显示、设计模式不激活）。由 enterDesign() 统一置位。
+        // 容器首次布局（测量完成，宽高=屏幕像素）后装配 Widget
+        container.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                container.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                if (isFinishing || isDestroyed) return
+                host?.install(designerRequested)
+                if (designerRequested) {
+                    host?.startAll()
+                    enterDesign()
+                } else {
+                    applyStatusBarVisibility()
+                }
             }
-        pip.setPlaceholder(views.pipPlaceholder)
-        dockBar = DockBar(this, views.dockGrid)
-        dockBar.setCleanAction { cleanMemory() }
-        val showLabel = snapshot.show(SettingsActivity.KEY_SHOW_DOCK_LABEL, true)
-        dockBar.setCellStyle(
-            showIcon = true, showLabel = showLabel,
-            iconSize = snapshot.size(SettingsActivity.KEY_DOCK_ICON_SIZE, 44),
-            labelSize = 14,
-            cellHeightPx = snapshot.size(SettingsActivity.KEY_DOCK_HEIGHT, 80)
-        )
-        dockBar.setColumns(snapshot.size(SettingsActivity.KEY_DOCK_COLUMNS, 10))
-
-        applyStatusBarVisibility()
-        layout.applyTheme()
+        })
     }
 
     override fun onStart() {
@@ -186,11 +91,7 @@ class LauncherActivity : Activity() {
         // 在此清零会把 onStop 留下的"被真 App 盖顶"证据在 onNewIntent 判定前擦掉。
         // 统一放到 onResume（两版本均晚于 onNewIntent）复位。
         Dbg.i("VDFocusDbg") { "onStart stopped=$sLauncherStopped top=${dbgTop()}" }
-        if (!::views.isInitialized) return
-        time.start()
-        music.start()
-        navi.start()
-        update.checkOnLaunch()
+        update?.checkOnLaunch()
     }
 
     // #region debug-point lifecy-v1（仅日志，不改逻辑）
@@ -226,7 +127,7 @@ class LauncherActivity : Activity() {
         sLauncherStopped = false
         Dbg.i("VDFocusDbg") { "onResume fg=${sLauncherForeground} focus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus top=${dbgTop()}" }
         super.onResume()
-        if (mAppDrawerPending && ::views.isInitialized) {
+        if (mAppDrawerPending) {
             mAppDrawerPending = false
             // 需 post 到 window token 就绪后再弹，避免 BadToken
             window.decorView.post {
@@ -235,7 +136,8 @@ class LauncherActivity : Activity() {
                 }
             }
         }
-        mNeedPipSync = true
+        mNeedVdSync = true
+        host?.startAll()
     }
 
     override fun onPause() {
@@ -259,36 +161,38 @@ class LauncherActivity : Activity() {
         // 不清掉的话后续 am start 会误判"仍在桌面"而弹抽屉（应为悬浮窗）。
         sLastPauseHadFocus = false
         snapshotTop()
-        if (::views.isInitialized) {
-            time.stop()
-            music.stop()
-            navi.stop()
-        }
+        host?.stopAll()
         super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         Dbg.i("VDFocusDbg") { "onNewIntent act=${intent.action} fromHome=${intent.hasCategory(Intent.CATEGORY_HOME)} mHasFocus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus fg=$sLauncherForeground top=${dbgTop()}" }
-        mNeedPipSync = true
+        mNeedVdSync = true
+        val isDesigner = intent.getBooleanExtra(EXTRA_DESIGNER, false)
+        if (isDesigner && !mDesignMode) {
+            enterDesign()
+        }
+        // 进入设计器意图：不弹全部应用/悬浮，直接回到桌面
+        if (isDesigner) return
         val direct = Prefs.of(this).getBoolean(SettingsActivity.KEY_HOME_DIRECT_APP_DRAWER, true)
         val fromHome = intent.hasCategory(Intent.CATEGORY_HOME)
-        if (direct) {
-            if (fromHome) {
-                // HOME：桌面上切换全部应用，其余回桌面
-                if (mHasFocus) {
-                    if (AppDrawer.isShowing() || DrawerOverlay.isShowing()) {
-                        AppDrawer.dismissIfShowing()
-                        DrawerOverlay.dismiss()
-                    } else {
-                        AppDrawer.show(this)
-                    }
-                } else {
-                    if (DrawerOverlay.isShowing()) DrawerOverlay.dismiss()
+        if (fromHome) {
+            // HOME：桌面上切换全部应用，其余回桌面
+            if (mHasFocus) {
+                if (AppDrawer.isShowing() || DrawerOverlay.isShowing()) {
                     AppDrawer.dismissIfShowing()
+                    DrawerOverlay.dismiss()
+                } else {
+                    AppDrawer.show(this)
                 }
-                return
+            } else {
+                if (DrawerOverlay.isShowing()) DrawerOverlay.dismiss()
+                AppDrawer.dismissIfShowing()
             }
+            return
+        }
+        if (direct) {
             // am start com.android.launcher37：判定"触发前用户在不在本 launcher 桌面"。
             // 焦点快照（sLastPauseHadFocus）在"桌面挂着高德 VD"时不可靠：VD 上的高德任务
             // 会成为系统顶部任务，把 launcher 挤成 paused+失焦（用户视觉上仍在桌面），
@@ -332,28 +236,20 @@ class LauncherActivity : Activity() {
 
     override fun onDestroy() {
         AppDrawer.dismissIfShowing()
-        if (::views.isInitialized) {
-            pip.releaseTransient()
-            speed.unbind()
-            music.stop()
-            music.cancelPending()
-            navi.stop()
-            lyrics.stop()
-            update.release()
-        }
+        host?.destroyAll()
+        host = null
+        (application as? LauncherApp)?.activeHost = null
+        update?.release()
+        update = null
         super.onDestroy()
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (!::views.isInitialized) return
+        // uiMode 切换不重建 Activity：重读状态栏主题 + 通知全部 Widget 重读日/夜色
         applyStatusBarVisibility()
-        layout.applyTheme()
-        layout.reapplyNightDrawables()
-        // uiMode 切换不重建 Activity，动态渲染的文字/转向图标需强制重建重新读色
-        if (::navi.isInitialized) navi.rebuildForThemeChange()
-        if (::lyrics.isInitialized) lyrics.rebuildForThemeChange()
-        dockBar.refresh()
+        applySystemBarTheme()
+        host?.onThemeChange()
     }
 
     private fun applyStatusBarVisibility() {
@@ -364,26 +260,80 @@ class LauncherActivity : Activity() {
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         }
+        applySystemBarTheme()
+    }
+
+    /** 状态栏配色跟日夜主题（uiMode 切换不重建 Activity，必须每次同步） */
+    private fun applySystemBarTheme() {
+        val bg = resources.getColor(R.color.background, theme)
+        window.statusBarColor = bg
+        val isLightBar = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_NO
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val ctrl = window.insetsController
+            if (isLightBar) {
+                ctrl?.setSystemBarsAppearance(
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                )
+            } else {
+                ctrl?.setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility =
+                if (isLightBar) android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR else 0
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         Dbg.i("VDFocusDbg") { "onWindowFocusChanged hasFocus=$hasFocus" }
         mHasFocus = hasFocus
-        if (!hasFocus || !::views.isInitialized) return
-        if (mNeedPipSync) {
-            mNeedPipSync = false
-            // 桌面拉起延迟（pip_start_delay，0=立即）：恢复 d4584a0 删除的 PIP_START_DELAY_MS(250ms) 固定延迟，改为可设置
-            val startDelayMs = snapshot.size(SettingsActivity.KEY_PIP_START_DELAY, 250)
-            if (startDelayMs > 0) {
-                views.pipPlaceholder.postDelayed({ pip.ensureStd() }, startDelayMs.toLong())
-            } else {
-                pip.ensureStd()
-            }
+        if (!hasFocus || host == null) return
+        if (mNeedVdSync) {
+            mNeedVdSync = false
+            // VD 拉起延迟（pip_start_delay，0=立即）：窗口焦点就绪后再拉起全部 VDWidget
+            host?.ensureVdLaunched()
         }
     }
 
+    // ── 设计器模式 ───────────────────────────────────
+
+    /**
+     * 进入设计器：主页本身即画布（Widget 实时预览真实数据），显示悬浮工具栏。
+     * 不再强制全屏：画布尺寸与普通模式一致（状态栏显隐由工具栏开关控制）。
+     */
+    private fun enterDesign() {
+        if (mDesignMode || host == null) return
+        mDesignMode = true
+        applyStatusBarVisibility()
+        findViewById<View>(R.id.design_toolbar).visibility = View.VISIBLE
+        host?.refreshStatusButton()
+        host?.enterDesignMode()
+    }
+
+    /** 完成/保存路径：退出设计模式 + 恢复正常运行（由 PageHost 调用） */
+    private fun exitDesign() {
+        if (!mDesignMode) return
+        mDesignMode = false
+        findViewById<View>(R.id.design_toolbar).visibility = View.GONE
+        applyStatusBarVisibility()
+    }
+
     fun cleanMemory() = MemoryCleaner.cleanFromUi(this)
+
+    /** 内存清理保护：正在播放音乐的包（全部 LyricsWidget 汇总） */
+    internal fun playingPkgs(): Set<String> {
+        val out = HashSet<String>()
+        host?.allWidgets()?.filterIsInstance<LyricsWidget>()?.forEach {
+            out.addAll(it.mediaHelper().playingPackages)
+        }
+        return out
+    }
+
+    /** 内存清理保护 / 全屏搬移：全部 VDWidget 绑定的包名 */
+    internal fun vdPkgs(): Set<String> = host?.vdBoundedPkgs() ?: emptySet()
 
     /**
      * 浮窗切换路径：让 launcher 窗口保持不可见（透明背景 + 隐藏内容），
@@ -398,6 +348,9 @@ class LauncherActivity : Activity() {
     }
 
     companion object {
+        /** 设置页入口：以设计器模式启动主页 */
+        const val EXTRA_DESIGNER = "designer"
+
         /** 本 launcher 是否曾进入前台（onResume=true / onPause=false）。仅用于 onCreate 冷启动兜底判定。 */
         @Volatile
         var sLauncherForeground: Boolean = false
@@ -413,7 +366,5 @@ class LauncherActivity : Activity() {
         /** launcher 是否处于 stopped（被其他 App 真盖顶）。VD 抢焦只 pause 不 stop，据此区分二者。 */
         @Volatile
         var sLauncherStopped: Boolean = false
-
-        private const val SELECT_MUSIC_TITLE = "选择音乐应用"
     }
 }

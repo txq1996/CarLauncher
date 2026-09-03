@@ -1,17 +1,17 @@
 package com.android.launcher37
 
 import android.app.Application
+import com.android.launcher37.home.widget.PageHost
 
 /**
- * Application 单例：跨 Activity 持有 [PipController]。
+ * Application 单例：跨 Activity 持有主页 [PageHost]。
  *
- * 关键作用：让 VirtualDisplay 句柄与 mSurfaceView 不被 Activity 销毁/重建抹掉，
- * 进程内自更新 / onCreate/onDestroy 切换时导航任务可继续显示。
- * 跨进程（系统杀）时由系统依据 VirtualDisplay 标志（TRUSTED + OWN_CONTENT_ONLY）
- * 在 surfaceDestroyed 时仅摘 surface，display 留在系统池里。
+ * 关键作用：Store.launchApp / MemoryCleaner / DrawerOverlay 等无 Activity 上下文
+ * 的调用方可查询 VDWidget 绑定的包名（内存清理保护 / VD 任务搬回主屏全屏）。
+ * Activity onCreate 设置、onDestroy 清空。
  */
 class LauncherApp : Application() {
-    var pipController: PipController? = null
+    var activeHost: PageHost? = null
 
     override fun onCreate() {
         super.onCreate()

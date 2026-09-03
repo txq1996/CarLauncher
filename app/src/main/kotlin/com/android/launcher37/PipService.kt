@@ -29,6 +29,9 @@ import java.lang.reflect.Method
  *   跨进程投递给本 service 注入到 VD。
  * - 启动/搬移 Activity 也由 service 直接走 ActivityManager（同一个 VD）。
  *
+ * 多槽位：slot 0 = launcher 主地图卡（既有行为不变）；slot ≥1 = 设计器/预览
+ * 的 VD 卡片，每槽位独立 VirtualDisplay + Surface + InputForwarder + 当前任务。
+ *
  * 反射 API（InputManager / ActivityTaskManager）跟 [MapPipHost] 同源，
  * 全部走 system uid 隐式权限。
  */
@@ -124,21 +127,30 @@ class PipService : Service() {
     }
 
     private val mHandler = MainThread.handler
-    private var mVd: VirtualDisplay? = null
-    private var mSurface: Surface? = null
-    private var mSurfaceWidth = 0
-    private var mSurfaceHeight = 0
-    private var mInputForwarder: Any? = null
-    private var mForwardEvent: Method? = null
-    private var mCurrentPkg: String? = null
-    private var mPendingLaunch: String? = null
 
-    private val mLaunchRunnable = Runnable {
-        val pkg = mPendingLaunch ?: return@Runnable
-        mPendingLaunch = null
-        if (displayId() < 0) return@Runnable
-        if (!moveStaleTask(pkg)) doStart(pkg)
+    /** 一个槽位 = 独立 VirtualDisplay + Surface + 输入转发 + 当前任务 */
+    private inner class Slot(val id: Int) {
+        var vd: VirtualDisplay? = null
+        var surface: Surface? = null
+        var surfaceWidth = 0
+        var surfaceHeight = 0
+        var inputForwarder: Any? = null
+        var forwardEvent: Method? = null
+        var currentPkg: String? = null
+        var pendingLaunch: String? = null
+
+        val launchRunnable = Runnable {
+            val pkg = pendingLaunch ?: return@Runnable
+            pendingLaunch = null
+            if (displayId() < 0) return@Runnable
+            if (!moveStaleTask(pkg, displayId())) doStart(this, pkg)
+        }
+
+        fun displayId(): Int = try { vd?.display?.displayId ?: -1 } catch (t: Throwable) { -1 }
     }
+
+    private val mSlots = HashMap<Int, Slot>()
+    private fun slot(id: Int): Slot = synchronized(mSlots) { mSlots.getOrPut(id) { Slot(id) } }
 
     override fun onCreate() {
         super.onCreate()
@@ -152,122 +164,137 @@ class PipService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy: pid=${Process.myPid()}")
-        releaseDisplay()
+        synchronized(mSlots) {
+            for (s in mSlots.values) releaseDisplay(s)
+            mSlots.clear()
+        }
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder = LocalBinder()
 
     inner class LocalBinder : IPipService.Stub() {
-        override fun getDisplayId(): Int = synchronized(this@PipService) { displayId() }
+        override fun getDisplayId(): Int = slotDisplayId(0)
 
-        override fun attachSurface(surface: Surface?, width: Int, height: Int, launchDelayMs: Long): Boolean {
-            Log.i(TAG, "attachSurface: w=$width h=$height valid=${surface?.isValid}")
-            if (surface == null) {
-                Log.w(TAG, "attachSurface: null surface")
-                return false
-            }
-            if (width <= 0 || height <= 0) return false
-            synchronized(this@PipService) {
-                // 释放旧 surface（防重复 attach 泄漏）；detachSurface 也会走这里
-                val old = mSurface
-                if (old != null && old !== surface) {
-                    try { old.release() } catch (t: RuntimeException) {
-                        Log.w(TAG, "release old surface failed", t)
-                    }
-                }
-                mSurface = surface
-                mSurfaceWidth = width
-                mSurfaceHeight = height
-                ensureDisplay(surface, width, height)
-            }
-            if (mCurrentPkg != null) {
-                mPendingLaunch = mCurrentPkg
-                mHandler.removeCallbacks(mLaunchRunnable)
-                if (launchDelayMs > 0) mHandler.postDelayed(mLaunchRunnable, launchDelayMs)
-                else mHandler.post(mLaunchRunnable)
-            }
-            return true
-        }
+        override fun attachSurface(surface: Surface?, width: Int, height: Int, launchDelayMs: Long): Boolean =
+            attachSurfaceToSlot(0, surface, width, height, launchDelayMs)
 
-        override fun detachSurface() {
-            Log.i(TAG, "detachSurface")
-            mHandler.removeCallbacks(mLaunchRunnable)
-            synchronized(this@PipService) {
-                val s = mSurface
-                if (s != null) {
-                    try { s.release() } catch (ignored: Throwable) {}
-                }
-                mSurface = null
-                mVd?.let {
-                    try { it.surface = null } catch (t: Throwable) {
-                        Log.w(TAG, "detach VD surface failed", t)
-                    }
-                }
-                mInputForwarder = null
-                mForwardEvent = null
-            }
-        }
+        override fun detachSurface() = detachSurfaceSlot(0)
 
-        override fun launch(packageName: String?, launchDelayMs: Long) {
-            if (packageName.isNullOrEmpty()) {
-                Log.w(TAG, "launch: empty package")
-                return
-            }
-            mCurrentPkg = packageName
-            if (displayId() < 0) {
-                mPendingLaunch = packageName
-                return
-            }
-            mHandler.removeCallbacks(mLaunchRunnable)
-            if (moveStaleTask(packageName)) return
-            mPendingLaunch = packageName
-            if (launchDelayMs > 0) mHandler.postDelayed(mLaunchRunnable, launchDelayMs)
-            else mHandler.post(mLaunchRunnable)
-        }
+        override fun launch(packageName: String?, launchDelayMs: Long) =
+            launchToSlot(packageName, launchDelayMs, 0)
 
-        override fun forwardTouch(event: MotionEvent?): Boolean {
-            if (event == null) return false
-            return injectTouch(event)
-        }
+        override fun forwardTouch(event: MotionEvent?): Boolean = forwardTouchToSlot(0, event)
 
         override fun moveTaskToDisplay(packageName: String?, displayId: Int): Boolean {
             if (packageName.isNullOrEmpty()) return false
             return moveTaskToTargetDisplay(packageName, displayId)
         }
+
+        override fun attachSurfaceToSlot(slotId: Int, surface: Surface?, width: Int, height: Int, launchDelayMs: Long): Boolean {
+            Log.i(TAG, "attachSurface slot=$slotId w=$width h=$height valid=${surface?.isValid}")
+            if (surface == null) {
+                Log.w(TAG, "attachSurface: null surface")
+                return false
+            }
+            if (width <= 0 || height <= 0) return false
+            val s = slot(slotId)
+            synchronized(s) {
+                // 释放旧 surface（防重复 attach 泄漏）；detachSurfaceSlot 也会走这里
+                val old = s.surface
+                if (old != null && old !== surface) {
+                    try { old.release() } catch (t: RuntimeException) {
+                        Log.w(TAG, "release old surface failed", t)
+                    }
+                }
+                s.surface = surface
+                s.surfaceWidth = width
+                s.surfaceHeight = height
+                ensureDisplay(s, surface, width, height)
+            }
+            if (s.currentPkg != null) {
+                s.pendingLaunch = s.currentPkg
+                mHandler.removeCallbacks(s.launchRunnable)
+                if (launchDelayMs > 0) mHandler.postDelayed(s.launchRunnable, launchDelayMs)
+                else mHandler.post(s.launchRunnable)
+            }
+            return true
+        }
+
+        override fun detachSurfaceSlot(slotId: Int) {
+            Log.i(TAG, "detachSurface slot=$slotId")
+            val s = slot(slotId)
+            mHandler.removeCallbacks(s.launchRunnable)
+            synchronized(s) {
+                val surf = s.surface
+                if (surf != null) {
+                    try { surf.release() } catch (ignored: Throwable) {}
+                }
+                s.surface = null
+                s.vd?.let {
+                    try { it.surface = null } catch (t: Throwable) {
+                        Log.w(TAG, "detach VD surface failed", t)
+                    }
+                }
+                s.inputForwarder = null
+                s.forwardEvent = null
+            }
+        }
+
+        override fun launchToSlot(packageName: String?, launchDelayMs: Long, slotId: Int) {
+            if (packageName.isNullOrEmpty()) {
+                Log.w(TAG, "launch: empty package")
+                return
+            }
+            val s = slot(slotId)
+            s.currentPkg = packageName
+            if (s.displayId() < 0) {
+                s.pendingLaunch = packageName
+                return
+            }
+            mHandler.removeCallbacks(s.launchRunnable)
+            if (moveStaleTask(packageName, s.displayId())) return
+            s.pendingLaunch = packageName
+            if (launchDelayMs > 0) mHandler.postDelayed(s.launchRunnable, launchDelayMs)
+            else mHandler.post(s.launchRunnable)
+        }
+
+        override fun forwardTouchToSlot(slotId: Int, event: MotionEvent?): Boolean {
+            if (event == null) return false
+            return injectTouch(slot(slotId), event)
+        }
+
+        override fun getSlotDisplayId(slotId: Int): Int = slotDisplayId(slotId)
     }
 
-    private fun displayId(): Int {
-        val vd = mVd ?: return -1
-        return try { vd.display?.displayId ?: -1 } catch (t: Throwable) { -1 }
-    }
+    private fun slotDisplayId(slotId: Int): Int = slot(slotId).displayId()
 
-    private fun ensureDisplay(surface: Surface?, width: Int, height: Int) {
+    private fun ensureDisplay(s: Slot, surface: Surface?, width: Int, height: Int) {
         if (surface == null || !surface.isValid) return
         if (width <= 0 || height <= 0) return
         val densityDpi = resources.displayMetrics.densityDpi
-        val vd = mVd
+        val vd = s.vd
         if (vd != null) {
             try {
                 vd.surface = surface
                 vd.resize(width, height, densityDpi)
-                ensureInputForwarder()
-                Log.i(TAG, "reuse VD: id=${displayId()} ${width}x$height")
+                ensureInputForwarder(s)
+                Log.i(TAG, "reuse VD slot=${s.id}: id=${s.displayId()} ${width}x$height")
                 return
             } catch (t: Throwable) {
                 Log.w(TAG, "reuse VD failed, recreate", t)
                 try { vd.release() } catch (ignored: Throwable) {}
-                mVd = null
-                mInputForwarder = null
-                mForwardEvent = null
+                s.vd = null
+                s.inputForwarder = null
+                s.forwardEvent = null
             }
         }
         val dm = getSystemService(DisplayManager::class.java) ?: return
         val flags = if (Build.VERSION.SDK_INT >= 29)
             VIRTUAL_DISPLAY_FLAG_TRUSTED or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY
         else 0
-        mVd = try {
-            dm.createVirtualDisplay(VD_NAME, width, height, densityDpi, surface, flags)
+        s.vd = try {
+            dm.createVirtualDisplay("${VD_NAME}#slot${s.id}", width, height, densityDpi, surface, flags)
         } catch (t: SecurityException) {
             Log.e(TAG, "createVirtualDisplay denied (uid=${Process.myUid()})", t)
             null
@@ -275,36 +302,36 @@ class PipService : Service() {
             Log.e(TAG, "createVirtualDisplay failed", t)
             null
         }
-        if (mVd == null) {
+        if (s.vd == null) {
             Log.e(TAG, "createVirtualDisplay returned null")
             return
         }
-        Log.i(TAG, "VD created: sdk=${Build.VERSION.SDK_INT} id=${displayId()} ${width}x$height dpi=$densityDpi")
-        ensureInputForwarder()
+        Log.i(TAG, "VD created slot=${s.id}: sdk=${Build.VERSION.SDK_INT} id=${s.displayId()} ${width}x$height dpi=$densityDpi")
+        ensureInputForwarder(s)
     }
 
-    private fun ensureInputForwarder() {
-        if (mInputForwarder != null && mForwardEvent != null) return
+    private fun ensureInputForwarder(s: Slot) {
+        if (s.inputForwarder != null && s.forwardEvent != null) return
         val create = sCreateInputForwarder ?: return
         val getInstance = sGetInputManager ?: return
-        val display = displayId()
+        val display = s.displayId()
         if (display < 0) return
         try {
             val im = getInstance.invoke(null)
-            mInputForwarder = create.invoke(im, display) ?: return
-            mForwardEvent = findMethod(
-                mInputForwarder!!.javaClass, "forwardEvent", InputEvent::class.java
+            s.inputForwarder = create.invoke(im, display) ?: return
+            s.forwardEvent = findMethod(
+                s.inputForwarder!!.javaClass, "forwardEvent", InputEvent::class.java
             )
-            Log.i(TAG, "InputForwarder: display=$display method=${mForwardEvent != null}")
+            Log.i(TAG, "InputForwarder slot=${s.id}: display=$display method=${s.forwardEvent != null}")
         } catch (t: Throwable) {
-            mInputForwarder = null
-            mForwardEvent = null
+            s.inputForwarder = null
+            s.forwardEvent = null
             Log.w(TAG, "createInputForwarder failed", t)
         }
     }
 
-    private fun injectTouch(event: MotionEvent): Boolean {
-        val display = displayId()
+    private fun injectTouch(s: Slot, event: MotionEvent): Boolean {
+        val display = s.displayId()
         if (display < 0) return false
         if ((sSetDisplayId != null || sSetDisplayIdField != null) && sGetInputManager != null && sInjectInputEvent != null) {
             val copy = MotionEvent.obtain(event)
@@ -320,9 +347,9 @@ class PipService : Service() {
                 copy.recycle()
             }
         }
-        ensureInputForwarder()
-        val fwd = mInputForwarder
-        val m = mForwardEvent
+        ensureInputForwarder(s)
+        val fwd = s.inputForwarder
+        val m = s.forwardEvent
         if (fwd != null && m != null) {
             return try {
                 true == m.invoke(fwd, event)
@@ -408,16 +435,16 @@ class PipService : Service() {
         }
     }
 
-    private fun moveStaleTask(packageName: String): Boolean =
-        findAndMoveTask(packageName, displayId(), stackMoveOnlyToDefault = true, allowMoveToBack = false)
+    private fun moveStaleTask(packageName: String, targetDisplay: Int): Boolean =
+        findAndMoveTask(packageName, targetDisplay, stackMoveOnlyToDefault = true, allowMoveToBack = false)
 
     private fun moveTaskToTargetDisplay(packageName: String, targetDisplay: Int): Boolean =
         findAndMoveTask(packageName, targetDisplay, stackMoveOnlyToDefault = false, allowMoveToBack = true)
 
-    private fun doStart(packageName: String) {
-        val targetDisplay = displayId()
+    private fun doStart(s: Slot, packageName: String) {
+        val targetDisplay = s.displayId()
         if (targetDisplay < 0) {
-            mPendingLaunch = packageName
+            s.pendingLaunch = packageName
             return
         }
         val intent = packageManager.getLaunchIntentForPackage(packageName) ?: run {
@@ -431,12 +458,12 @@ class PipService : Service() {
                 or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         )
-        val w = maxOf(mSurfaceWidth, 1)
-        val h = maxOf(mSurfaceHeight, 1)
+        val w = maxOf(s.surfaceWidth, 1)
+        val h = maxOf(s.surfaceHeight, 1)
         val options = ActivityOptions.makeBasic()
         options.setLaunchBounds(android.graphics.Rect(0, 0, w, h))
         options.setLaunchDisplayId(targetDisplay)
-        Log.i(TAG, "startActivity: pkg=$packageName display=$targetDisplay size=${w}x$h")
+        Log.i(TAG, "startActivity slot=${s.id}: pkg=$packageName display=$targetDisplay size=${w}x$h")
         try {
             startActivity(intent, options.toBundle())
         } catch (t: Throwable) {
@@ -444,23 +471,23 @@ class PipService : Service() {
         }
     }
 
-    private fun releaseDisplay() {
-        synchronized(this) {
-            mInputForwarder = null
-            mForwardEvent = null
-            val s = mSurface
-            if (s != null) {
-                try { s.release() } catch (ignored: Throwable) {}
-                mSurface = null
+    private fun releaseDisplay(s: Slot) {
+        synchronized(s) {
+            s.inputForwarder = null
+            s.forwardEvent = null
+            val surf = s.surface
+            if (surf != null) {
+                try { surf.release() } catch (ignored: Throwable) {}
+                s.surface = null
             }
-            val vd = mVd ?: return
+            val vd = s.vd ?: return
             try {
-                Log.i(TAG, "release VD: id=${displayId()}")
+                Log.i(TAG, "release VD slot=${s.id}: id=${s.displayId()}")
                 vd.release()
             } catch (t: Throwable) {
                 Log.w(TAG, "release VD failed", t)
             } finally {
-                mVd = null
+                s.vd = null
             }
         }
     }

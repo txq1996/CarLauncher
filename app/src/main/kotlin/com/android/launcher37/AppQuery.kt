@@ -91,13 +91,12 @@ object AppQuery {
     fun appId(ri: ResolveInfo): String = ri.activityInfo.packageName + "/" + ri.activityInfo.name
 
     /**
-     * 按用户设置过滤抽屉应用列表：移除隐藏应用（[Store.drawerHidden]）——仅抽屉显示模式
-     * 生效；dockMode 是底栏选择器，保留全部候选（隐藏的应用仍可加到底栏）。
+     * 按用户设置过滤抽屉应用列表：移除隐藏应用（[Store.drawerHidden]）。
      * 排序统一由 [DrawerAdapter.applyUserOrder] 处理（含功能项/分屏/应用全集）。
      */
     @JvmStatic
-    fun applyDrawerPrefs(c: Context, list: List<ResolveInfo>, dockMode: Boolean): List<ResolveInfo> {
-        val hidden = if (dockMode) emptySet() else Store.drawerHidden(c)
+    fun applyDrawerPrefs(c: Context, list: List<ResolveInfo>): List<ResolveInfo> {
+        val hidden = Store.drawerHidden(c)
         if (hidden.isEmpty()) return list
         return list.filter { appId(it) !in hidden }
     }

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 行序拖动面板单行：长按 ☰ 拖动重排 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_app_order_row"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingLeft="16px"
+    android:paddingTop="12px"
+    android:paddingRight="16px"
+    android:paddingBottom="12px">
+
+    <TextView
+        android:id="@+id/tv_order_label"
+        android:layout_width="0px"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:includeFontPadding="false"
+        android:textColor="@color/foreground"
+        android:textSize="20px" />
+
+    <TextView
+        android:id="@+id/tv_order_drag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="☰"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="24px" />
+</LinearLayout>

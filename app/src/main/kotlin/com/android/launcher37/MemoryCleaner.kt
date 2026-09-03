@@ -42,11 +42,11 @@ object MemoryCleaner {
      *
      * @param playingPkgs 正在播放音乐的包名集合（含 STATE_BUFFERING）。同时多 app
      *                    在播时集合里有多个元素。null 或空集合表示无任何播放中。
-     * @param pipPkg      PIP 地图包名（不清理），null 表示无
+     * @param vdPkgs      VDWidget 承载的 App 包名集合（不清理，导航任务搬移 + 触摸转发），null 表示无
      * @return 释放的内存 MB 数（四舍五入，最小 0）
      */
     @JvmStatic
-    fun clean(c: Context, playingPkgs: Set<String>?, pipPkg: String?): Long {
+    fun clean(c: Context, playingPkgs: Set<String>?, vdPkgs: Set<String>?): Long {
         val am = c.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
             ?: return 0L
         val beforeMb = availableMb(am)
@@ -59,7 +59,7 @@ object MemoryCleaner {
             // （子进程名带冒号后缀，正常情况下 processName.startsWith(self) 仍能识别自身，
             // 但外部 playingPkgs 不会带冒号，所以 fallback 主要靠 pkgList[0] 即可）。
             val pkgs = if (pi.pkgList != null && pi.pkgList.isNotEmpty()) pi.pkgList.toList() else listOf(pi.processName)
-            val anyProtected = pkgs.any { it == self || (pipPkg != null && it == pipPkg) }
+            val anyProtected = pkgs.any { it == self || (vdPkgs != null && it in vdPkgs) }
             if (anyProtected) continue
             val playingHit = playingPkgs != null && pkgs.any { playingPkgs.contains(it) }
             if (playingHit) continue
@@ -90,7 +90,7 @@ object MemoryCleaner {
     }
 
     /**
-     * 触发内存清理（UI 入口）：探测 Activity 上的 MediaHelper / PipController
+     * 触发内存清理（UI 入口）：探测 Activity 上 Widget 的 MediaHelper / VD 绑定包
      * （若是 [LauncherActivity]），执行 [clean] 并 Toast 释放结果。
      *
      * 保护正在播放的所有 app：从 MediaHelper.playingPackages 拿到整个集合（不止
@@ -98,9 +98,9 @@ object MemoryCleaner {
      */
     @JvmStatic
     fun cleanFromUi(a: android.app.Activity) {
-        val playing = if (a is LauncherActivity) a.mediaHelper.playingPackages else null
-        val pipPkg = (a as? LauncherActivity)?.pip?.resolvePkg()
-        val freedMb = clean(a, playing, pipPkg)
+        val playing = if (a is LauncherActivity) a.playingPkgs() else null
+        val vdPkgs = (a as? LauncherActivity)?.vdPkgs()
+        val freedMb = clean(a, playing, vdPkgs)
         val msg = if (freedMb > 0) "已释放 $freedMb MB 内存" else "当前无后台进程可清理"
         // clean() 可能在任意线程被调（UI 点击 / 抽屉动作），Toast 统一 post 回主线程
         MainThread.handler.post {

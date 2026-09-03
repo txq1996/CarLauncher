@@ -28,6 +28,40 @@ interface LyricsProvider {
     fun fetch(artist: String, title: String, durationSec: Int): LyricsData?
 }
 
+/** 一行带时间戳的歌词 */
+data class LrcTimedLine(val timeMs: Long, val text: String)
+
+/** LRC 解析（公开供设计器预览复用） */
+object LrcParser {
+    /**
+     * 解析 LRC：`[mm:ss.xx]` / `[mm:ss.xxx]` 时间标签（一行可含多个标签），
+     * 忽略元数据标签（[ar]/[ti]/[offset] 等）与纯时间标签空行；输出按时间排序。
+     */
+    fun parse(lrc: String): List<LrcTimedLine> {
+        val out = ArrayList<LrcTimedLine>()
+        val tag = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?]""")
+        for (rawLine in lrc.lineSequence()) {
+            val matches = tag.findAll(rawLine).toList()
+            if (matches.isEmpty()) continue
+            val text = rawLine.substring(matches.last().range.last + 1).trim()
+            if (text.isEmpty()) continue
+            for (m in matches) {
+                val min = m.groupValues[1].toLong()
+                val sec = m.groupValues[2].toLong()
+                val fracStr = m.groupValues[3]
+                val frac = when (fracStr.length) {
+                    0 -> 0L
+                    1 -> fracStr.toLong() * 100
+                    2 -> fracStr.toLong() * 10
+                    else -> fracStr.take(3).toLong()
+                }
+                out.add(LrcTimedLine(min * 60_000 + sec * 1000 + frac, text))
+            }
+        }
+        return out.sortedBy { it.timeMs }
+    }
+}
+
 /** QQ 音乐歌曲条目（vkeys 搜索结果），持久化到 info.json */
 data class SongInfo(
     val id: Long,

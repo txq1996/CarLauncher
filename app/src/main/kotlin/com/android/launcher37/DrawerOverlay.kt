@@ -163,12 +163,12 @@ object DrawerOverlay {
         grid.onItemClickListener = android.widget.AdapterView.OnItemClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String ?: return@OnItemClickListener
             DrawerActions.handleNormal(
-                appCtx, tagStr, Store.v2Buttons(appCtx),
+                appCtx, tagStr,
                 onDismiss = { dismiss() },
                 onClean = {
-                    // 悬浮窗拿不到 Activity 侧 MediaHelper，仅保留 PIP 保护
-                    val pipPkg = (appCtx as? LauncherApp)?.pipController?.resolvePkg()
-                    val freed = MemoryCleaner.clean(appCtx, null, pipPkg)
+                    // 悬浮窗拿不到 Activity 侧 MediaHelper，仅保留 VD 保护
+                    val vdPkgs = (appCtx as? LauncherApp)?.activeHost?.vdBoundedPkgs()
+                    val freed = MemoryCleaner.clean(appCtx, null, vdPkgs)
                     val msg = if (freed > 0) "已释放 $freed MB 内存" else "当前无后台进程可清理"
                     Toast.makeText(appCtx, msg, Toast.LENGTH_SHORT).show()
                 },
@@ -182,10 +182,10 @@ object DrawerOverlay {
             if (tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
                 val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull()
                     ?: return@OnItemLongClickListener true
-                DrawerActions.removeSplitAndRefresh(appCtx, grid, idx, dockMode = false)
+                DrawerActions.removeSplitAndRefresh(appCtx, grid, idx)
             }
             true
         }
-        DrawerActions.loadAdapterAsync(appCtx, grid, dockMode = false)
+        DrawerActions.loadAdapterAsync(appCtx, grid)
     }
 }

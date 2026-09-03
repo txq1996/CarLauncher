@@ -31,10 +31,6 @@
                         android:orientation="vertical">
 
                         <TextView android:id="@+id/tab_layout" style="@style/Tab" android:text="布局" />
-                        <TextView android:id="@+id/tab_time" style="@style/Tab" android:text="时间" />
-                        <TextView android:id="@+id/tab_speed" style="@style/Tab" android:text="车速" />
-                        <TextView android:id="@+id/tab_music" style="@style/Tab" android:text="音乐" />
-                        <TextView android:id="@+id/tab_dock" style="@style/Tab" android:text="底栏" />
                         <TextView android:id="@+id/tab_apps" style="@style/Tab" android:text="应用" />
                         <TextView android:id="@+id/tab_general" style="@style/Tab" android:text="通用" />
                     </LinearLayout>
@@ -62,168 +58,21 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <LinearLayout android:id="@+id/box_layout_seeks" style="@style/SeekBox" />
-
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示左侧栏" />
-                            <CheckBox android:id="@+id/cb_show_left_col" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示歌词面板" />
-                            <CheckBox android:id="@+id/cb_show_lyrics" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示状态栏" />
-                            <CheckBox android:id="@+id/cb_hide_status_bar" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示时间卡片" />
-                            <CheckBox android:id="@+id/cb_show_time" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示车速卡片" />
-                            <CheckBox android:id="@+id/cb_show_speed_card" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示音乐卡片" />
-                            <CheckBox android:id="@+id/cb_show_music_card" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示底栏" />
-                            <CheckBox android:id="@+id/cb_show_dock" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </ScrollView>
-
-                <!-- ── 时间 ── -->
-                <ScrollView android:id="@+id/panel_time" style="@style/Panel">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <LinearLayout android:id="@+id/box_time_seeks" style="@style/SeekBox" />
-
-                        <TextView
-                            android:id="@+id/tv_time_format"
+                        <Button
+                            android:id="@+id/btn_layout_design"
+                            style="@style/ThemeButton"
                             android:layout_width="match_parent"
-                            android:layout_height="64px"
-                            android:layout_marginTop="6px"
-                            android:background="@drawable/bg_app_order_row"
-                            android:gravity="center_vertical"
-                            android:paddingStart="16px"
-                            android:paddingEnd="16px"
-                            android:includeFontPadding="false"
-                            android:text="时间格式：HH:mm:ss"
-                            android:textColor="@color/foreground"
-                            android:textSize="20px" />
-                    </LinearLayout>
-                </ScrollView>
-
-                <!-- ── 车速 ── -->
-                <ScrollView android:id="@+id/panel_speed" style="@style/Panel">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <LinearLayout
-                            android:id="@+id/box_all_settings"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8px"
-                            android:orientation="vertical" />
-                    </LinearLayout>
-                </ScrollView>
-
-                <!-- ── 音乐 ── -->
-                <ScrollView android:id="@+id/panel_music" style="@style/Panel">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <LinearLayout
-                            android:id="@+id/row_music_app"
-                            android:layout_width="match_parent"
-                            android:layout_height="64px"
-                            android:layout_marginTop="6px"
-                            android:background="@drawable/bg_app_order_row"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:paddingStart="16px"
-                            android:paddingEnd="16px">
-
-                            <ImageView
-                                android:id="@+id/iv_music_app_icon"
-                                android:layout_width="40px"
-                                android:layout_height="40px"
-                                android:scaleType="fitCenter" />
-                            <TextView
-                                android:id="@+id/tv_music_app_name"
-                                android:layout_width="0px"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginStart="12px"
-                                android:ellipsize="end"
-                                android:includeFontPadding="false"
-                                android:maxLines="1"
-                                android:text="未绑定"
-                                android:textColor="@color/foreground"
-                                android:textSize="20px" />
-                            <Button
-                                android:id="@+id/btn_pick_music_app"
-                                style="@style/ThemeButton"
-                                android:layout_marginStart="8px"
-                                android:text="选择" />
-                        </LinearLayout>
-
-                        <LinearLayout android:id="@+id/box_music_seeks" style="@style/SeekBox" />
-
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="歌曲名" />
-                            <CheckBox android:id="@+id/cb_music_title" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="歌手名" />
-                            <CheckBox android:id="@+id/cb_music_artist" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="进度时间（当前/总时长）" />
-                            <CheckBox android:id="@+id/cb_music_time" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="进度条" />
-                            <CheckBox android:id="@+id/cb_music_bar" style="@style/CheckRowCheck" />
-                        </LinearLayout>
+                            android:layout_marginTop="12px"
+                            android:text="布局设计（主页自由摆放部件）" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="40px"
                             android:layout_marginTop="12px"
-                            android:text="全部关闭后，音乐卡仅保留播放按钮"
+                            android:text="主页即设计器：添加/删除/拖动/缩放部件、保存/打开命名布局"
                             android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
-                    </LinearLayout>
-                </ScrollView>
-
-                <!-- ── 底栏 ── -->
-                <ScrollView android:id="@+id/panel_dock" style="@style/Panel">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <LinearLayout style="@style/CheckRow">
-                            <TextView style="@style/CheckRowLabel" android:text="显示图标名称" />
-                            <CheckBox android:id="@+id/cb_show_dock_label" style="@style/CheckRowCheck" />
-                        </LinearLayout>
-                        <LinearLayout android:id="@+id/box_dock_seeks" style="@style/SeekBox" />
                     </LinearLayout>
                 </ScrollView>
 
