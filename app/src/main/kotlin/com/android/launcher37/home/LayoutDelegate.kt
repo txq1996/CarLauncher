@@ -45,6 +45,7 @@ class LayoutDelegate(
         views.leftCol.layoutParams.width = snapshot.size(SettingsActivity.KEY_SPEED_CARD_W, 260)
         views.cardTime.layoutParams.height = snapshot.size(SettingsActivity.KEY_TIME_CARD_H, 60)
         views.cardMusic.layoutParams.height = snapshot.size(SettingsActivity.KEY_MUSIC_CARD_H, 180)
+        views.rightCol.layoutParams.width = snapshot.size(SettingsActivity.KEY_RIGHT_COL_W, 250)
         val dockH = snapshot.size(SettingsActivity.KEY_DOCK_HEIGHT, 80)
         views.dockGrid.layoutParams.height = dockH
         // 卡片显隐
@@ -55,6 +56,9 @@ class LayoutDelegate(
         val showSpeed = snapshot.show(SettingsActivity.KEY_SHOW_SPEED_CARD, true)
         val showMusic = snapshot.show(SettingsActivity.KEY_SHOW_MUSIC_CARD, true)
         val showDock = snapshot.show(SettingsActivity.KEY_SHOW_DOCK, true)
+        val showLyrics = snapshot.show(SettingsActivity.KEY_SHOW_LYRICS, false)
+        views.rightCol.visibility = if (showLyrics) View.VISIBLE else View.GONE
+        views.gapRightCol.visibility = if (showLyrics) View.VISIBLE else View.GONE
         views.cardTime.visibility = if (showTime) View.VISIBLE else View.GONE
         views.cardSpeed.visibility = if (showSpeed) View.VISIBLE else View.GONE
         views.cardMusic.visibility = if (showMusic) View.VISIBLE else View.GONE
@@ -117,6 +121,9 @@ class LayoutDelegate(
         views.btnPrev.imageTintList = tint
         views.btnPlayPause.imageTintList = tint
         views.btnNext.imageTintList = tint
+        views.btnLyricsPrev.imageTintList = tint
+        views.btnLyricsPlay.imageTintList = tint
+        views.btnLyricsNext.imageTintList = tint
         applyTextColors(primary, secondary)
     }
 
@@ -142,7 +149,7 @@ class LayoutDelegate(
     }
 
     private val PRIMARY_TEXT_VIEWS get() = arrayOf(
-        views.tvMusicName, views.tvNaviDist, views.tvNaviRoad
+        views.tvMusicName, views.tvNaviDist, views.tvNaviRoad, views.tvLyricsTitle
     )
     private val SECONDARY_TEXT_VIEWS get() = arrayOf(
         views.tvArtist, views.curTime, views.totalTime,

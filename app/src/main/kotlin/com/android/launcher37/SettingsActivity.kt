@@ -35,6 +35,8 @@ class SettingsActivity : Activity() {
         const val KEY_CARD_GAP = "layout_card_gap"
         const val KEY_SPEED_CARD_W = "layout_speed_card_w"
         const val KEY_MUSIC_CARD_H = "layout_music_card_h"
+        /** 右侧栏（歌词等模块容器）宽度 px */
+        const val KEY_RIGHT_COL_W = "right_col_w"
         const val KEY_DOCK_HEIGHT = "dock_height"
         const val KEY_DOCK_ICON_SIZE = "dock_icon_size"
         const val KEY_DOCK_COLUMNS = "dock_columns"
@@ -69,6 +71,11 @@ class SettingsActivity : Activity() {
         const val KEY_SHOW_MUSIC_BAR = "show_music_bar"
         // 卡片显隐
         const val KEY_SHOW_LEFT_COLUMN = "show_left_column"
+        const val KEY_SHOW_LYRICS = "show_lyrics"
+        /** 歌词显示行数（右栏歌词卡） */
+        const val KEY_LYRICS_LINES = "lyrics_lines"
+        /** 歌词行间距 px（右栏歌词卡） */
+        const val KEY_LYRICS_GAP = "lyrics_gap"
         const val KEY_SHOW_SPEED_CARD = "show_speed_card"
         const val KEY_SHOW_MUSIC_CARD = "show_music_card"
         const val KEY_SHOW_TIME = "show_time"
@@ -92,6 +99,7 @@ class SettingsActivity : Activity() {
             KEY_SHOW_MUSIC_TITLE, KEY_SHOW_MUSIC_ARTIST, KEY_SHOW_MUSIC_TIME,
             KEY_SHOW_MUSIC_BAR,
             KEY_SHOW_LEFT_COLUMN,
+            KEY_SHOW_LYRICS,
             KEY_SHOW_SPEED_CARD, KEY_SHOW_MUSIC_CARD, KEY_SHOW_TIME,
             KEY_SHOW_DOCK, KEY_SHOW_DOCK_LABEL
         )
@@ -104,7 +112,8 @@ class SettingsActivity : Activity() {
             KEY_SHOW_NAVI_EXIT to false,
             KEY_SHOW_NAVI_DIRECTION to false,
             KEY_SHOW_CRUISE_DIRECTION to false,
-            KEY_SHOW_TIME to false
+            KEY_SHOW_TIME to false,
+            KEY_SHOW_LYRICS to false
         )
 
         // ── 字号/尺寸（px，int）──────────────────
@@ -136,18 +145,25 @@ class SettingsActivity : Activity() {
         const val KEY_TS_MUSIC_TITLE = "ts_music_title"
         const val KEY_TS_MUSIC_ARTIST = "ts_music_artist"
         const val KEY_TS_MUSIC_TIME = "ts_music_time"
+        /** 歌词当前句字号（右栏歌词卡） */
+        const val KEY_TS_LYRICS = "ts_lyrics"
+        /** 歌词非当前句字号（右栏歌词卡） */
+        const val KEY_TS_LYRICS_OTHER = "ts_lyrics_other"
 
         /** int 尺寸快照表（key 顺序与默认值一一对应） */
         val INT_KEYS = arrayOf(
             KEY_PAGE_PADDING, KEY_CARD_GAP,
-            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H, KEY_DOCK_HEIGHT, KEY_DOCK_ICON_SIZE, KEY_DOCK_COLUMNS,
+            KEY_SPEED_CARD_W, KEY_MUSIC_CARD_H, KEY_RIGHT_COL_W,
+            KEY_DOCK_HEIGHT, KEY_DOCK_ICON_SIZE, KEY_DOCK_COLUMNS,
             KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
             KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC,
             KEY_TS_NAVI_TURN, KEY_TS_NAVI_ROAD, KEY_TS_NAVI_DEST,
             KEY_TS_NAVI_ETA, KEY_TS_NAVI_ETA_TEXT, KEY_TS_NAVI_LIGHT_COUNT,
             KEY_TS_NAVI_EXIT, KEY_TS_NAVI_DIRECTION, KEY_TS_NAVI_ALERT,
             KEY_TS_CRUISE_ROAD, KEY_TS_CRUISE_DIRECTION, KEY_TS_CRUISE_ALERT,
-            KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME,
+            KEY_TS_MUSIC_TITLE, KEY_TS_MUSIC_ARTIST, KEY_TS_MUSIC_TIME, KEY_TS_LYRICS,
+            KEY_TS_LYRICS_OTHER,
+            KEY_LYRICS_LINES, KEY_LYRICS_GAP,
             KEY_TIME_CARD_H, KEY_TS_TIME, KEY_TIME_FORMAT,
             KEY_DRAWER_ICON_SIZE, KEY_DRAWER_ICON_GAP, KEY_DRAWER_LABEL_SIZE,
             KEY_DRAWER_WIDTH_PCT, KEY_DRAWER_HEIGHT_PCT,
@@ -155,12 +171,14 @@ class SettingsActivity : Activity() {
         )
 
         val INT_DEFAULTS = intArrayOf(
-            5, 5, 260, 180, 80, 44, 10,
+            5, 5, 260, 180, 250, 80, 44, 10,
             110, 20, 17, 36,
             110, 20, 17, 36,
             36, 26, 15, 17, 17, 17, 17, 17, 17,
             26, 17, 17,
-            24, 15, 15,
+            24, 15, 15, 20,
+            15,
+            10, 15,
             60, 28, 1,
             64, 8, 17,
             75, 75,
@@ -349,9 +367,11 @@ class SettingsActivity : Activity() {
         bindSeek(box, "部件间距", KEY_CARD_GAP, 5, 0, 30)
         bindSeek(box, "左侧栏宽度", KEY_SPEED_CARD_W, 260, 100, 400)
         bindSeek(box, "音乐卡高度", KEY_MUSIC_CARD_H, 180, 100, 400)
+        bindSeek(box, "右侧栏宽度", KEY_RIGHT_COL_W, 250, 100, 400)
         bindSeek(box, "时间卡高度", KEY_TIME_CARD_H, 60, 30, 100)
         // 卡片显隐（布局内统一，显示时间在车速上方）
         bindCheck(R.id.cb_show_left_col, KEY_SHOW_LEFT_COLUMN)
+        bindCheck(R.id.cb_show_lyrics, KEY_SHOW_LYRICS)
         val cbStatus = findViewById<CheckBox>(R.id.cb_hide_status_bar)
         val hide = prefs().getBoolean(KEY_HIDE_STATUS_BAR, false)
         cbStatus.isChecked = !hide
@@ -778,6 +798,10 @@ class SettingsActivity : Activity() {
         bindFontSeek(box, "歌曲名", KEY_TS_MUSIC_TITLE, 24)
         bindFontSeek(box, "歌手名", KEY_TS_MUSIC_ARTIST, 15)
         bindFontSeek(box, "进度时间", KEY_TS_MUSIC_TIME, 15)
+        bindFontSeek(box, "当前歌词", KEY_TS_LYRICS, 20)
+        bindFontSeek(box, "其他歌词", KEY_TS_LYRICS_OTHER, 15)
+        bindSeek(box, "歌词行数", KEY_LYRICS_LINES, 5, 3, 15)
+        bindSeek(box, "歌词间距", KEY_LYRICS_GAP, 4, 0, 30)
 
         bindCheck(R.id.cb_music_title, KEY_SHOW_MUSIC_TITLE)
         bindCheck(R.id.cb_music_artist, KEY_SHOW_MUSIC_ARTIST)

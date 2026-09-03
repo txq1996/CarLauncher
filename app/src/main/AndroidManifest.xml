@@ -18,6 +18,9 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- DrawerOverlay：全部应用悬浮窗 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 歌词/歌曲信息持久化到 /sdcard/CarLauncher/（system uid 自动授予） -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <!-- 包可见性：允许查询可启动应用与标准媒体意图（Android 11+） -->
     <queries>
@@ -40,7 +43,8 @@
         android:label="CarLauncher"
         android:supportsRtl="false"
         android:theme="@style/Theme.Launcher37"
-        android:usesNonSdkApi="true">
+        android:usesNonSdkApi="true"
+        android:requestLegacyExternalStorage="true">
 
         <activity
             android:name=".LauncherActivity"

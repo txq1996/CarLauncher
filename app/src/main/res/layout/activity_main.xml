@@ -20,21 +20,23 @@
             android:layout_weight="1"
             android:orientation="horizontal">
 
+            <!-- ── 左侧栏：模块容器（卡片由 HomeModules 按注册表填充） ── -->
             <LinearLayout
                 android:id="@+id/left_col"
                 android:layout_width="260px"
                 android:layout_height="match_parent"
-                android:orientation="vertical">
-
-                <include layout="@layout/card_time" />
-                <Space android:id="@+id/gap_time_speed" android:layout_width="match_parent" android:layout_height="10px" />
-                <include layout="@layout/card_speed" />
-                <Space android:id="@+id/gap_speed_music" android:layout_width="match_parent" android:layout_height="10px" />
-                <include layout="@layout/card_music" />
-            </LinearLayout>
+                android:orientation="vertical" />
 
             <Space android:id="@+id/gap_col" android:layout_width="10px" android:layout_height="match_parent" />
             <include layout="@layout/card_pip" />
+
+            <!-- ── 右侧栏：模块容器（歌词 / 后续可扩展区块） ── -->
+            <Space android:id="@+id/gap_right_col" android:layout_width="10px" android:layout_height="match_parent" />
+            <LinearLayout
+                android:id="@+id/right_col"
+                android:layout_width="250px"
+                android:layout_height="match_parent"
+                android:orientation="vertical" />
         </LinearLayout>
 
         <Space android:id="@+id/gap_dock" android:layout_width="match_parent" android:layout_height="10px" />

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 歌词模块卡：右栏容器第一个模块。
+     结构：标题行 / 专辑封面（有封面时显示）/ 歌词区（动态行数+双语）/ 播放控制按钮（底部）。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/card_lyrics"
+    android:layout_width="match_parent"
+    android:layout_height="0px"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:padding="12px">
+
+    <TextView
+        android:id="@+id/tv_lyrics_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:text="歌词"
+        android:textColor="@color/foreground"
+        android:textSize="17px"
+        android:textStyle="bold" />
+
+    <ImageView
+        android:id="@+id/iv_lyrics_cover"
+        android:layout_width="match_parent"
+        android:layout_height="0px"
+        android:layout_weight="1.2"
+        android:layout_marginTop="8px"
+        android:scaleType="centerCrop"
+        android:contentDescription="专辑封面"
+        android:visibility="gone" />
+
+    <!-- 歌词区：行数动态（KEY_LYRICS_LINES），当前句高亮 + 翻译副行 -->
+    <LinearLayout
+        android:id="@+id/box_lyrics_lines"
+        android:layout_width="match_parent"
+        android:layout_height="0px"
+        android:layout_weight="2"
+        android:gravity="center"
+        android:orientation="vertical" />
+
+    <!-- 播放控制（与左侧音乐卡同款按钮，置底） -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8px"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btn_lyrics_prev"
+            android:layout_width="44px"
+            android:layout_height="44px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="上一曲"
+            android:padding="11px"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_prev" />
+
+        <ImageButton
+            android:id="@+id/btn_lyrics_play"
+            android:layout_width="56px"
+            android:layout_height="56px"
+            android:layout_marginLeft="10px"
+            android:layout_marginRight="10px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="播放/暂停"
+            android:padding="13px"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_pause" />
+
+        <ImageButton
+            android:id="@+id/btn_lyrics_next"
+            android:layout_width="44px"
+            android:layout_height="44px"
+            android:background="@drawable/bg_icon_btn"
+            android:contentDescription="下一曲"
+            android:padding="11px"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_next" />
+    </LinearLayout>
+</LinearLayout>

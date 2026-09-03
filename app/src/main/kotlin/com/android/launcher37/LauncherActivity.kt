@@ -5,8 +5,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.GridView
+import com.android.launcher37.home.HomeModules
 import com.android.launcher37.home.HomeViews
 import com.android.launcher37.home.LayoutDelegate
+import com.android.launcher37.home.LyricsDelegate
 import com.android.launcher37.home.MusicDelegate
 import com.android.launcher37.home.NaviPanelDelegate
 import com.android.launcher37.home.SettingsSnapshot
@@ -25,6 +27,7 @@ class LauncherActivity : Activity() {
     private lateinit var speed: SpeedDelegate
     private lateinit var navi: NaviPanelDelegate
     private lateinit var music: MusicDelegate
+    private lateinit var lyrics: LyricsDelegate
     private lateinit var time: com.android.launcher37.home.TimeDelegate
     private lateinit var update: UpdateDelegate
 
@@ -72,15 +75,21 @@ class LauncherActivity : Activity() {
         buildUi()
     }
 
-    /** 构建桌面 UI：设置快照 + view 树引用 + 全部 delegate + 底栏 + PIP placeholder（onCreate/rebuildUi 共用） */
+    /** 构建桌面 UI：设置快照 + 模块填充 + view 树引用 + 全部 delegate + 底栏 + PIP placeholder（onCreate/rebuildUi 共用） */
     private fun buildUi() {
         snapshot = SettingsSnapshot.load(this)
+        val gapPx = snapshot.size(SettingsActivity.KEY_CARD_GAP, 5)
+        // 模块化填充：左/右栏按注册表 inflate 卡片，模块间插 KEY_CARD_GAP 间距
+        val leftGaps = HomeModules.fill(
+            this, findViewById(R.id.left_col), HomeModules.LEFT_DEFAULT, gapPx
+        )
+        HomeModules.fill(this, findViewById(R.id.right_col), HomeModules.RIGHT_DEFAULT, gapPx)
         views = HomeViews(
             contentRoot = findViewById(R.id.page_content),
             pageContent = findViewById(R.id.page_content),
             leftCol = findViewById(R.id.left_col),
-            gapTimeSpeed = findViewById(R.id.gap_time_speed),
-            gapSpeedMusic = findViewById(R.id.gap_speed_music),
+            gapTimeSpeed = leftGaps.getOrElse(0) { HomeModules.blankGap(this) },
+            gapSpeedMusic = leftGaps.getOrElse(1) { HomeModules.blankGap(this) },
             gapDock = findViewById(R.id.gap_dock),
             gapCol = findViewById(R.id.gap_col),
             cardTime = findViewById(R.id.card_time),
@@ -112,7 +121,16 @@ class LauncherActivity : Activity() {
             tvNaviLightCount = findViewById(R.id.tv_navi_light_count),
             tvNaviExit = findViewById(R.id.tv_navi_exit),
             tvNaviDirection = findViewById(R.id.tv_navi_direction),
-            tvTime = findViewById(R.id.tv_time)
+            tvTime = findViewById(R.id.tv_time),
+            rightCol = findViewById(R.id.right_col),
+            gapRightCol = findViewById(R.id.gap_right_col),
+            cardLyrics = findViewById(R.id.card_lyrics),
+            tvLyricsTitle = findViewById(R.id.tv_lyrics_title),
+            ivLyricsCover = findViewById(R.id.iv_lyrics_cover),
+            boxLyricsLines = findViewById(R.id.box_lyrics_lines),
+            btnLyricsPrev = findViewById(R.id.btn_lyrics_prev),
+            btnLyricsPlay = findViewById(R.id.btn_lyrics_play),
+            btnLyricsNext = findViewById(R.id.btn_lyrics_next)
         )
 
         layout = LayoutDelegate(this, views).also { it.apply(snapshot) }
@@ -122,6 +140,21 @@ class LauncherActivity : Activity() {
             this, views,
             appPicker = { dockBar.pickApp(SELECT_MUSIC_TITLE, null) { picked -> music.onMusicPicked(picked) } }
         ).also { it.bindListeners() }
+        lyrics = LyricsDelegate(
+            this, views,
+            lineCount = snapshot.size(SettingsActivity.KEY_LYRICS_LINES, 10),
+            curSize = snapshot.size(SettingsActivity.KEY_TS_LYRICS, 20),
+            otherSize = snapshot.size(SettingsActivity.KEY_TS_LYRICS_OTHER, 15),
+            lineGap = snapshot.size(SettingsActivity.KEY_LYRICS_GAP, 15),
+            controls = object : LyricsDelegate.Controls {
+                override fun prev() { music.onMusicButton(music.mediaHelper()::prev) }
+                override fun togglePlay() { music.onMusicButton(music.mediaHelper()::togglePlay) }
+                override fun next() { music.onMusicButton(music.mediaHelper()::next) }
+            }
+        ).also {
+            it.bindListeners()
+            music.lyricsDelegate = it
+        }
         navi = NaviPanelDelegate(this, views, { snapshot }, speed)
         update = UpdateDelegate(application, this)
         speed.bind()
@@ -305,6 +338,7 @@ class LauncherActivity : Activity() {
             music.stop()
             music.cancelPending()
             navi.stop()
+            lyrics.stop()
             update.release()
         }
         super.onDestroy()
@@ -318,6 +352,7 @@ class LauncherActivity : Activity() {
         layout.reapplyNightDrawables()
         // uiMode 切换不重建 Activity，动态渲染的文字/转向图标需强制重建重新读色
         if (::navi.isInitialized) navi.rebuildForThemeChange()
+        if (::lyrics.isInitialized) lyrics.rebuildForThemeChange()
         dockBar.refresh()
     }
 

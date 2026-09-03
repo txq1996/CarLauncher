@@ -49,7 +49,18 @@ class HomeViews(
     val tvNaviAlert: TextView,
     val tvNaviEtaText: TextView,
     val tvNaviLightCount: TextView,
-    val tvNaviExit: TextView,
+    val tvNaviExit: View,
     val tvNaviDirection: TextView,
-    val tvTime: TextView
+    val tvTime: TextView,
+    // ── 右侧栏（模块容器）──
+    val rightCol: View,
+    val gapRightCol: View,
+    val cardLyrics: View,
+    val tvLyricsTitle: TextView,
+    val ivLyricsCover: ImageView,
+    /** 右歌词卡歌词行容器（行数动态） */
+    val boxLyricsLines: LinearLayout,
+    val btnLyricsPrev: ImageButton,
+    val btnLyricsPlay: ImageButton,
+    val btnLyricsNext: ImageButton
 )

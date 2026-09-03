@@ -69,6 +69,10 @@
                             <CheckBox android:id="@+id/cb_show_left_col" style="@style/CheckRowCheck" />
                         </LinearLayout>
                         <LinearLayout style="@style/CheckRow">
+                            <TextView style="@style/CheckRowLabel" android:text="显示歌词面板" />
+                            <CheckBox android:id="@+id/cb_show_lyrics" style="@style/CheckRowCheck" />
+                        </LinearLayout>
+                        <LinearLayout style="@style/CheckRow">
                             <TextView style="@style/CheckRowLabel" android:text="显示状态栏" />
                             <CheckBox android:id="@+id/cb_hide_status_bar" style="@style/CheckRowCheck" />
                         </LinearLayout>

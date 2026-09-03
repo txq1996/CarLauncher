@@ -52,13 +52,18 @@ class MusicDelegate(
     fun mediaHelper(): MediaHelper = mMediaHelper
     fun musicLauncher(): MusicLauncher = mMusicLauncher
 
+    /** 歌词模块（可选）：媒体回调转发，由 LauncherActivity 装配后设置 */
+    var lyricsDelegate: LyricsDelegate? = null
+
     override fun onTrackChanged(title: String, artist: String) {
         views.tvMusicName.text = title
         views.tvArtist.text = artist
+        lyricsDelegate?.onTrackChanged(title, artist)
     }
 
     override fun onPlayingStateChanged(playing: Boolean) {
         views.btnPlayPause.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+        lyricsDelegate?.onPlayingStateChanged(playing)
     }
 
     override fun onProgress(positionMs: Long, durationMs: Long) {
@@ -66,6 +71,7 @@ class MusicDelegate(
         views.totalTime.text = if (durationMs > 0) FormatUtils.formatMs(durationMs) else "00:00"
         views.musicProgress.progress =
             if (durationMs > 0) (positionMs * 1000 / durationMs).toInt() else 0
+        lyricsDelegate?.onProgress(positionMs, durationMs)
     }
 
     fun onMusicButton(control: Runnable) {
