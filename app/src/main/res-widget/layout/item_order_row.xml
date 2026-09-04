@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 行序拖动面板单行：长按 ☰ 拖动重排 -->
+<!-- 行序拖动面板单行：长按 ☰ 拖动重排（紧凑无底色） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_app_order_row"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingLeft="16px"
-    android:paddingTop="12px"
-    android:paddingRight="16px"
-    android:paddingBottom="12px">
+    android:paddingLeft="8px"
+    android:paddingTop="4px"
+    android:paddingRight="8px"
+    android:paddingBottom="4px">
 
     <TextView
         android:id="@+id/tv_order_label"
@@ -18,7 +17,7 @@
         android:layout_weight="1"
         android:includeFontPadding="false"
         android:textColor="@color/foreground"
-        android:textSize="20px" />
+        android:textSize="15px" />
 
     <TextView
         android:id="@+id/tv_order_drag"
@@ -27,5 +26,5 @@
         android:gravity="center"
         android:text="☰"
         android:textColor="@color/foreground_secondary"
-        android:textSize="24px" />
+        android:textSize="16px" />
 </LinearLayout>

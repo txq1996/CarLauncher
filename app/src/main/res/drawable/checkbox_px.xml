@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全局勾选框样式：px 固定尺寸，选中实心+对勾 / 未选描边空心 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:drawable="@drawable/checkbox_px_checked" />
+    <item android:drawable="@drawable/checkbox_px_unchecked" />
+</selector>

@@ -36,15 +36,15 @@
         <item name="android:windowAnimationStyle">@null</item>
     </style>
 
-    <!-- 设计器工具栏按钮：圆角胶囊（bg_design_btn），50×30px 贴边排列、字号 12px（activity_main.xml 引用） -->
+    <!-- 设计器工具栏按钮：圆角胶囊（bg_design_btn），60×30px 居左上排列、字号 12px（activity_main.xml 引用） -->
     <style name="DesignToolbarButton" parent="@android:style/Widget.Material.Button.Borderless">
-        <item name="android:layout_width">50px</item>
+        <item name="android:layout_width">60px</item>
         <item name="android:layout_height">30px</item>
         <item name="android:minWidth">0px</item>
         <item name="android:paddingStart">2px</item>
         <item name="android:paddingEnd">2px</item>
         <item name="android:background">@drawable/bg_design_btn</item>
-        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textColor">@color/background</item>
         <item name="android:textSize">12px</item>
     </style>
 </resources>

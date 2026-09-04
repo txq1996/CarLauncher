@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- px 固定尺寸勾选框（选中）：foreground 实心方块 + background 色对勾 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="28px" android:height="28px" />
+            <corners android:radius="6px" />
+            <solid android:color="@color/foreground" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/ic_check_px" />
+</layer-list>

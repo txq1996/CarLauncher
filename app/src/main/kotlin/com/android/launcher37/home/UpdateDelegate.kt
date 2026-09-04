@@ -25,15 +25,54 @@ class UpdateDelegate(
             val act = activity ?: return
             try {
                 val size = if (info.sizeBytes > 0) "\n大小：%.1f MB".format(info.sizeBytes / 1048576f) else ""
-                AlertDialog.Builder(act)
-                    .setTitle("发现新版本 v${info.versionName}")
-                    .setMessage("是否立即下载并安装？$size")
-                    .setPositiveButton("立即更新") { _, _ ->
-                        Toast.makeText(act, "正在后台下载更新…", Toast.LENGTH_SHORT).show()
-                        mChecker.confirmUpdate()
-                    }
-                    .setNegativeButton("稍后", null)
-                    .show()
+                // 紧凑对话框（px 定值）替代系统 AlertDialog 的 sp 大标题/大正文
+                val ctx = act
+                fun label(text: String, onClick: () -> Unit) = android.widget.Button(ctx).apply {
+                    this.text = text
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 18f)
+                    setTextColor(ctx.getColor(com.android.launcher37.R.color.foreground))
+                    minHeight = 56
+                    minimumHeight = 0
+                    minimumWidth = 0
+                    setPadding(20, 0, 20, 0)
+                    setOnClickListener { onClick() }
+                }
+                var dlg: AlertDialog? = null
+                val btnRow = android.widget.LinearLayout(ctx).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.END
+                    setPadding(18, 12, 12, 6)
+                }
+                btnRow.addView(label("稍后") { dlg?.dismiss() })
+                btnRow.addView(label("立即更新") {
+                    dlg?.dismiss()
+                    Toast.makeText(act, "正在后台下载更新…", Toast.LENGTH_SHORT).show()
+                    mChecker.confirmUpdate()
+                })
+                val root = android.widget.LinearLayout(ctx).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    addView(android.widget.TextView(ctx).apply {
+                        text = "发现新版本 v${info.versionName}"
+                        setTextColor(ctx.getColor(com.android.launcher37.R.color.foreground))
+                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 14f)
+                        includeFontPadding = false
+                        setPadding(18, 9, 18, 3)
+                    })
+                    addView(android.widget.TextView(ctx).apply {
+                        text = "是否立即下载并安装？$size"
+                        setTextColor(ctx.getColor(com.android.launcher37.R.color.foreground))
+                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
+                        includeFontPadding = false
+                        setPadding(18, 12, 18, 0)
+                    })
+                    addView(btnRow)
+                }
+                dlg = AlertDialog.Builder(act).setView(root).create()
+                dlg.show()
+                dlg.window?.setLayout(
+                    (act.resources.displayMetrics.widthPixels * 0.5f).toInt(),
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                )
             } catch (e: Exception) {
                 Log.w("UpdateDelegate", "update confirm dialog failed", e)
             }

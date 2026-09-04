@@ -282,7 +282,7 @@ object SdcardMusicStore {
         return File(root(), "${safe(singer)}/${safe(song)}")
     }
 
-    /** 本地命中：读 lyric.lrc（+info.json）。任何 IO 失败视为未命中 */
+    /** 本地命中：读 lyric.lrc（+翻译 lyric.trans.lrc +info.json）。任何 IO 失败视为未命中 */
     fun load(singer: String, song: String): LyricsData? = try {
         val d = dirFor(singer, song)
         val lrcFile = File(d, "lyric.lrc")
@@ -291,7 +291,8 @@ object SdcardMusicStore {
             val info = File(d, "info.json").takeIf { it.isFile }?.let { f ->
                 try { songInfoFromJson(JSONObject(f.readText())) } catch (_: Exception) { null }
             }
-            LyricsData(syncedLrc = lrcFile.readText(), plain = null, songInfo = info)
+            val trans = File(d, "lyric.trans.lrc").takeIf { it.isFile && it.length() > 0L }?.readText()
+            LyricsData(syncedLrc = lrcFile.readText(), plain = null, trans = trans, songInfo = info)
         }
     } catch (e: Exception) {
         Log.w(TAG, "sdcard load failed", e)

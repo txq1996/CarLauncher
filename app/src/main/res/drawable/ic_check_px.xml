@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 对勾图标：px 固定尺寸，颜色取 background（与 foreground 实心底互为反色，日夜自适应） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28px"
+    android:height="28px"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/background"
+        android:pathData="M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z" />
+</vector>

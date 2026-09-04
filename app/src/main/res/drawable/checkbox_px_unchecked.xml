@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- px 固定尺寸勾选框（未选中）：描边空心方块，不随密度/字体缩放 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <size android:width="28px" android:height="28px" />
+    <corners android:radius="6px" />
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="3px" android:color="@color/foreground_secondary" />
+</shape>

@@ -52,8 +52,37 @@ abstract class WidgetView(
             isClickable = value
             if (value) setOnTouchListener(WidgetHost.instance?.widgetTouchListener)
             else setOnTouchListener(null)
+            if (value) ensureDesignLabel() else removeDesignLabel()
             onDesignModeChanged(value)
         }
+
+    /** 设计模式常显标签：控件名称 + X/Y + 宽高（拖动/缩放实时刷新） */
+    private var designLabel: android.widget.TextView? = null
+
+    private fun ensureDesignLabel() {
+        if (designLabel != null) return
+        val tv = android.widget.TextView(activity).apply {
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0x99000000.toInt())
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 12f)
+            setPadding(8, 2, 8, 2)
+            gravity = android.view.Gravity.CENTER
+        }
+        addView(tv, LayoutParams(
+            LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER
+        ))
+        designLabel = tv
+        updateDesignLabel()
+    }
+
+    private fun removeDesignLabel() {
+        designLabel?.let { removeView(it) }
+        designLabel = null
+    }
+
+    private fun updateDesignLabel() {
+        designLabel?.text = "${displayName}  X:${spec.x} Y:${spec.y}  ${spec.w}×${spec.h}"
+    }
 
     /** 设计模式切换钩子（子类按需隐藏 SurfaceView 等独立图层，见 VdWidget） */
     protected open fun onDesignModeChanged(design: Boolean) {}
@@ -114,6 +143,7 @@ abstract class WidgetView(
         } else {
             visibility = View.GONE
         }
+        updateDesignLabel()
         onSpecApplied()
     }
 

@@ -4,13 +4,11 @@ import com.android.launcher37.R
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
-import android.graphics.Color
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
-import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -25,9 +23,10 @@ import kotlin.math.roundToInt
  * 交互（设计模式下 Widget 内部点击全部被拦截，见 [WidgetView.onInterceptTouchEvent]）：
  * - 点击 Widget = 选中；拖动 = 移动；边框/角点手柄 = 调整大小
  * - 最小 20×20，移动/缩放不超出屏幕（WidgetHost.updateRect 统一 clamp）
- * - 工具栏：添加 / 删除 / 显隐 / 属性（按 Widget 自身属性 schema 渲染面板）/ 预览
+ * - 每个控件常显名称 + X/Y + 宽高标签（见 WidgetView.designLabel）
+ * - 工具栏：添加 / 删除 / 属性（按 Widget 自身属性 schema 渲染面板）/ 保存
  *
- * 全部修改实时应用到主页（真实 Widget 即预览），"预览"保存布局并退出设计模式。
+ * 全部修改实时应用到主页（真实 Widget 即预览），"保存"落盘当前布局。
  */
 class DesignerController(
     private val activity: Activity,
@@ -53,25 +52,12 @@ class DesignerController(
         setBackgroundResource(R.drawable.design_sel_stroke)
         visibility = View.GONE
     }
-
-    /** 选中框顶部的尺寸/位置标签：X/Y/W/H 实时显示 */
-    private val sizeLabel = TextView(activity).apply {
-        setTextColor(Color.WHITE)
-        setBackgroundColor(0x99000000.toInt())
-        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 16f)
-        setPadding(8, 2, 8, 2)
-        gravity = Gravity.CENTER
-    }
     private var mSelected: Int = -1
     private var mLastRawX = 0f
     private var mLastRawY = 0f
 
     init {
         container.addView(selectionOverlay, FrameLayout.LayoutParams(0, 0))
-        // 尺寸/位置标签：框内顶部居中
-        selectionOverlay.addView(sizeLabel, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = 4 })
         // 仅右/下缩放手柄：左上角定位固定（只允许向右/向下调整大小）
         addHandle(Gravity.CENTER_VERTICAL or Gravity.END, H_R, -4f, 0f)
         addHandle(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, H_B, 0f, -4f)
@@ -86,7 +72,7 @@ class DesignerController(
     // ── 选择 / 拖动 / 缩放 ───────────────────────────
 
     /** Widget 容器触摸（WidgetView.designMode 拦截后转发至此）：DOWN 选中，MOVE 拖动。
-     *  控件间不允许重叠（含布局间距）：合法状态下撞墙分轴滑动；
+     *  控件间不允许重叠：合法状态下撞墙分轴滑动；
      *  起始已重叠（历史布局）时允许自由拖动以便解脱。 */
     fun onWidgetTouch(v: View, ev: MotionEvent): Boolean {
         val w = v as? WidgetView ?: return false
@@ -106,19 +92,16 @@ class DesignerController(
                 val legal = !host.overlaps(w.spec.id, w.spec.x, w.spec.y, w.spec.w, w.spec.h)
                 if (!legal) {
                     host.updateRect(w.spec.id, nx, ny, w.spec.w, w.spec.h)
-                } else {
-                    // 自动吸附：接近其他控件边缘/中心或画布边距线/中线时对齐
-                    val (snx, sny) = snapPosition(nx, ny, w.spec.w, w.spec.h, w.spec.id)
-                    if (host.collides(w.spec.id, snx, sny, w.spec.w, w.spec.h)) {
-                        when {
-                            !host.collides(w.spec.id, snx, w.spec.y, w.spec.w, w.spec.h) ->
-                                host.updateRect(w.spec.id, snx, w.spec.y, w.spec.w, w.spec.h)
-                            !host.collides(w.spec.id, w.spec.x, sny, w.spec.w, w.spec.h) ->
-                                host.updateRect(w.spec.id, w.spec.x, sny, w.spec.w, w.spec.h)
-                        }
-                    } else {
-                        host.updateRect(w.spec.id, snx, sny, w.spec.w, w.spec.h)
+                } else if (host.collides(w.spec.id, nx, ny, w.spec.w, w.spec.h)) {
+                    // 被挡时按主方向单轴滑动（滑墙）
+                    when {
+                        !host.collides(w.spec.id, nx, w.spec.y, w.spec.w, w.spec.h) ->
+                            host.updateRect(w.spec.id, nx, w.spec.y, w.spec.w, w.spec.h)
+                        !host.collides(w.spec.id, w.spec.x, ny, w.spec.w, w.spec.h) ->
+                            host.updateRect(w.spec.id, w.spec.x, ny, w.spec.w, w.spec.h)
                     }
+                } else {
+                    host.updateRect(w.spec.id, nx, ny, w.spec.w, w.spec.h)
                 }
                 layoutSelection()
             }
@@ -143,38 +126,6 @@ class DesignerController(
         lp.leftMargin = w.spec.x; lp.topMargin = w.spec.y
         lp.width = w.spec.w; lp.height = w.spec.h
         selectionOverlay.layoutParams = lp
-        // 实时显示控件位置与尺寸
-        sizeLabel.text = "X:${w.spec.x} Y:${w.spec.y}  ${w.spec.w}×${w.spec.h}"
-    }
-
-    /** 自动吸附：当前控件左/右/中心边在阈值内接近参考线时对齐。
-     *  参考线：画布边距线/中线 + 其他控件边缘（含间距外扩，吸附后正好满足碰撞间距） */
-    private fun snapPosition(nx: Int, ny: Int, w: Int, h: Int, id: Int): Pair<Int, Int> {
-        val T = 10
-        val sw = host.screenW(); val sh = host.screenH()
-        val m = host.margin; val g = host.gap
-        val xLines = ArrayList<Int>().apply { add(m); add(sw / 2); add(sw - m) }
-        val yLines = ArrayList<Int>().apply { add(m); add(sh / 2); add(sh - m) }
-        for (o in host.allWidgets()) {
-            if (o.spec.id == id) continue
-            xLines.add(o.spec.x - g); xLines.add(o.spec.x)
-            xLines.add(o.spec.x + o.spec.w); xLines.add(o.spec.x + o.spec.w + g)
-            yLines.add(o.spec.y - g); yLines.add(o.spec.y)
-            yLines.add(o.spec.y + o.spec.h); yLines.add(o.spec.y + o.spec.h + g)
-        }
-        fun snap1(v: Int, size: Int, lines: List<Int>): Int {
-            var best = v; var bestD = T + 1
-            for (L in lines) {
-                var d = kotlin.math.abs(v - L)                       // 左/上边对齐
-                if (d <= T && d < bestD) { bestD = d; best = L }
-                d = kotlin.math.abs(v + size - L)                    // 右/下边对齐
-                if (d <= T && d < bestD) { bestD = d; best = L - size }
-                d = kotlin.math.abs(v + size / 2 - L)                // 中心对齐
-                if (d <= T && d < bestD) { bestD = d; best = L - size / 2 }
-            }
-            return best
-        }
-        return snap1(nx, w, xLines) to snap1(ny, h, yLines)
     }
 
     private fun addHandle(gravity: Int, flags: Int, dx: Float, dy: Float) {
@@ -228,9 +179,11 @@ class DesignerController(
 
     internal fun showAddDialog() {
         val catalog = WidgetTypes.CATALOG
-        AlertDialog.Builder(activity)
-            .setTitle("添加部件（同类型可添加多个）")
-            .setItems(catalog.map { it.first }.toTypedArray()) { _, which ->
+        // 紧凑列表（与属性面板同风格：14px 标题 + 48px 行高 15px 字），点空白处关闭
+        showCompactChoice(
+            "添加部件（同类型可添加多个）",
+            catalog.map { it.first },
+            onPick = { which ->
                 val type = catalog[which].second
                 if (type == WidgetTypes.VD) {
                     // 默认绑定高德车机版（属性面板可改）；高德已被同页 VD 占用时弹选择器
@@ -245,8 +198,7 @@ class DesignerController(
                     if (widget != null) select(widget.spec.id)
                 }
             }
-            .setNegativeButton("取消", null)
-            .show()
+        )
     }
 
     internal fun deleteSelected() {
@@ -271,26 +223,17 @@ class DesignerController(
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
         }
-        var dialog: AlertDialog? = null
-        // 标题栏：标题 + 保存（始终显示，不随内容滚动）
-        root.addView(LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(12), dp(4))
-            addView(TextView(activity).apply {
-                text = "属性 - ${w.displayName}"
-                setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 17f)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
-            addView(Button(activity).apply {
-                text = "保存"
-                setOnClickListener { dialog?.dismiss() }
-            })
+        // 紧凑标题栏：单行标题（改动实时生效，点空白处关闭）
+        root.addView(TextView(activity).apply {
+            text = "属性 - ${w.displayName}"
+            setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 14f)
+            includeFontPadding = false
+            setPadding(18, 9, 18, 3)
         })
         val box = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(2), dp(12), dp(8))
+            setPadding(18, 3, 18, 12)
         }
         for (def in defs) box.addView(buildPropRow(w, def))
         val scroll = ScrollView(activity).apply {
@@ -303,7 +246,7 @@ class DesignerController(
         val dm = activity.resources.displayMetrics
         val dialogW = (dm.widthPixels * 0.55f).toInt()
         box.measure(
-            View.MeasureSpec.makeMeasureSpec(dialogW - dp(32), View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(dialogW - 48, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
         val contentH = box.measuredHeight
@@ -313,7 +256,7 @@ class DesignerController(
             minOf(contentH, maxH)
         )
         root.addView(scroll)
-        dialog = AlertDialog.Builder(activity)
+        val dialog = AlertDialog.Builder(activity)
             .setView(root)
             .create()
         dialog.show()
@@ -330,40 +273,40 @@ class DesignerController(
             maxLines = 1
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
+        // 紧凑无底色行（px 定值）
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(44)
-            background = activity.resources.getDrawable(R.drawable.bg_app_order_row)
-            setPadding(dp(12), 0, dp(8), 0)
+            minimumHeight = 48
+            setPadding(12, 0, 6, 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp(4) }
+            ).apply { topMargin = 3 }
             addView(label)
         }
         when (def.type) {
             PropType.SHOW_SIZE -> {
                 // 显隐开关 + 字号滑条同行（key=显隐键，pairKey=字号键）
-                val cb = CheckBox(activity).apply {
-                    isChecked = w.cfgBool(def.key, true)
-                    setOnCheckedChangeListener { _, checked ->
-                        host.updateConfig(w.spec.id, def.key, if (checked) "1" else "0")
-                    }
+                val cb = pxCheckBox()
+                cb.isChecked = w.cfgBool(def.key, true)
+                cb.setOnCheckedChangeListener { _, checked ->
+                    host.updateConfig(w.spec.id, def.key, if (checked) "1" else "0")
                 }
                 val sizeDef = def.default.toIntOrNull() ?: def.min
                 val value = TextView(activity).apply {
                     text = "${w.cfgInt(def.pairKey, sizeDef)}"
                     setTextColor(activity.resources.getColor(R.color.foreground_secondary, activity.theme))
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 13f)
-                    minWidth = dp(40)
+                    minWidth = 60
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
                     includeFontPadding = false
                 }
                 val bar = SeekBar(activity).apply {
+                    pxSeek(this)
                     max = (def.max - def.min) / def.step
                     progress = (w.cfgInt(def.pairKey, sizeDef) - def.min) / def.step
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        marginStart = dp(6)
+                        marginStart = 9
                     }
                     setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
@@ -381,7 +324,7 @@ class DesignerController(
                 row.addView(bar)
             }
             PropType.BOOL -> {
-                val cb = CheckBox(activity)
+                val cb = pxCheckBox()
                 cb.isChecked = w.cfgBool(def.key, def.default == "1")
                 cb.setOnCheckedChangeListener { _, checked ->
                     host.updateConfig(w.spec.id, def.key, if (checked) "1" else "0")
@@ -394,15 +337,16 @@ class DesignerController(
                     text = "$cur"
                     setTextColor(activity.resources.getColor(R.color.foreground_secondary, activity.theme))
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 13f)
-                    minWidth = dp(40)
+                    minWidth = 60
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
                     includeFontPadding = false
                 }
                 val bar = SeekBar(activity).apply {
+                    pxSeek(this)
                     max = (def.max - def.min) / def.step
                     progress = (cur - def.min) / def.step
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        marginStart = dp(6)
+                        marginStart = 9
                     }
                     setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
@@ -431,21 +375,16 @@ class DesignerController(
                     text = currentLabel
                     setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
-                    setPadding(dp(10), dp(4), dp(10), dp(4))
-                    setBackgroundResource(R.drawable.design_handle)
+                    setPadding(6, 0, 6, 0)
                     isClickable = true
-                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
+                    layoutParams = LinearLayout.LayoutParams(0, 48, 1f)
                     gravity = Gravity.CENTER_VERTICAL
                     setOnClickListener {
-                        AlertDialog.Builder(activity)
-                            .setTitle(def.label)
-                            .setItems(choices.map { it.first }.toTypedArray()) { _, which ->
-                                val value = choices[which].second
-                                host.updateConfig(w.spec.id, def.key, value)
-                                text = choices[which].first
-                            }
-                            .setNegativeButton("取消", null)
-                            .show()
+                        showCompactChoice(def.label, choices.map { it.first }) { which ->
+                            val value = choices[which].second
+                            host.updateConfig(w.spec.id, def.key, value)
+                            text = choices[which].first
+                        }
                     }
                 }
                 row.addView(tv)
@@ -454,7 +393,7 @@ class DesignerController(
                 val et = EditText(activity).apply {
                     setText(w.cfg(def.key, def.default))
                     setSingleLine(true)
-                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
+                    layoutParams = LinearLayout.LayoutParams(0, 48, 1f)
                     setOnFocusChangeListener { _, hasFocus ->
                         if (!hasFocus) host.updateConfig(w.spec.id, def.key, text.toString().trim())
                     }
@@ -473,10 +412,9 @@ class DesignerController(
                     ellipsize = android.text.TextUtils.TruncateAt.END
                     setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
-                    setPadding(dp(10), dp(4), dp(10), dp(4))
-                    setBackgroundResource(R.drawable.design_handle)
+                    setPadding(6, 0, 6, 0)
                     isClickable = true
-                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
+                    layoutParams = LinearLayout.LayoutParams(0, 48, 1f)
                     gravity = Gravity.CENTER_VERTICAL
                     setOnClickListener { showOrderDialog(w, def) }
                 }
@@ -495,7 +433,7 @@ class DesignerController(
 
         val rv = androidx.recyclerview.widget.RecyclerView(activity).apply {
             layoutManager = androidx.recyclerview.widget.LinearLayoutManager(activity)
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setPadding(6, 3, 6, 3)
         }
         val adapter = OrderAdapter(def.choices, ordered)
         rv.adapter = adapter
@@ -522,14 +460,16 @@ class DesignerController(
         )
         touchHelper.attachToRecyclerView(rv)
 
+        // 紧凑标题替代系统大标题；点空白关闭，松手即写回
+        val root = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(dialogTitle("${def.label}（长按 ☰ 拖动排序）"))
+        root.addView(rv)
         val dialog = AlertDialog.Builder(activity)
-            .setTitle("${def.label}（长按 ☰ 拖动排序）")
-            .setView(rv)
-            .setPositiveButton("完成", null)
+            .setView(root)
             .create()
         dialog.show()
-        // 屏高 720px：560×640px 避免溢出（原 dp(560)×dp(600)=840×900 超出屏幕）
-        dialog.window?.setLayout(560, 640)
+        // 紧凑自适应：宽 560px，高度随内容收缩
+        dialog.window?.setLayout(560, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
     /** 行序拖动适配器：维护有序 key 列表并渲染标签 */
@@ -574,7 +514,7 @@ class DesignerController(
         emptyList()
     }
 
-    /** VD 添加：必须选择一个承载 App（取消则不添加）；同页已被其他 VD 使用的 App 不展示 */
+    /** VD 添加：必须选择一个承载 App（未选则不添加）；同页已被其他 VD 使用的 App 不展示 */
     private fun showVdAppPicker(onPicked: (String) -> Unit) {
         val taken = host.vdBoundedPkgs()
         val apps = launcherApps().filter { it.second !in taken }
@@ -582,18 +522,100 @@ class DesignerController(
             toast("当前页的所有应用均已被其他 VD 使用")
             return
         }
-        AlertDialog.Builder(activity)
-            .setTitle("选择 VD 承载的 App")
-            .setItems(apps.map { it.first }.toTypedArray()) { _, which ->
-                onPicked(apps[which].second)
-            }
-            .setNegativeButton("取消") { _, _ ->
-                toast("未选择 App，未添加部件")
-            }
-            .show()
+        showCompactChoice(
+            "选择 VD 承载的 App",
+            apps.map { it.first },
+            onPick = { which -> onPicked(apps[which].second) },
+            onCancel = { toast("未选择 App，未添加部件") }
+        )
     }
 
-    private fun dp(v: Int): Int = (v * activity.resources.displayMetrics.density + 0.5f).toInt()
+    // ── 紧凑对话框共享骨架 ───────────────────────────
+
+    /** 紧凑标题行（14px 字、18/9/18/3 内边距），替代系统 AlertDialog 大标题 */
+    private fun dialogTitle(text: String): TextView = TextView(activity).apply {
+        this.text = text
+        setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
+        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 14f)
+        includeFontPadding = false
+        setPadding(18, 9, 18, 3)
+    }
+
+    /**
+     * 紧凑列表对话框：48px 行高 15px 字，点选项回调并关闭，点空白关闭。
+     * 宽 55% 屏、高封顶 80% 屏（内容少时收缩到内容高度）。
+     * onPick 置于末尾：同时兼容尾随 lambda 与具名参数两种调用形式。
+     */
+    private fun showCompactChoice(
+        title: String,
+        labels: List<String>,
+        onCancel: (() -> Unit)? = null,
+        onPick: (Int) -> Unit
+    ) {
+        val root = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(dialogTitle(title))
+        val box = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 3, 18, 12)
+        }
+        var dialog: AlertDialog? = null
+        var picked = false
+        labels.forEachIndexed { index, label ->
+            box.addView(TextView(activity).apply {
+                text = label
+                setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
+                includeFontPadding = false
+                maxLines = 1
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 48
+                ).apply { topMargin = 3 }
+                setOnClickListener {
+                    picked = true
+                    dialog?.dismiss()
+                    onPick(index)
+                }
+            })
+        }
+        val scroll = ScrollView(activity).apply {
+            addView(box, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT
+            ))
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val dm = activity.resources.displayMetrics
+        val dialogW = (dm.widthPixels * 0.55f).toInt()
+        box.measure(
+            View.MeasureSpec.makeMeasureSpec(dialogW - 48, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        scroll.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            minOf(box.measuredHeight, (dm.heightPixels * 0.8f).toInt())
+        )
+        root.addView(scroll)
+        dialog = AlertDialog.Builder(activity).setView(root).create()
+        if (onCancel != null) dialog.setOnDismissListener { if (!picked) onCancel() }
+        dialog.show()
+        dialog.window?.setLayout(dialogW, ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+
+    /** px 固定尺寸勾选框（checkbox_px：28px，选中实心+对勾/未选描边），不随密度/字体缩放 */
+    private fun pxCheckBox(): CheckBox = CheckBox(activity).apply {
+        buttonDrawable = activity.getDrawable(R.drawable.checkbox_px)
+        minimumWidth = 28
+        minimumHeight = 28
+    }
+
+    /** px 固定尺寸 SeekBar：28px 圆形滑块 + 6px 圆角轨道，不随密度缩放 */
+    private fun pxSeek(sb: SeekBar) {
+        sb.progressDrawable = activity.getDrawable(R.drawable.seekbar_px)
+        sb.thumb = activity.getDrawable(R.drawable.seekbar_px_thumb)
+        sb.thumbOffset = 14
+        sb.minimumHeight = 28
+        sb.splitTrack = false
+    }
 
     private fun toast(msg: String) {
         android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_SHORT).show()

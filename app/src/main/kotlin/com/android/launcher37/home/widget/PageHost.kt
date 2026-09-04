@@ -46,7 +46,6 @@ class PageHost(
         findViewById(R.id.btn_design_add)?.setOnClickListener { host?.currentDesigner?.showAddDialog() }
         findViewById(R.id.btn_design_del)?.setOnClickListener { host?.currentDesigner?.deleteSelected() }
         findViewById(R.id.btn_design_props)?.setOnClickListener { host?.currentDesigner?.showPropsDialog() }
-        findViewById(R.id.btn_design_status)?.setOnClickListener { onToggleStatusBar() }
         findViewById(R.id.btn_design_save)?.setOnClickListener { saveLayout() }
     }
 
@@ -201,12 +200,5 @@ class PageHost(
         Prefs.of(activity).edit().putBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, !cur).apply()
         onToggleStatusBar?.invoke()
         container.post { host?.reflow() }
-        refreshStatusButton()
-    }
-
-    fun refreshStatusButton() {
-        val hide = Prefs.of(activity).getBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, false)
-        (findViewById(R.id.btn_design_status) as? android.widget.Button)?.text =
-            if (hide) "👁隐" else "👁显"
     }
 }

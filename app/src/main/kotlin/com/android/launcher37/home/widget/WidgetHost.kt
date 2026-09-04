@@ -72,9 +72,6 @@ class WidgetHost private constructor(
     /** 当前布局的屏幕边距（设计器缩放尺寸上限用） */
     internal val margin: Int get() = mMargin
 
-    /** 当前布局的控件间距（设计器自动吸附用） */
-    internal val gap: Int get() = mGap
-
     /** 其他 Widget 矩形列表（设计器碰撞检测/添加避让用，已膨胀间距 [mGap]） */
     fun otherRects(excludeId: Int): List<android.graphics.Rect> {
         val g = mGap

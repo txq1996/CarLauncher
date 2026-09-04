@@ -294,11 +294,13 @@ class LauncherActivity : Activity() {
         applySystemBarTheme()
     }
 
-    /** 状态栏配色跟日夜主题（uiMode 切换不重建 Activity，必须每次同步） */
+    /** 状态栏配色跟日夜主题（uiMode 切换不重建 Activity，必须每次同步）；
+     *  设置开启"状态栏纯黑"时始终纯黑（关闭透明），图标用夜色（白色）保证对比 */
     private fun applySystemBarTheme() {
-        val bg = resources.getColor(R.color.background, theme)
+        val opaque = Prefs.of(this).getBoolean(SettingsActivity.KEY_OPAQUE_STATUS_BAR, false)
+        val bg = if (opaque) android.graphics.Color.BLACK else resources.getColor(R.color.background, theme)
         window.statusBarColor = bg
-        val isLightBar = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+        val isLightBar = !opaque && (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_NO
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val ctrl = window.insetsController
@@ -333,14 +335,13 @@ class LauncherActivity : Activity() {
 
     /**
      * 进入设计器：主页本身即画布（Widget 实时预览真实数据），显示悬浮工具栏。
-     * 不再强制全屏：画布尺寸与普通模式一致（状态栏显隐由工具栏开关控制）。
+     * 不再强制全屏：画布尺寸与普通模式一致（状态栏显隐由设置页布局属性控制）。
      */
     private fun enterDesign() {
         if (mDesignMode || host == null) return
         mDesignMode = true
         applyStatusBarVisibility()
         findViewById<View>(R.id.design_toolbar).visibility = View.VISIBLE
-        host?.refreshStatusButton()
         host?.enterDesignMode()
     }
 

@@ -74,7 +74,11 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     private val lineCount: Int get() = cfgInt(CFG_LINES, 10)
     private val curSize: Int get() = cfgInt(CFG_SIZE_CUR, 20)
     private val otherSize: Int get() = cfgInt(CFG_SIZE_OTHER, 15)
+    private val trackSize: Int get() = cfgInt(CFG_SIZE_TRACK, 20)
+    private val artistSize: Int get() = cfgInt(CFG_SIZE_ARTIST, 14)
+    private val timeSize: Int get() = cfgInt(CFG_SIZE_TIME, 14)
     private val lineGap: Int get() = cfgInt(CFG_GAP, 15)
+    private val lineSpacing: Int get() = cfgInt(CFG_LINE_SPACING, 7)
 
     override val props: List<WidgetProp> = listOf(
         WidgetProp(CFG_MUSIC_PKG, "绑定音乐应用", PropType.CHOICE, "", choices = launcherChoices()),
@@ -85,7 +89,10 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         WidgetProp(CFG_LINES, "歌词行数", PropType.INT, "10", min = 3, max = 15),
         WidgetProp(CFG_SIZE_CUR, "当前句字号", PropType.INT, "20", min = 10, max = 50),
         WidgetProp(CFG_SIZE_OTHER, "其他行字号", PropType.INT, "15", min = 10, max = 50),
-        WidgetProp(CFG_GAP, "行间距", PropType.INT, "7", min = 0, max = 30)
+        WidgetProp(CFG_SIZE_TRACK, "歌名字号", PropType.INT, "20", min = 10, max = 50),
+        WidgetProp(CFG_SIZE_ARTIST, "作者字号", PropType.INT, "14", min = 10, max = 50),
+        WidgetProp(CFG_SIZE_TIME, "时间字号", PropType.INT, "14", min = 10, max = 50),
+        WidgetProp(CFG_GAP, "内部间距", PropType.INT, "7", min = 0, max = 30)
     )
 
     /** 全部可启动应用（label to packageName，字典序）供绑定选择 */
@@ -124,6 +131,9 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     /** 纯文本歌词（无时间戳）时走整段显示 */
     private var mPlain: String? = null
 
+    /** 歌词容器高度缓存：尺寸变化（设计器缩放/属性调整）时重算可容纳行数 */
+    private var mBoxH = -1
+
     /** 实际显示行数（有翻译 = lineCount/2） */
     private val effectiveCount: Int get() = if (mHasTrans) lineCount / 2 else lineCount
 
@@ -136,6 +146,13 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         progress = findViewById(R.id.lyrics_progress)
         ivCover = findViewById(R.id.iv_lyrics_cover)
         boxLines = findViewById(R.id.box_lyrics_lines)
+        // 容器尺寸变化（设计器缩放/显隐/字号调整）时重算可容纳行数并刷新窗口
+        boxLines?.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            if (v.height != mBoxH) {
+                mBoxH = v.height
+                refreshLines()
+            }
+        }
         // 歌曲信息区：点击 = 启动/唤醒音乐 app（默认 QQ 音乐），播放后自动返回桌面；长按换绑
         findViewById<View>(R.id.box_lyrics_info)?.setOnClickListener {
             musicLauncher.onButton(mediaHelper::togglePlay, boundPkg())
@@ -178,10 +195,30 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         // 关闭歌词：歌词行区整体隐藏（封面占满剩余空间）
         findViewById<View>(R.id.box_lyrics_lines)?.visibility =
             if (cfgBool(CFG_SHOW_LYRICS, true)) View.VISIBLE else View.GONE
-        tvTrack?.setTextSize(TypedValue.COMPLEX_UNIT_PX, curSize.toFloat())
-        tvArtist?.setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize.toFloat())
-        tvCur?.setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize.toFloat())
-        tvTotal?.setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize.toFloat())
+        tvTrack?.setTextSize(TypedValue.COMPLEX_UNIT_PX, trackSize.toFloat())
+        tvArtist?.setTextSize(TypedValue.COMPLEX_UNIT_PX, artistSize.toFloat())
+        tvCur?.setTextSize(TypedValue.COMPLEX_UNIT_PX, timeSize.toFloat())
+        tvTotal?.setTextSize(TypedValue.COMPLEX_UNIT_PX, timeSize.toFloat())
+        applyInnerGap()
+    }
+
+    /** 内部间距：统一作用于 歌名/作者/封面/歌词区/时间/进度条/控制按钮 之间的间隔（歌词行间同步） */
+    private fun applyInnerGap() {
+        val g = lineGap
+        fun margin(id: Int, top: Boolean = true) {
+            val v = findViewById<View>(id) ?: return
+            (v.layoutParams as? LinearLayout.LayoutParams)?.let { lp ->
+                if (top) lp.topMargin = g else lp.bottomMargin = g
+                v.layoutParams = lp
+            }
+        }
+        margin(R.id.box_lyrics_info)
+        margin(R.id.tv_lyrics_artist)
+        margin(R.id.iv_lyrics_cover)
+        margin(R.id.box_lyrics_lines, top = false)
+        margin(R.id.box_lyrics_time)
+        margin(R.id.lyrics_progress)
+        margin(R.id.box_lyrics_controls)
     }
 
     override fun onPropChanged(key: String, value: String) {
@@ -274,22 +311,25 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         resetLyrics()
         if (title.isBlank() || title == "未在播放" || title == "未授权") return
         setPlaceholder("歌词获取中…")
+        // 封面延后加载：未就绪前不显示专辑图片
         ivCover?.visibility = View.GONE
         val gen = ++mGen
         SharedExecutor.io().execute {
+            // 1. 歌词优先：取词完成立即上屏
             val data = Lyrics.loadOrFetch(activity, mProvider, artist, title, 0)
-            // 封面：info.cover 下载（cover.jpg 缓存后直接读文件）
-            var cover: Bitmap? = null
-            val info = data?.songInfo
-            if (info != null && info.cover.isNotBlank()) {
-                cover = try { SdcardMusicStore.loadCover(info) } catch (_: Exception) { null }
-            }
-            val finalCover = cover
             activity.runOnUiThread {
                 if (gen != mGen || activity.isDestroyed || activity.isFinishing) return@runOnUiThread
                 applyData(data)
-                if (finalCover != null) {
-                    ivCover?.setImageBitmap(finalCover)
+            }
+            // 2. 封面延后：歌词上屏后再下载（cover.jpg 缓存后直接读文件）
+            val info = data?.songInfo
+            val cover = if (info != null && info.cover.isNotBlank()) {
+                try { SdcardMusicStore.loadCover(info) } catch (_: Exception) { null }
+            } else null
+            activity.runOnUiThread {
+                if (gen != mGen || activity.isDestroyed || activity.isFinishing) return@runOnUiThread
+                if (cover != null) {
+                    ivCover?.setImageBitmap(cover)
                     ivCover?.visibility = View.VISIBLE
                 } else {
                     ivCover?.visibility = View.GONE
@@ -320,7 +360,8 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         for (i in 0 until lineCount) {
             val main = TextView(activity).apply {
                 gravity = Gravity.CENTER
-                maxLines = 1
+                // 超宽自动换行（最多 4 行，超出省略）
+                maxLines = 4
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
                 setTextColor(secondary)
@@ -329,11 +370,11 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
             }
             val sub = TextView(activity).apply {
                 gravity = Gravity.CENTER
-                maxLines = 1
+                maxLines = 4
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
                 setTextColor(tertiary)
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize * 0.8f)
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize.toFloat())
                 typeface = Typeface.DEFAULT
                 visibility = View.GONE
             }
@@ -343,7 +384,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    topMargin = if (i == 0) 0 else lineGap
+                    topMargin = if (i == 0) 0 else lineSpacing
                 }
                 addView(main)
                 addView(sub)
@@ -405,7 +446,9 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         val primary = activity.resources.getColor(R.color.foreground, activity.theme)
         val secondary = activity.resources.getColor(R.color.foreground_secondary, activity.theme)
         val tertiary = activity.resources.getColor(R.color.foreground_tertiary, activity.theme)
-        val eff = effectiveCount
+        // 有效行数 = min(配置行数, 容器实际可容纳行数)：高度不够时收缩窗口，保证播放行始终可见且居中
+        val fit = fitCount()
+        val eff = if (fit > 0) minOf(effectiveCount, fit) else effectiveCount
         // 窗口起始行：未播放 → 歌词中段；播放中 → 当前句居中并 clamp 到有效范围
         val winStart = if (mCurIndex < 0) {
             ((mLines.size - eff) / 2).coerceAtLeast(0)
@@ -429,32 +472,60 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
                 row.sub.visibility = View.GONE
                 continue
             }
-            row.main.maxLines = 1
+            row.main.maxLines = 4
             val lineIdx = winStart + i
             val isCur = lineIdx == mCurIndex
             val text = if (lineIdx in mLines.indices) mLines[lineIdx].text else ""
             row.main.text = text
+            // 翻译：每行都显示（该行时间戳最近匹配 ≤1s），字号与该行原文字号一致，空文本/"//"不显示
+            val trans = if (lineIdx in mLines.indices) transFor(lineIdx) else null
             if (isCur) {
                 row.main.setTextColor(primary)
                 row.main.setTypeface(Typeface.DEFAULT_BOLD)
                 row.main.setTextSize(TypedValue.COMPLEX_UNIT_PX, curSize.toFloat())
-                // 翻译：当前句时间戳最近匹配（≤1s），空文本/"//"不显示
-                val trans = if (lineIdx in mLines.indices) transFor(lineIdx) else null
                 if (trans.isNullOrBlank()) {
                     row.sub.visibility = View.GONE
                 } else {
+                    // 当前句译文与原文同字号同颜色
                     row.sub.text = trans
-                    row.sub.setTextColor(tertiary)
-                    row.sub.setTextSize(TypedValue.COMPLEX_UNIT_PX, curSize * 0.55f)
+                    row.sub.setTextColor(primary)
+                    row.sub.setTextSize(TypedValue.COMPLEX_UNIT_PX, curSize.toFloat())
                     row.sub.visibility = View.VISIBLE
                 }
             } else {
                 row.main.setTextColor(secondary)
                 row.main.setTypeface(Typeface.DEFAULT)
                 row.main.setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize.toFloat())
-                row.sub.visibility = View.GONE
+                if (trans.isNullOrBlank()) {
+                    row.sub.visibility = View.GONE
+                } else {
+                    row.sub.text = trans
+                    row.sub.setTextColor(tertiary)
+                    row.sub.setTextSize(TypedValue.COMPLEX_UNIT_PX, otherSize.toFloat())
+                    row.sub.visibility = View.VISIBLE
+                }
             }
         }
+    }
+
+    /**
+     * 容器实际可容纳的歌词行数：按字号估算行高（普通行 + 1 个当前行/译文行），
+     * 以"当前行居中"的窗口为前提计算。0 = 容器尚未布局（回退为配置行数）。
+     */
+    private fun fitCount(): Int {
+        val box = boxLines ?: return 0
+        val avail = box.height
+        if (avail <= 0) return 0
+        // includeFontPadding=false 的行高约为字号的 1.35 倍（保守估算，宁少勿裁）
+        // 有翻译时每行 = 原文行 + 等字号译文行
+        val f = 1.35f
+        val transMul = if (mHasTrans) 2 else 1
+        val otherH = (otherSize * f).toInt() * transMul
+        val curH = (curSize * f).toInt() * transMul
+        val rowH = otherH + lineSpacing
+        var n = 1
+        while (n < effectiveCount && curH + rowH * n <= avail) n++
+        return n
     }
 
     /** 翻译对齐：主歌词行时间戳在 trans 里找最近行（差 ≤1s） */
@@ -490,6 +561,10 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         const val CFG_LINES = "lyrics_lines"
         const val CFG_SIZE_CUR = "lyrics_size_cur"
         const val CFG_SIZE_OTHER = "lyrics_size_other"
+        const val CFG_SIZE_TRACK = "lyrics_size_track"
+        const val CFG_SIZE_ARTIST = "lyrics_size_artist"
+        const val CFG_SIZE_TIME = "lyrics_size_time"
         const val CFG_GAP = "lyrics_gap"
+        const val CFG_LINE_SPACING = "lyrics_line_spacing"
     }
 }

@@ -35,13 +35,6 @@
                         <TextView android:id="@+id/tab_general" style="@style/Tab" android:text="通用" />
                     </LinearLayout>
                 </ScrollView>
-
-                <Button
-                    android:id="@+id/btn_restart_launcher"
-                    style="@style/ThemeButton"
-                    android:layout_width="match_parent"
-                    android:layout_marginTop="12px"
-                    android:text="重启桌面" />
             </LinearLayout>
 
             <FrameLayout
@@ -131,6 +124,11 @@
                         <LinearLayout style="@style/CheckRow">
                             <TextView style="@style/CheckRowLabel" android:text="启动直接打开全部应用" />
                             <CheckBox android:id="@+id/cb_home_direct_drawer" style="@style/CheckRowCheck" />
+                        </LinearLayout>
+
+                        <LinearLayout style="@style/CheckRow">
+                            <TextView style="@style/CheckRowLabel" android:text="状态栏纯黑（关闭透明）" />
+                            <CheckBox android:id="@+id/cb_opaque_status_bar" style="@style/CheckRowCheck" />
                         </LinearLayout>
 
                         <LinearLayout

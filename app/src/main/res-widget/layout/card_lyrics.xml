@@ -137,6 +137,7 @@
 
     <!-- 播放控制（与左侧音乐卡同款按钮，置底） -->
     <LinearLayout
+        android:id="@+id/box_lyrics_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8px"

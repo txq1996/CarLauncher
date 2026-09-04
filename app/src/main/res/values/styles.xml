@@ -43,13 +43,17 @@
     <style name="CheckRowCheck">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:buttonTint">@color/foreground</item>
+        <item name="android:minWidth">0px</item>
+        <item name="android:minHeight">0px</item>
+        <item name="android:button">@drawable/checkbox_px</item>
     </style>
 
-    <!-- 设置页主题按钮（重启桌面/布局设计等）：56px 高、18px 字，水平 20px 内边距 -->
+    <!-- 设置页主题按钮（检查更新/布局管理等）：56px 高、18px 字，水平 20px 内边距，无默认最小宽高（与代码 actionButton 一致） -->
     <style name="ThemeButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">56px</item>
+        <item name="android:minWidth">0px</item>
+        <item name="android:minHeight">0px</item>
         <item name="android:paddingStart">20px</item>
         <item name="android:paddingEnd">20px</item>
         <item name="android:textColor">@color/foreground</item>

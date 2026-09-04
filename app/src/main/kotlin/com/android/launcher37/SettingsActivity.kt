@@ -95,6 +95,9 @@ class SettingsActivity : Activity() {
 
         // ── 通用 ───────────────────────
         const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
+
+        /** 状态栏纯黑（关闭透明跟随主题）：开启后状态栏始终纯黑 */
+        const val KEY_OPAQUE_STATUS_BAR = "opaque_status_bar"
         const val KEY_HOME_DIRECT_APP_DRAWER = "home_direct_app_drawer"
         /** 桌面拉起 PIP 前的延迟毫秒（0=立即；恢复 d4584a0 删除的 PIP_START_DELAY_MS=250） */
         const val KEY_PIP_START_DELAY = "pip_start_delay"
@@ -141,7 +144,6 @@ class SettingsActivity : Activity() {
         bindAppsTab()
         bindDrawerLooks()
         bindGeneralTab()
-        findViewById<Button>(R.id.btn_restart_launcher).setOnClickListener { restartLauncher() }
     }
 
     override fun onDestroy() {
@@ -156,10 +158,8 @@ class SettingsActivity : Activity() {
     @Suppress("DEPRECATION")
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        val intent = Intent(this, LauncherActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        startActivity(intent)
-        finish()
+        // 关闭设置界面时自动重启桌面（重建 LauncherActivity 让设置生效），不再需要手动重启按钮
+        restartLauncher()
     }
 
     /**
@@ -266,39 +266,46 @@ class SettingsActivity : Activity() {
                 row.addView(actionButton("📋 复制") { copyLayout(name) })
             } else {
                 row.addView(actionButton("🗑️ 删除") {
-                    AlertDialog.Builder(ctx)
-                        .setTitle("删除布局")
-                        .setMessage("确定删除「$name」？")
-                        .setPositiveButton("删除") { _, _ ->
+                compactDialog(
+                    "删除布局",
+                    message("确定删除「$name」？"),
+                    listOf(
+                        "取消" to { },
+                        "删除" to {
                             LayoutRepository.delete(ctx, name)
                             PageHost.instance?.applyLayout(LayoutRepository.activeName(ctx))
                             rebuildLayoutList()
                         }
-                        .setNegativeButton("取消", null)
-                        .show()
-                })
+                    )
+                )
+            })
                 row.addView(actionButton("✏️ 重命名") {
                     val input = android.widget.EditText(ctx)
                     input.setText(name)
-                    AlertDialog.Builder(ctx)
-                        .setTitle("重命名布局")
-                        .setView(input)
-                        .setPositiveButton("确定") { _, _ ->
-                            val newName = input.text.toString().trim()
-                            if (newName.isNotEmpty() && newName != name &&
-                                !LayoutRepository.listNames(ctx).any { it == newName }) {
-                                val src = LayoutRepository.load(ctx, name, sw, sh) ?: return@setPositiveButton
-                                LayoutRepository.save(ctx, NamedLayout(newName, src.pages))
-                                LayoutRepository.delete(ctx, name)
-                                if (active == name) {
-                                    LayoutRepository.setActive(ctx, newName)
-                                    PageHost.instance?.applyLayout(newName)
+                    compactDialog(
+                        "重命名布局",
+                        input,
+                        listOf(
+                            "取消" to { },
+                            "确定" to {
+                                val newName = input.text.toString().trim()
+                                val valid = newName.isNotEmpty() && newName != name &&
+                                    !LayoutRepository.listNames(ctx).any { it == newName }
+                                if (valid) {
+                                    val src = LayoutRepository.load(ctx, name, sw, sh)
+                                    if (src != null) {
+                                        LayoutRepository.save(ctx, NamedLayout(newName, src.pages))
+                                        LayoutRepository.delete(ctx, name)
+                                        if (active == name) {
+                                            LayoutRepository.setActive(ctx, newName)
+                                            PageHost.instance?.applyLayout(newName)
+                                        }
+                                        rebuildLayoutList()
+                                    }
                                 }
-                                rebuildLayoutList()
                             }
-                        }
-                        .setNegativeButton("取消", null)
-                        .show()
+                        )
+                    )
                 })
                 row.addView(actionButton("⚙️ 属性") { showLayoutProps(name) })
                 // 设计器入口（原顶部「布局设计」按钮移此）：先切到该布局，再以设计模式拉起桌面
@@ -399,14 +406,72 @@ class SettingsActivity : Activity() {
             })
         }
 
-        AlertDialog.Builder(ctx)
-            .setTitle("布局属性 - $name")
-            .setView(box)
-            .setPositiveButton("确定") { _, _ ->
-                savePage { it.copy(hideStatusBar = hideBar) }
-            }
-            .setNegativeButton("取消", null)
-            .show()
+        compactDialog(
+            "布局属性 - $name",
+            box,
+            listOf(
+                "取消" to { },
+                "确定" to { savePage { it.copy(hideStatusBar = hideBar) } }
+            )
+        )
+    }
+
+    // ── 紧凑对话框共享骨架 ───────────────────────────
+
+    /** 紧凑标题行（14px 字、18/9/18/3 内边距），替代系统 AlertDialog 大标题 */
+    private fun dialogTitle(text: String): TextView = TextView(this).apply {
+        this.text = text
+        setTextColor(getColor(R.color.foreground))
+        setTextSize(TypedValue.COMPLEX_UNIT_PX, 14f)
+        includeFontPadding = false
+        setPadding(18, 9, 18, 3)
+    }
+
+    /** 紧凑正文（15px 字），替代系统 AlertDialog 大正文 */
+    private fun message(text: String): TextView = TextView(this).apply {
+        this.text = text
+        setTextColor(getColor(R.color.foreground))
+        setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+        includeFontPadding = false
+        setPadding(18, 12, 18, 0)
+    }
+
+    /** 紧凑按钮（与布局行 actionButton 同款：18px 字、56px 高、20px 水平内边距） */
+    private fun dialogButton(text: String, onClick: () -> Unit): Button = Button(this).apply {
+        this.text = text
+        setTextSize(TypedValue.COMPLEX_UNIT_PX, 18f)
+        setTextColor(getColor(R.color.foreground))
+        minHeight = 56
+        minimumHeight = 0
+        minimumWidth = 0
+        setPadding(20, 0, 20, 0)
+        setOnClickListener { onClick() }
+    }
+
+    /**
+     * 紧凑对话框骨架：14px 标题 + 内容 + 底部按钮行（按钮从右往左：取消在前），
+     * 替代系统 AlertDialog 的 sp 大标题/大正文；点空白关闭（不触发按钮）。
+     */
+    private fun compactDialog(title: String, content: View, buttons: List<Pair<String, () -> Unit>>) {
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(dialogTitle(title))
+        root.addView(content)
+        var dlg: AlertDialog? = null
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.END
+            setPadding(18, 12, 12, 6)
+        }
+        buttons.forEach { (label, action) ->
+            btnRow.addView(dialogButton(label) { dlg?.dismiss(); action() })
+        }
+        root.addView(btnRow)
+        dlg = AlertDialog.Builder(this).setView(root).create()
+        dlg.show()
+        dlg.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.5f).toInt(),
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
     }
 
     /** dp→px（density 1.5） */
@@ -611,9 +676,9 @@ class SettingsActivity : Activity() {
 
     private fun prefs(): SharedPreferences = Prefs.of(this)
 
-    private fun bindCheck(viewId: Int, key: String) {
+    private fun bindCheck(viewId: Int, key: String, def: Boolean = true) {
         val cb = findViewById<CheckBox>(viewId)
-        cb.isChecked = prefs().getBoolean(key, true)
+        cb.isChecked = prefs().getBoolean(key, def)
         cb.setOnCheckedChangeListener { _, isChecked ->
             prefs().edit().putBoolean(key, isChecked).apply()
         }
@@ -673,6 +738,7 @@ class SettingsActivity : Activity() {
 
     private fun bindGeneralTab() {
         bindCheck(R.id.cb_home_direct_drawer, KEY_HOME_DIRECT_APP_DRAWER)
+        bindCheck(R.id.cb_opaque_status_bar, KEY_OPAQUE_STATUS_BAR, def = false)
         val box = findViewById<LinearLayout>(R.id.box_general_seeks)
         bindSeek(box, "桌面拉起延迟", KEY_PIP_START_DELAY, 200, 0, 1000, unit = "毫秒", step = 10)
         bindSeek(box, "VD拉起延迟", KEY_VD_LAUNCH_DELAY, 200, 0, 1000, unit = "毫秒", step = 10)
@@ -686,17 +752,17 @@ class SettingsActivity : Activity() {
             override fun onUpdateFound(info: UpdateChecker.UpdateInfo) {
                 mTvUpdateStatus?.text = "发现新版本 v${info.versionName} (code=${info.versionCode})，等待确认"
                 try {
-                    AlertDialog.Builder(this@SettingsActivity)
-                        .setTitle("发现新版本 v${info.versionName}")
-                        .setMessage("是否立即下载并安装？")
-                        .setPositiveButton("立即更新") { _, _ ->
-                            mTvUpdateStatus?.text = "开始下载…"
-                            mUpdater?.confirmUpdate()
-                        }
-                        .setNegativeButton("稍后") { _, _ ->
-                            mTvUpdateStatus?.text = "已取消，可重新检查更新"
-                        }
-                        .show()
+                    compactDialog(
+                        "发现新版本 v${info.versionName}",
+                        message("是否立即下载并安装？"),
+                        listOf(
+                            "稍后" to { mTvUpdateStatus?.text = "已取消，可重新检查更新" },
+                            "立即更新" to {
+                                mTvUpdateStatus?.text = "开始下载…"
+                                mUpdater?.confirmUpdate()
+                            }
+                        )
+                    )
                 } catch (e: Exception) {
                     mTvUpdateStatus?.text = "弹窗失败：${e.message}"
                 }

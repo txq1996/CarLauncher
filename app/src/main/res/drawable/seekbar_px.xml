@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- px 固定尺寸滑条轨道：6px 圆角条，进度部分用 foreground -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@android:id/background"
+        android:gravity="center_vertical">
+        <shape android:shape="rectangle">
+            <size android:height="6px" />
+            <corners android:radius="3px" />
+            <solid android:color="@color/surface_variant" />
+        </shape>
+    </item>
+    <item
+        android:id="@android:id/progress"
+        android:gravity="center_vertical">
+        <clip>
+            <shape android:shape="rectangle">
+                <size android:height="6px" />
+                <corners android:radius="3px" />
+                <solid android:color="@color/foreground" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

@@ -2,7 +2,6 @@ package com.android.launcher37.home.widget
 
 import android.content.Context
 import android.util.Log
-import com.android.launcher37.SettingsActivity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -153,17 +152,15 @@ object LayoutRepository {
         )
     }
 
-    /** 无保存布局时的默认布局：左窄条应用列表（7 条，首条抽屉）/中 VD（默认高德，65%宽）/右车速+歌词，无底栏 */
+    /** 无保存布局时的默认布局（取自"我的布局"）：左窄条应用列表（7 条，首条抽屉）/中 VD（默认高德）/右音乐卡，无底栏 */
     fun defaultLayout(screenW: Int, screenH: Int): HomeLayout {
         val pad = 10
         val gap = 10
         val contentH = screenH - pad * 2
         // 应用列表一条竖栏：仅比默认图标（48px）+ 内边距（8px×2）略宽
         val leftW = 76
-        val midW = (screenW * 0.65f).roundToInt()
-        val rightW = screenW - pad * 2 - leftW - midW - gap * 2
-        val speedH = (contentH * 0.35f).roundToInt()
-        val lyricsH = contentH - speedH - gap
+        val rightW = 300
+        val midW = screenW - pad * 2 - leftW - rightW - gap * 2
         val nextId = intArrayOf(1)
         fun spec(type: String, x: Int, y: Int, w: Int, h: Int, cfg: Map<String, String> = emptyMap()) =
             WidgetSpec(nextId[0]++, type, x, y, w, h, true, cfg)
@@ -177,12 +174,16 @@ object LayoutRepository {
             spec(WidgetTypes.VD, pad + leftW + gap, pad, midW, contentH, mapOf(
                 CFG_VD_PKG to "com.autonavi.amapauto"
             )),
-            // 车速区只显示：速度 / 红绿灯 / 转向（导航+巡航行序）
-            spec(WidgetTypes.SPEED, rightX, pad, rightW, speedH, mapOf(
-                SettingsActivity.KEY_NAVI_ORDER to "speed,traffic,navi_turn",
-                SettingsActivity.KEY_CRUISE_ORDER to "speed,traffic"
-            )),
-            spec(WidgetTypes.LYRICS, rightX, pad + speedH + gap, rightW, lyricsH)
+            // 音乐卡（歌词 + 控制按钮），默认绑定 QQ 音乐
+            spec(WidgetTypes.LYRICS, rightX, pad, rightW, contentH, mapOf(
+                LyricsWidget.CFG_MUSIC_PKG to "com.tencent.qqmusiccar",
+                LyricsWidget.CFG_LINES to "8",
+                LyricsWidget.CFG_SIZE_CUR to "20",
+                LyricsWidget.CFG_SIZE_OTHER to "18",
+                LyricsWidget.CFG_SIZE_TIME to "15",
+                LyricsWidget.CFG_SIZE_ARTIST to "15",
+                LyricsWidget.CFG_GAP to "10"
+            ))
         )
         return HomeLayout(HomeLayout.CURRENT_VERSION, screenW, screenH, widgets, gap = 10, margin = 10)
     }

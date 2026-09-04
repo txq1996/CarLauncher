@@ -52,8 +52,9 @@
         android:id="@+id/item_check"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:buttonTint="@color/foreground"
+        android:button="@drawable/checkbox_px"
         android:minWidth="0px"
         android:minHeight="0px"
-        android:padding="8px" />
+        android:paddingStart="6px"
+        android:paddingEnd="0px" />
 </LinearLayout>

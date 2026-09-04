@@ -11,19 +11,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 悬浮设计工具栏：仅设计模式显示；单行、60px 高、实色 surface 底；
-         按钮 50×30px 圆角胶囊（bg_design_btn）贴边排列、字号 12px。 -->
+    <!-- 悬浮设计工具栏：仅设计模式显示；4 个 60×30px 按钮居左上，
+         容器透明不额外占位（不遮挡画布其余区域），字号 12px。 -->
     <LinearLayout
         android:id="@+id/design_toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="60px"
-        android:layout_gravity="top"
-        android:background="@color/surface"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
         android:elevation="8px"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="4px"
-        android:paddingEnd="4px"
+        android:paddingTop="4px"
         android:visibility="gone">
 
         <Button
@@ -40,11 +39,6 @@
             android:id="@+id/btn_design_props"
             style="@style/DesignToolbarButton"
             android:text="⚙属性" />
-
-        <Button
-            android:id="@+id/btn_design_status"
-            style="@style/DesignToolbarButton"
-            android:text="👁状态栏" />
 
         <Button
             android:id="@+id/btn_design_save"
