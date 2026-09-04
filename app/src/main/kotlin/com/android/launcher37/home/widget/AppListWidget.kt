@@ -102,6 +102,10 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
         val count = cfgInt(CFG_COUNT, 6)
         val bindings = bindingTokens()
         SharedExecutor.io().execute {
+            // token 前置检查：设计器拖动/缩放每次 MOVE 都触发 refresh，过期任务在此
+            // 立即退出，避免对 SharedExecutor（2 线程共享池）塞入高频 PackageManager
+            // binder 查询、挤占歌词取词等其他 IO 任务
+            if (token != mRefreshToken) return@execute
             val sortedApps = AppQuery.launcherEntriesSorted(activity)
             val entries = ArrayList<Entry>(count)
             for (i in 0 until count) {

@@ -88,16 +88,22 @@ class MediaHelper(
         // 启动后短期内多次重 evaluate：有的 ROM 在 launcher start() 立刻调
         // getActiveSessions() 返回空（QQ 音乐 session 已存在但 framework 还没把
         // listener 加进通知列表）；几秒后 listener 生效，重拉就拿得到了。
-        mHandler.postDelayed({ evaluate(safeActiveSessions()) }, 100)
-        mHandler.postDelayed({ evaluate(safeActiveSessions()) }, 500)
-        mHandler.postDelayed({ evaluate(safeActiveSessions()) }, 1500)
-        mHandler.postDelayed({ evaluate(safeActiveSessions()) }, 3000)
-        mHandler.postDelayed({ evaluate(safeActiveSessions()) }, 6000)
+        // warmup runnable 成员化：stop() 时可 removeCallbacks，避免快速 start/stop
+        // 后残留任务在已停止状态下继续 evaluate/回调 UI
+        mWarmupDelays.forEachIndexed { i, delay ->
+            mHandler.removeCallbacks(mWarmupEvals[i])
+            mHandler.postDelayed(mWarmupEvals[i], delay)
+        }
     }
+
+    /** 启动预热 evaluate（100ms~6s 五次）+ 对应延迟表；成员化以便 stop() 移除 */
+    private val mWarmupDelays = longArrayOf(100, 500, 1500, 3000, 6000)
+    private val mWarmupEvals = Array(5) { Runnable { evaluate(safeActiveSessions()) } }
 
     fun stop() {
         mHandler.removeCallbacks(mTicker)
         mHandler.removeCallbacks(mPlayingPkgsRefresher)
+        for (r in mWarmupEvals) mHandler.removeCallbacks(r)
         mPlayingPkgs = emptySet()
         if (mMsm != null) {
             try {

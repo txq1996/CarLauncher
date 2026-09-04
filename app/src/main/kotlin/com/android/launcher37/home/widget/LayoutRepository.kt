@@ -278,8 +278,12 @@ object LayoutRepository {
                 })
             })
         }
-        file(context).writeText(o.toString(2))
-        true
+        // 原子写：先写临时文件再 rename 覆盖，车机断电/进程被杀时不会留下半截 JSON
+        // 导致 loadRepo 解析失败、全部自定义布局丢失（与 LyricsCache.save 同款策略）
+        val dst = file(context)
+        val tmp = File(context.filesDir, "$FILE.tmp")
+        tmp.writeText(o.toString(2))
+        if (tmp.renameTo(dst)) true else { tmp.delete(); false }
     } catch (e: Exception) {
         Log.w(TAG, "writeRepo failed", e)
         false

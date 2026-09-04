@@ -38,7 +38,17 @@ internal class MapPipHost private constructor(
     companion object {
         private const val TAG = "MapPipLocal"
         fun available(): Boolean = android.os.Build.VERSION.SDK_INT in 28..35
-        fun create(context: Context, slotId: Int = 0): MapPipHost = MapPipHost(context.applicationContext, slotId)
+
+        /**
+         * 按 slotId 缓存复用：同一槽位（spec.id+1 唯一）同一时间只有一个活跃 VdWidget，
+         * 设计器反复删除/重建 Widget 时复用同一 host，避免每次新建都 bindService
+         * （BIND_AUTO_CREATE 引用计数累积，且 :pip 需常驻故 Widget 销毁不 unbind）。
+         * 仅主线程调用（Widget 生命周期均在主线程），无需并发容器。
+         */
+        private val sHosts = HashMap<Int, MapPipHost>()
+
+        fun create(context: Context, slotId: Int = 0): MapPipHost =
+            sHosts.getOrPut(slotId) { MapPipHost(context.applicationContext, slotId) }
     }
 
     private val mSurfaceView = SurfaceView(mContext).apply {
@@ -248,11 +258,13 @@ internal class MapPipHost private constructor(
 
     /**
      * 完整释放：解绑 service 并通知 service 退出（让 VD 释放）。
-     * 只有用户明确"退出导航"才调。
+     * 当前代码库无调用点（保留以支持将来"明确退出导航"路径）；调用后从缓存移除，
+     * 下次 create 会新建实例。
      */
     fun release() {
         Log.i(TAG, "release")
         releaseTransient()
+        sHosts.remove(mSlotId)
         if (mBound || mBinding) {
             try { mContext.unbindService(mConnection) } catch (ignored: Throwable) {}
             mBound = false
