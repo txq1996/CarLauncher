@@ -15,7 +15,7 @@ CarLauncher（`com.android.launcher37`）车载桌面 Launcher 项目的 AI 开�
 - PIP 地图悬浮窗（`VirtualDisplay` 多槽位，独立 `:pip` 进程承载）
 - 自由画布 Widget 桌面（时间 / 歌词 / 车速导航 / VD 应用窗 / 应用列表）
 - 音乐卡（MediaSession）
-- Dock + 应用抽屉
+- 全部应用抽屉（Activity 弹窗 + 悬浮窗两种形态）
 - 后台进程清理（forceStop）
 - 应用内 GitHub Releases 更新
 

@@ -2,7 +2,6 @@
 <!-- VD 窗口卡：真嵌入 VirtualDisplay（:pip 独立进程多槽位），可配置任意 App，可多实例。
      底部标签显示当前绑定的应用名。 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/card_vd"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_pip_frame">

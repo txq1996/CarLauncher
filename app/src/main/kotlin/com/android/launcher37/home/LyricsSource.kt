@@ -90,7 +90,6 @@ data class LyricsData(
 object Lyrics {
 
     private val mVkeys = VkeysProvider()
-    private val mLrclib = LrclibProvider()
 
     /** filesDir 缓存文件名（lrclib 兜底路径）：歌手_标题.providerId.lrc */
     fun cacheKey(artist: String, title: String, providerId: String): String {

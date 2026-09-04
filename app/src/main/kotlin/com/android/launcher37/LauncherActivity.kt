@@ -24,8 +24,8 @@ import com.android.launcher37.home.widget.PageHost
  * Home launcher activity (singleTask).
  * 直接启动时若开启 home_direct_app_drawer，则像 autodock 一样走 Service 悬浮，不建 1x1 窗口，不返桌面。
  *
- * 主页 = 单页 Widget 画布（[PageHost]）：Time/Music/Lyrics/Speed/Dock/VD 六类
- * Widget 绝对定位摆放，命名布局持久化（保存/打开），设计器模式（EXTRA_DESIGNER）
+ * 主页 = 单页 Widget 画布（[PageHost]）：时间/音乐/车速导航/VD 应用窗口/应用列表
+ * 五类 Widget 绝对定位摆放，命名布局持久化（保存/打开），设计器模式（EXTRA_DESIGNER）
  * 直接在主页拖动/缩放/增删 Widget。
  */
 class LauncherActivity : Activity() {

@@ -1,12 +1,11 @@
 package com.android.launcher37.home.widget
-import com.android.launcher37.SettingsActivity
 
 /**
  * 主页 Widget 数据模型。
  *
  * 主页 = 自由画布：每个 Widget 绝对定位（x/y/w/h，单位 px，坐标系 = 屏幕像素），
- * 允许同一类型重复添加（如多个 VDWidget）。业务属性（字号/格式等）仍走
- * SettingsActivity SP（设置页统一调整）；布局属性由布局 JSON 持久化。
+ * 允许同一类型重复添加（如多个 VDWidget）。外观属性（字号/行序/显隐等）为
+ * 实例自身 [config]（设计器"属性"面板编辑）；布局结构由布局 JSON 持久化。
  *
  * @param id      实例唯一 id（递增持久化；VDWidget 槽位 = id + 1，重启保持稳定）
  * @param type    类型常量（[WidgetTypes]）

@@ -19,7 +19,7 @@ import kotlin.math.min
  *   由 [DesignerController] 调 updateRect/updateConfig 等方法，实时应用 + 经
  *   [onLayoutChanged] 通知 PageHost 全量持久化
  * - 静态 instance：供 WidgetView.designMode 拿到统一的拖动手势入口；
- *   PageHost 切换设计目标页时通过 [setAsDesignTarget] 维护
+ *   PageHost 在创建/销毁 host 时通过 [setInstance] 维护
  */
 class WidgetHost private constructor(
     private val activity: Activity,
@@ -58,8 +58,6 @@ class WidgetHost private constructor(
         designer?.onWidgetTouch(v, ev) ?: false
     }
 
-    val isDesignMode: Boolean get() = designer != null
-    val designerView: View? get() = designer?.selectionOverlay
     internal val currentDesigner: DesignerController? get() = designer
 
     /** 设计器退出后的回调（Activity 恢复状态栏/隐藏工具栏） */

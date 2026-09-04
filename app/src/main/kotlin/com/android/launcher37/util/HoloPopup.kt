@@ -20,7 +20,7 @@ import android.widget.TextView
  * - [showWithWidth] 居中显示 PopupWindow，背景为 [R.drawable.bg_popup_panel]
  * - [titledPanel] 构造"标题 + 内容"的纵向 LinearLayout（标题用 `Theme.Holo` 大字体）
  *
- * 所有弹窗（应用选择器、按钮菜单、应用抽屉）都通过本类统一弹出，避免各处重复代码。
+ * 所有弹窗（应用选择器、应用抽屉）都通过本类统一弹出，避免各处重复代码。
  */
 object HoloPopup {
 

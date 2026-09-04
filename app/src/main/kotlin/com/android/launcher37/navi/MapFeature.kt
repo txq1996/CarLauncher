@@ -2,10 +2,10 @@ package com.android.launcher37.navi
 import com.android.launcher37.navi.MapActions
 import com.android.launcher37.drawer.AppDrawer
 /**
- * 底栏/弹窗 6 个快捷功能的 emoji + action 名称常量表。
+ * 抽屉/弹窗快捷功能项的 emoji 常量表（2 个 map action + 5 个独立功能）。
  *
- * 集中维护避免 [DockBar] / [AppDrawer] / [MapActions] 三处硬编码不一致
- * （如之前 emoji unicode escape 在 DockBar + AppDrawer 重复 9 次）。
+ * 集中维护避免 [AppDrawer] / [DrawerAdapter] / [MapActions] 多处硬编码不一致
+ * （如 emoji unicode escape 在多处重复）。
  */
 internal object MapFeature {
 

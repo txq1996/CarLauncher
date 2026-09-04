@@ -12,10 +12,10 @@
 核心能力：
 
 - **PIP 地图悬浮窗**：把高德地图/导航应用显示在独立 `VirtualDisplay` 的悬浮卡片中（多槽位）。
-- **自定义 Widget 桌面**：自由画布，绝对定位的可编辑组件（时间 / 歌词 / 车速导航 / VD 应用窗 / 应用列表）。
+- **自定义 Widget 桌面**：自由画布，绝对定位的可编辑组件（时间 / 音乐歌词 / 车速导航 / VD 应用窗 / 应用列表）。
 - **音乐卡**：`MediaSessionManager` 驱动的播放控制、进度、歌词。
-- **Dock 栏 + 应用抽屉**：快速启动、内存清理、分屏。
-- **后台进程清理**：`forceStopPackageAsUser` 激进清理，保护正在播放的音乐与地图。
+- **全部应用抽屉**：Activity 弹窗 + 系统悬浮窗两种形态，含内存清理、分屏。
+- **后台进程清理**：`forceStopPackageAsUser` 激进清理，保护正在播放的音乐与 VD 承载的地图。
 - **应用内在线更新**：GitHub Releases 拉取 + `PackageInstaller` session 静默安装。
 
 ## 2. 运行形态与进程模型
@@ -63,19 +63,16 @@ flowchart TD
     W1 --> S[SpeedWidget]
     W1 --> V[VdWidget]
     W1 --> P[AppListWidget]
-    H --> LY[LyricsSource]
-    V -. AIDL .-> PS[PipService: :pip]
+    L --> LY[LyricsSource]
+    L --> MH[MediaHelper]
+    V --> MG[MapPipHost]
+    MG -. AIDL .-> PS[PipService: :pip]
     S -. IPC .-> SC[SpeedClient]
-    LY -. MediaSession .-> MH[MediaHelper]
-    L --> MH
-    A --> MG[MapPipHost]
-    MG -. AIDL .-> PS
     A --> UD[UpdateDelegate]
     UD --> UC[UpdateChecker]
-    L --> MS[MemoryCleaner]
+    MS[MemoryCleaner] -. 查询保护包 .-> A
     APP[LauncherApp] --> ANL[AmapNaviListener]
-    ANL --> NC[NaviTextClient]
-    APP --> ST[Store]
+    ST[Store] -. activeHost 查询 .-> APP
 ```
 
 ## 5. 关键设计约定

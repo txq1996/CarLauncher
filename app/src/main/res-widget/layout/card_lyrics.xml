@@ -3,7 +3,6 @@
      结构：歌曲信息（歌名/作者，点击绑定或唤醒音乐app）/ 专辑封面（有封面时显示）/
      歌词区（动态行数+双语）/ 时间+进度条 / 播放控制按钮（底部）。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/card_lyrics"
     android:layout_width="match_parent"
     android:layout_height="0px"
     android:layout_weight="1"
@@ -12,7 +11,6 @@
 
     <!-- 左上角：当前绑定的音乐 app 图标 + 名称（小角标） -->
     <LinearLayout
-        android:id="@+id/box_lyrics_app"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"

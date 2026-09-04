@@ -3,13 +3,11 @@
      导航/巡航区（navi_panel）由 SpeedWidget 动态重建，
      行序/字号/显隐由实例 config 驱动。 -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/card_speed"
     android:layout_width="match_parent"
     android:layout_height="0px"
     android:layout_weight="1">
 
     <LinearLayout
-        android:id="@+id/speed_content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"

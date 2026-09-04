@@ -16,8 +16,9 @@ import com.android.launcher37.SettingsActivity
  *
  * - 数据：激活的 [NamedLayout]（经典布局为代码默认模板，可修改持久化）→ 创建单个 WidgetHost
  * - 设计模式编辑该页 Widget；工具栏动作在此统一实现；布局增删改/切换在设置页布局管理
- * - 所有自动持久化统一经 [persistAll]（退出设计模式/拖动缩放实时写盘）
- * - 聚合生命周期 / VD 查询，方法名与旧 [WidgetHost] 一致，Store/DrawerOverlay 调用点免改
+ * - 持久化：拖动/缩放/增删等变更经 [persistAll] 只标脏，仅「💾保存」按钮落盘；
+ *   未保存退出设计器时从盘上重载丢弃草稿
+ * - 聚合生命周期 / VD 查询，供 Store/DrawerOverlay 等无 Activity 调用方使用
  */
 class PageHost(
     private val activity: Activity,
@@ -192,13 +193,5 @@ class PageHost(
         LayoutRepository.setActive(activity, name)
         rebuild(page, false)
         return true
-    }
-
-    /** 状态栏开关：翻转 SP 并回调 Activity 应用，随后 reflow 到新边界 */
-    fun onToggleStatusBar() {
-        val cur = Prefs.of(activity).getBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, false)
-        Prefs.of(activity).edit().putBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, !cur).apply()
-        onToggleStatusBar?.invoke()
-        container.post { host?.reflow() }
     }
 }

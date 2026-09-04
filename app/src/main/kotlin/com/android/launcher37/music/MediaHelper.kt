@@ -48,12 +48,9 @@ class MediaHelper(
     private var mStateSpeed: Float = 0f
     private var mStateStampMs: Long = 0
 
-    val activePackage: String?
-        get() = mActive?.packageName
-
     /**
      * 所有正在播放（含 STATE_BUFFERING）的 MediaSession 包名集合。
-     * 用于 [MemoryCleaner] 一次性保护多个同时在播的音乐 app，而不仅限于 [activePackage]。
+     * 用于 [MemoryCleaner] 一次性保护多个同时在播的音乐 app。
      * 评估时机与 [evaluate] 同步（OnActiveSessionsChangedListener 触发 + start() 初次），
      * 以及 [mSessionCallback.onPlaybackStateChanged] 单 session 状态翻转时增量更新。
      */

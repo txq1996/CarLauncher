@@ -56,7 +56,7 @@ PageHost · SpeedWidget · TimeWidget · VdWidget · WidgetHost · WidgetProp ·
 MediaHelper · MusicLauncher
 
 ### `navi/`
-AmapNaviListener · MapActions · MapApps · MapFeature · MapPipHost · NaviOrder · NaviTextClient · SpeedClient
+AmapNaviListener · MapActions · MapApps · MapFeature · MapPipHost · NaviTextClient · SpeedClient
 
 ### `pip/`
 PipService

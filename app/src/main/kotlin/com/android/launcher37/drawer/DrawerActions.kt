@@ -20,15 +20,14 @@ import com.android.launcher37.home.widget.PageHost
 /**
  * 抽屉格子交互（AppDrawer 弹窗与 DrawerOverlay 悬浮窗共用）：
  * "全部应用模式"点击分发、分屏长删、列表异步加载。
- * 底栏选择模式的点击分发由 AppDrawer 自持（依赖其 pickCallback 闭包）。
  */
 internal object DrawerActions {
 
     /**
      * 统一处理"全部应用模式"格子点击。
      * @param onDismiss  关闭抽屉（AppDrawer=popup.dismiss，DrawerOverlay=DrawerOverlay.dismiss）
-     * @param onClean    清理动作（AppDrawer 走 cleanFromUi 探测 MediaHelper/PIP；悬浮窗仅 PIP 保护）
-     * @param onSplitNew "分屏"入口（AppDrawer 打开侧选器；悬浮窗无 Activity，提示去底栏）
+     * @param onClean    清理动作（AppDrawer 走 cleanFromUi 探测播放中应用/VD；悬浮窗仅 VD 保护）
+     * @param onSplitNew "分屏"入口（AppDrawer 打开侧选器；悬浮窗提示去应用列表长按添加）
      */
     fun handleNormal(
         c: Context,

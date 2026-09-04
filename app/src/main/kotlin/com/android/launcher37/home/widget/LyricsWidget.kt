@@ -33,8 +33,8 @@ import com.android.launcher37.home.SdcardMusicStore
  *   封面按 info.cover 下载并缓存 cover.jpg（同目录）
  * - 行数/字号/间距为实例 config（设计器属性面板编辑）
  * - 有翻译时行数减半：原文/译文各占一行
- * - 歌曲信息区（歌名/作者/进度）与音乐 Widget 同功能：点击唤醒已绑定音乐 app
- *   （未绑定先选择），长按重新绑定；绑定全局共享（`music_app_pkg`）
+ * - 歌曲信息区（歌名/作者/进度）与播放控制：点击唤醒已绑定音乐 app
+ *   （未绑定先选择），长按重新绑定；绑定存实例 config（`music_pkg`）
  */
 class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec, R.layout.card_lyrics) {
 

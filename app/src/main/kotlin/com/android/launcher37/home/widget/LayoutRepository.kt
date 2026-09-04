@@ -152,7 +152,7 @@ object LayoutRepository {
         )
     }
 
-    /** 无保存布局时的默认布局（取自"我的布局"）：左窄条应用列表（7 条，首条抽屉）/中 VD（默认高德）/右音乐卡，无底栏 */
+    /** 无保存布局时的默认布局（取自"我的布局"）：左窄条应用列表（7 条，首条抽屉）/中 VD（默认高德）/右音乐卡 */
     fun defaultLayout(screenW: Int, screenH: Int): HomeLayout {
         val pad = 10
         val gap = 10

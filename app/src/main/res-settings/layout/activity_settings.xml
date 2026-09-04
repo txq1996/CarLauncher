@@ -13,7 +13,6 @@
 
         <!-- ── 左侧 Tab 栏 + 重启按钮 ── -->
         <LinearLayout
-            android:id="@+id/tab_box"
             android:layout_width="140px"
             android:layout_height="match_parent"
             android:orientation="vertical">

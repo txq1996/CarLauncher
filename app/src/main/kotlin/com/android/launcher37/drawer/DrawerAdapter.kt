@@ -68,7 +68,7 @@ internal class DrawerAdapter(
 
     /**
      * 用户隐藏（设置页"应用"选项卡）：tag 命中 [Store.drawerHidden] 的条目一律移除——
-     * 功能项/分屏/应用全部可隐藏；dockMode（底栏选择器）保留全部候选（调用处已保证非 dockMode）。
+     * 功能项/分屏/应用全部可隐藏。
      */
     private fun applyUserHidden() {
         val hidden = Store.drawerHidden(mContext)

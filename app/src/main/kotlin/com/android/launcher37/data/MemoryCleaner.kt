@@ -12,9 +12,8 @@ import java.lang.reflect.Method
  * 跳过：
  * - 自身（launcher）
  * - 系统核心（uid < FIRST_APPLICATION_UID）
- * - 正在播放音乐（[playingPkg]）—— MediaSession 标记的活跃 session，
- *   未播放时不保留，绑定 app 也视为普通三方进程清理
- * - PIP 地图（[pipPkg]）—— 导航任务搬移 + 触摸转发
+ * - 正在播放音乐（[playingPkgs]，MediaSession 在播的全部包）
+ * - VD 承载的应用（[vdPkgs]）—— 导航任务搬移 + 触摸转发
  *
  * 激进清理：使用 [ActivityManager.forceStopPackageAsUser]（hidden @SystemApi），
  * 不受 framework `isCached` 校验限制，能杀 FGS / 前台 service 关联的进程。

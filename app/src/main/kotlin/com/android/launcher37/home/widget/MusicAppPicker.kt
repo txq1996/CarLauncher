@@ -12,8 +12,8 @@ import com.android.launcher37.util.HoloPopup
 import com.android.launcher37.util.SharedExecutor
 
 /**
- * 音乐应用选择器（音乐/歌词 Widget 共用）：列出全部可启动应用，回调 `pkg/cls` 标识。
- * 绑定存储与语义由调用方决定（当前为全局 SP `music_app_pkg`，两卡共享同一绑定）。
+ * 音乐应用选择器（歌词 Widget 长按换绑用）：列出全部可启动应用，回调 `pkg/cls` 标识。
+ * 绑定存储与语义由调用方决定（当前存歌词 Widget 实例 config 的 `music_pkg`）。
  */
 internal object MusicAppPicker {
 

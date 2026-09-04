@@ -22,7 +22,7 @@ object AppQuery {
      *
      * 自动排除：
      * - [Store.SELF_PKG]（避免桌面把自身列为可启动项）
-     * - `excludeIds` 中已包含的 `pkg/cls` 标识（用于底栏添加/替换模式时隐藏已选中的项）
+     * - [excludeIds] 中已包含的 `pkg/cls` 标识（用于排除已选中的项）
      *
      * @param c          任意 Context
      * @param excludeIds 要排除的应用标识集合；`null` 表示不排除

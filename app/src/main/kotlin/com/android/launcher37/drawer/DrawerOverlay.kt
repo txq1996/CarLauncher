@@ -26,8 +26,9 @@ import android.widget.Toast
 
 /**
  * 全部应用悬浮窗（WindowManager TYPE_APPLICATION_OVERLAY，参考 autodock PanelService）。
- * - 直接用 Application WindowManager，Activity 1x1 透明 finish 后仍盖在原 App 上，不返桌面
- * - 二次启动关闭（toggle），无动画避免背后闪烁
+ * - 直接用 Application WindowManager，桌面窗口隐藏内容（hideWindowForOverlay）后
+ *   仍盖在原 App 上，不返桌面
+ * - 二次启动关闭，无动画避免背后闪烁
  * - 适配器 / 统计栏 / 点击分发与 AppDrawer 共用（DrawerAdapter / DrawerStats / DrawerActions）
  */
 object DrawerOverlay {

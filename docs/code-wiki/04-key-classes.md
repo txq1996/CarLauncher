@@ -32,9 +32,9 @@
 - `install(layout, sw, sh, designRequested)`：归一化布局并创建全部 Widget（支持同类型多实例）。
 - 碰撞检测：`collides`（双轴）/ `collidesH` / `collidesV`（单轴）/ `overlaps`（真实相交）。
 - 生命周期：`startAll` / `stopAll` / `destroyAll` / `onThemeChange` / `ensureVdLaunched`。
-- 设计模式：`enterDesignMode` / `exitDesignMode` / `setDesignModeActive` / `reflow`。
+- 设计模式：`enterDesignMode` / `exitDesignMode` / `reflow`。
 - spec 修改：`updateRect` / `updateConfig`（含 `CFG_VD_PKG` 重复校验）/ `addWidget` / `removeWidget` / `findFreeSpot`。
-- 外部查询：`vdBoundedPkgs()`（内存清理保护）、`clearVdByPkg`、`expandVdToFullscreen(pkg)`（dock 点击 VD 同款 App 全屏搬移）。
+- 外部查询：`vdBoundedPkgs()`（内存清理保护）、`expandVdToFullscreen(pkg)`（抽屉/应用列表点击 VD 同款 App 全屏搬移）。
 
 ### `WidgetView`（基类，`home/widget/WidgetView.kt`）
 `View` 子类，持 `WidgetSpec`。
@@ -129,8 +129,8 @@
 - 抽屉持久化：`drawerOrder` / `drawerHidden` + 保存。
 
 ### `MemoryCleaner`（object，[MemoryCleaner.kt](/workspace/app/src/main/kotlin/com/android/launcher37/data/MemoryCleaner.kt)）
-- `clean(c, playingPkgs?, vdPkgs?)`：遍历 `runningAppProcesses`，uid ≥ `FIRST_APPLICATION_UID` 且非保护（自身/播放音乐/PIP 地图）则 `forceStopPackageAsUser`（反射，需 system uid）。返回释放 MB。
-- `cleanFromUi(a)`：UI 入口，从 `LauncherActivity` 取保护集合 + Toast。
+- `clean(c, playingPkgs?, vdPkgs?)`：遍历 `runningAppProcesses`，uid ≥ `FIRST_APPLICATION_UID` 且非保护（自身/播放音乐/VD 承载应用）则 `forceStopPackageAsUser`（反射，需 system uid）。返回释放 MB。
+- `cleanFromUi(a)`：UI 入口，从 `LauncherActivity` 取保护集合；`cleanAsync` 调度到 `SharedExecutor.io()` 异步执行（forceStop 同步 binder，避免主线程 ANR），Toast 回主线程。
 
 ### `UpdateChecker`（[UpdateChecker.kt](/workspace/app/src/main/kotlin/com/android/launcher37/data/UpdateChecker.kt)）
 - `checkOnLaunch()`（24h 节流） / `checkManually()` / `confirmUpdate()` / `release()`。

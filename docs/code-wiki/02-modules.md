@@ -24,7 +24,7 @@
 | `MapPipHost.kt` | 把 launcher 端 `SurfaceView` 桥接到 `:pip` 进程的 `PipService`，支持多槽位 VD、触摸转发、任务搬移/全屏 |
 | `MapActions.kt` | 地图相关动作聚合（启动地图/导航等） |
 | `MapApps.kt` | 地图 App 元数据/候选列表 |
-| `MapFeature.kt` / `NaviOrder.kt` | 地图功能开关 / 导航指令排序 |
+| `MapFeature.kt` | 抽屉/弹窗快捷功能项的 emoji 常量表 |
 
 ## 3. `pip` — 独立进程 VirtualDisplay
 
@@ -66,7 +66,7 @@
 |------|------|
 | `Store.kt` | PackageManager 工具 + 启动动作（app/split）+ 抽屉排序/隐藏持久化。应用标识统一 `pkg/cls`，label/icon LRU 缓存 + `IconNormalizer` 归一化 |
 | `AppQuery.kt` | 可启动应用查询 |
-| `MemoryCleaner.kt` | 后台进程清理：`forceStopPackageAsUser`（反射），保护自身/播放音乐/PIP 地图；`cleanFromUi` 提供 UI 入口 |
+| `MemoryCleaner.kt` | 后台进程清理：`forceStopPackageAsUser`（反射，`SharedExecutor.io` 异步），保护自身/播放音乐/VD 承载应用；`cleanFromUi`/`cleanAsync` 提供 UI 入口 |
 | `SplitRepository.kt` | 分屏配置持久化 |
 | `UpdateChecker.kt` | GitHub Releases 自动更新客户端（见下） |
 | `UpdateVersion.kt` | 版本号解析/比较（versionCode 优先，versionName 字典序兜底） |

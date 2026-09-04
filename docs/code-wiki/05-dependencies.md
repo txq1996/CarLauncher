@@ -21,17 +21,17 @@ Gradle 插件（`/workspace/build.gradle.kts`）：
 
 ```mermaid
 flowchart LR
-    LauncherApp --> NaviListen[[navi.AmapNaviListener]]
-    LauncherApp --> Store
+    LauncherApp --> ANL[[navi.AmapNaviListener]]
     LauncherActivity --> PageHost --> WidgetHost --> WidgetView
-    WidgetHost --> Note
     WidgetView --> Time/Lyrics/Speed/VD/AppList
-    VdWidget --> MapPipHost --> PIPAIDL(AIDL IPipService) --> PipService
+    LyricsWidget --> LyricsSource
     LyricsWidget --> MediaHelper
+    VdWidget --> MapPipHost --> PIPAIDL(AIDL IPipService) --> PipService
     SpeedWidget --> NTC[[NaviTextClient]]
     SpeedWidget --> SpeedC[[SpeedClient]] --> SYU(syu.ipc AIDL) --> com.syu.ms
-    Store --> LauncherApp.activeHost(via app) 人 ExpandVdToFullscreen
-    MemoryCleaner --> MediaHelper.playingPackages & LauncherActivity.vdPkgs
+    Store -. activeHost 查询 .-> LauncherApp
+    MemoryCleaner -. 查询保护包 .-> LauncherActivity
+    DrawerOverlay --> MemoryCleaner
     UpdateDelegate --> UpdateChecker
 ```
 

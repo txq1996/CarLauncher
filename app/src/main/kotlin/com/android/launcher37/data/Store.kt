@@ -69,7 +69,7 @@ object Store {
     /**
      * 从 `pkg/cls` 标识中提取包名。
      *
-     * 多入口应用精确到组件时使用 `pkg/cls` 形式（见 `V2Button.id`），
+     * 多入口应用精确到组件时使用 `pkg/cls` 形式（见 [AppQuery.appId]），
      * 本方法只取 `/` 之前的部分。无 `/` 时原样返回。
      *
      * @param id 应用标识

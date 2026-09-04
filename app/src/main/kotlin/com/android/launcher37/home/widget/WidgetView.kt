@@ -16,8 +16,7 @@ import android.widget.FrameLayout
  * - 设计模式（[designMode]）：onInterceptTouchEvent 拦截全部触摸，内部按钮/列表
  *   失效；容器事件交给设计器（点击=选中，拖动=移动）。退出设计模式恢复原 listener。
  *
- * 卡片底色统一圆角 surface（与原 LayoutDelegate.applyTheme 一致）；
- * 无卡片底的子类（Dock）自行清除。
+ * 卡片底色统一圆角 surface；无卡片底的子类（VDWidget）自行清除。
  */
 abstract class WidgetView(
     protected val activity: Activity,
@@ -114,7 +113,7 @@ abstract class WidgetView(
     /** 内容绑定实现（子类在构造完成后一次性绑定） */
     protected abstract fun onBind()
 
-    /** 卡片底：圆角 surface；withCard=false 时清除（Dock 无卡底） */
+    /** 卡片底：圆角 surface；withCard=false 时清除（VDWidget 无卡底） */
     protected fun setCardBackground(withCard: Boolean) {
         background = if (withCard) GradientDrawable().apply {
             cornerRadius = 12f
