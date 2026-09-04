@@ -1,4 +1,5 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.util.TypedValue
@@ -8,13 +9,12 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.android.launcher37.AmapNaviListener
-import com.android.launcher37.FormatUtils
-import com.android.launcher37.NaviTextClient
-import com.android.launcher37.R
+import com.android.launcher37.navi.AmapNaviListener
+import com.android.launcher37.util.FormatUtils
+import com.android.launcher37.navi.NaviTextClient
 import com.android.launcher37.SettingsActivity
-import com.android.launcher37.SpeedClient
-import com.android.launcher37.SysProps
+import com.android.launcher37.navi.SpeedClient
+import com.android.launcher37.util.SysProps
 
 /**
  * 车速/导航 Widget：车速区（数字/单位/限速/红绿灯倒计时）+ 导航行序渲染
@@ -92,12 +92,12 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
         mTvDirection = findViewById(R.id.tv_navi_direction)
     }
 
-    /** 属性面板：车速区/导航/巡航的行显隐与字号 + 行序（config 键沿用原 SP 键名） */
+    /** 属性面板：行显隐+字号合并为一行（SHOW_SIZE，导航/巡航共用一套），外加两个行序 */
     override val props: List<WidgetProp>
         get() {
             val list = ArrayList<WidgetProp>()
-            for (p in NAVI_PROPS) list.addAll(showSizeProps(p))
-            for (p in CRUISE_PROPS) list.addAll(showSizeProps(p))
+            for (p in NAVI_PROPS) list.add(WidgetProp(p.showKey, p.label, PropType.SHOW_SIZE,
+                p.sizeDefault.toString(), min = 10, max = p.sizeMax, pairKey = p.sizeKey))
             list.add(WidgetProp(SettingsActivity.KEY_NAVI_ORDER, "导航行序", PropType.ORDER, DEFAULT_NAVI_ORDER, choices = NAVI_ORDER_ITEMS))
             list.add(WidgetProp(SettingsActivity.KEY_CRUISE_ORDER, "巡航行序", PropType.ORDER, DEFAULT_CRUISE_ORDER, choices = CRUISE_ORDER_ITEMS))
             return list
@@ -134,13 +134,28 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
 
     /** 日/夜主题切换后清空结构签名强制全量重建（动态文字/图标重读色） */
     override fun onThemeChange() {
+        setCardBackground(true)
         mLastStructureSig = null
         mSpeedSig = null
         val cruise = mCruise
-        val mockInfo = NaviTextClient.NaviInfo().apply {
-            mode = if (cruise) NaviTextClient.Mode.CRUISE else NaviTextClient.Mode.NAV
-        }
+        val mockInfo = NaviTextClient.NaviInfo().apply { mode = if (cruise) NaviTextClient.Mode.CRUISE else NaviTextClient.Mode.NAV }
         applyNaviOrder(cruise, mockInfo, if (cruise) AmapNaviListener.lastCruiseInfo else AmapNaviListener.lastNaviInfo)
+        // 静态 XML 行的固定颜色重读主题（动态行由上面的重建重取）
+        fun text(id: Int, color: Int) {
+            findViewById<TextView>(id)?.setTextColor(
+                activity.resources.getColor(color, activity.theme)
+            )
+        }
+        text(R.id.tv_navi_dist, R.color.foreground)
+        text(R.id.tv_navi_road, R.color.foreground)
+        text(R.id.tv_navi_dest, R.color.foreground_secondary)
+        text(R.id.tv_navi_eta_text, R.color.foreground_tertiary)
+        text(R.id.tv_navi_light_count, R.color.foreground_tertiary)
+        text(R.id.tv_navi_exit, R.color.foreground_tertiary)
+        text(R.id.tv_navi_direction, R.color.foreground_tertiary)
+        text(R.id.tv_navi_alert, R.color.foreground_tertiary)
+        text(R.id.tv_navi_remain, R.color.foreground_tertiary)
+        text(R.id.tv_navi_time, R.color.foreground_tertiary)
     }
 
     override fun destroy() {
@@ -163,11 +178,13 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
     private fun renderSpeedRow(force: Boolean = false) {
         val orderKey = if (mCruise) SettingsActivity.KEY_CRUISE_ORDER else SettingsActivity.KEY_NAVI_ORDER
         val defaultOrder = if (mCruise) DEFAULT_CRUISE_ORDER else DEFAULT_NAVI_ORDER
-        val order = cfg(orderKey, defaultOrder)
-        val speedKeys = order.split(",").filter { it.isNotBlank() && it in SPEED_ITEM_KEYS }
 
-        val tsPrefix = if (mCruise) "ts_cruise_" else "ts_navi_"
-        val showPrefix = if (mCruise) "show_cruise_" else "show_navi_"
+        // 导航/巡航共用一套字号/显隐 config（show_navi_* / ts_navi_*），仅行序分两套
+        val speedKeys = normalizeOrder(cfg(orderKey, defaultOrder).split(",").filter { it.isNotBlank() }, mCruise)
+            .filter { it in SPEED_ITEM_KEYS }
+
+        val tsPrefix = "ts_navi_"
+        val showPrefix = "show_navi_"
         val defaults = mapOf(
             "speed" to 110, "speed_unit" to 20, "limit" to 17, "traffic" to 36
         )
@@ -410,6 +427,15 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
         applyNaviOrder(true, mockInfo, AmapNaviListener.lastCruiseInfo)
     }
 
+    /** 行序归一：过滤未知键（历史损坏数据），缺失候选项按默认顺序补到尾部 */
+    private fun normalizeOrder(keys: List<String>, cruise: Boolean): List<String> {
+        val items = if (cruise) CRUISE_ORDER_ITEMS else NAVI_ORDER_ITEMS
+        val valid = items.map { it.second }.toSet()
+        val out = keys.filter { it in valid }.toMutableList()
+        for ((_, k) in items) if (k !in out) out.add(k)
+        return out
+    }
+
     /**
      * 渲染入口：结构变化时清除旧子项按行序逐条 addView；结构未变（高德 ~1Hz
      * 的常规推送）时只更新文本与显隐，避免每秒全量重建 View。
@@ -417,8 +443,7 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
     private fun applyNaviOrder(cruise: Boolean, info: NaviTextClient.NaviInfo, ext: Any?) {
         val orderKey = if (cruise) SettingsActivity.KEY_CRUISE_ORDER else SettingsActivity.KEY_NAVI_ORDER
         val defaultOrder = if (cruise) DEFAULT_CRUISE_ORDER else DEFAULT_NAVI_ORDER
-        val order = cfg(orderKey, defaultOrder)
-        val keys = order.split(",").filter { it.isNotBlank() }
+        val keys = normalizeOrder(cfg(orderKey, defaultOrder).split(",").filter { it.isNotBlank() }, cruise)
         val sig = buildStructureSig(cruise, keys)
         if (sig == mLastStructureSig) {
             for (key in keys) {
@@ -436,25 +461,20 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
         }
     }
 
-    /** 行样式设置来源（显隐 + 字号 config 键与缺省字号），供渲染与结构签名共用 */
+    /** 行样式设置来源（显隐 + 字号 config 键与缺省字号），供渲染与结构签名共用。
+     *  导航/巡航共用一套 navi config 键，仅行序键名区分行。 */
     private class RowStyle(val tsKey: String, val showKey: String, val defaultPx: Int)
 
     private fun rowStyle(key: String, cruise: Boolean): RowStyle? = when (key) {
         "navi_turn" -> RowStyle(SettingsActivity.KEY_TS_NAVI_TURN, SettingsActivity.KEY_SHOW_NAVI_TURN, 36)
-        "navi_road", "cruise_road" -> if (cruise)
-            RowStyle(SettingsActivity.KEY_TS_CRUISE_ROAD, SettingsActivity.KEY_SHOW_CRUISE_ROAD, 26)
-        else RowStyle(SettingsActivity.KEY_TS_NAVI_ROAD, SettingsActivity.KEY_SHOW_NAVI_ROAD, 26)
+        "navi_road", "cruise_road" -> RowStyle(SettingsActivity.KEY_TS_NAVI_ROAD, SettingsActivity.KEY_SHOW_NAVI_ROAD, 26)
         "navi_dest" -> RowStyle(SettingsActivity.KEY_TS_NAVI_DEST, SettingsActivity.KEY_SHOW_NAVI_DEST, 15)
         "navi_eta" -> RowStyle(SettingsActivity.KEY_TS_NAVI_ETA, SettingsActivity.KEY_SHOW_NAVI_ETA, 17)
         "navi_eta_text" -> RowStyle(SettingsActivity.KEY_TS_NAVI_ETA_TEXT, SettingsActivity.KEY_SHOW_NAVI_ETA_TEXT, 17)
         "navi_light_count" -> RowStyle(SettingsActivity.KEY_TS_NAVI_LIGHT_COUNT, SettingsActivity.KEY_SHOW_NAVI_LIGHT_COUNT, 17)
         "navi_exit" -> RowStyle(SettingsActivity.KEY_TS_NAVI_EXIT, SettingsActivity.KEY_SHOW_NAVI_EXIT, 17)
-        "navi_direction", "cruise_direction" -> if (cruise)
-            RowStyle(SettingsActivity.KEY_TS_CRUISE_DIRECTION, SettingsActivity.KEY_SHOW_CRUISE_DIRECTION, 17)
-        else RowStyle(SettingsActivity.KEY_TS_NAVI_DIRECTION, SettingsActivity.KEY_SHOW_NAVI_DIRECTION, 17)
-        "navi_alert", "cruise_alert" -> if (cruise)
-            RowStyle(SettingsActivity.KEY_TS_CRUISE_ALERT, SettingsActivity.KEY_SHOW_CRUISE_ALERT, 17)
-        else RowStyle(SettingsActivity.KEY_TS_NAVI_ALERT, SettingsActivity.KEY_SHOW_NAVI_ALERT, 17)
+        "navi_direction", "cruise_direction" -> RowStyle(SettingsActivity.KEY_TS_NAVI_DIRECTION, SettingsActivity.KEY_SHOW_NAVI_DIRECTION, 17)
+        "navi_alert", "cruise_alert" -> RowStyle(SettingsActivity.KEY_TS_NAVI_ALERT, SettingsActivity.KEY_SHOW_NAVI_ALERT, 17)
         else -> null
     }
 
@@ -473,7 +493,7 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
 
     /**
      * 单条渲染分发。每条都先按 config 字号覆盖，再 addView。
-     * 同一字段在 navi 模式走 KEY_TS_NAVI_*，巡航模式走 KEY_TS_CRUISE_*。
+     * 导航/巡航共用 show_navi_* / ts_navi_* 配置键。
      */
     private fun renderKey(key: String, cruise: Boolean, info: NaviTextClient.NaviInfo, ext: Any?, rebuild: Boolean) {
         when (key) {
@@ -498,8 +518,8 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
                     if (road == null) "" else "进入 $road"
                 }
                 applyRow(mTvRoad,
-                    if (cruise) SettingsActivity.KEY_TS_CRUISE_ROAD else SettingsActivity.KEY_TS_NAVI_ROAD,
-                    if (cruise) SettingsActivity.KEY_SHOW_CRUISE_ROAD else SettingsActivity.KEY_SHOW_NAVI_ROAD,
+                    SettingsActivity.KEY_TS_NAVI_ROAD,
+                    SettingsActivity.KEY_SHOW_NAVI_ROAD,
                     defaultPx = 26, rebuild = rebuild)
             }
             "navi_dest" -> if (!cruise) {
@@ -559,18 +579,17 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
                 }
                 val text = if (deg >= 0) "车头 ${directionText(deg)}" else ""
                 applyRow(mTvDirection,
-                    if (cruise) SettingsActivity.KEY_TS_CRUISE_DIRECTION else SettingsActivity.KEY_TS_NAVI_DIRECTION,
-                    if (cruise) SettingsActivity.KEY_SHOW_CRUISE_DIRECTION else SettingsActivity.KEY_SHOW_NAVI_DIRECTION,
+                    SettingsActivity.KEY_TS_NAVI_DIRECTION,
+                    SettingsActivity.KEY_SHOW_NAVI_DIRECTION,
                     defaultPx = 17, forceText = text, rebuild = rebuild)
             }
             "navi_alert", "cruise_alert" -> {
-                val alertOn = if (cruise) cfgBool(SettingsActivity.KEY_SHOW_CRUISE_ALERT, true)
-                else cfgBool(SettingsActivity.KEY_SHOW_NAVI_ALERT, true)
+                val alertOn = cfgBool(SettingsActivity.KEY_SHOW_NAVI_ALERT, true)
                 renderAlert(info, alertOn)
                 // alert 关闭时不要 addView 空 TextView，否则会占据面板布局高度
                 if (mTvAlert.text.isNotEmpty()) {
                     applyRow(mTvAlert,
-                        if (cruise) SettingsActivity.KEY_TS_CRUISE_ALERT else SettingsActivity.KEY_TS_NAVI_ALERT,
+                        SettingsActivity.KEY_TS_NAVI_ALERT,
                         showKey = "",  // 显隐已在 renderAlert 里判定
                         defaultPx = 17,
                         applyFontToChildren = false,
@@ -679,20 +698,21 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
         internal val DEFAULT_NAVI_ORDER = "speed,speed_unit,limit,traffic,navi_turn,navi_road,navi_dest,navi_eta,navi_eta_text,navi_light_count,navi_exit,navi_direction,navi_alert"
         internal val DEFAULT_CRUISE_ORDER = "speed,speed_unit,limit,traffic,cruise_road,cruise_direction,cruise_alert"
 
-        /** 导航/巡航行序有序候选项（显示名 to key），供设计器拖动排序面板使用 */
+        /** 导航/巡航行序有序候选项（显示名 to key），供设计器拖动排序面板使用。
+         *  约定 first=显示名、second=存储键（与 WidgetProp.CHOICE 一致），顺序不可颠倒。 */
         private val NAVI_ORDER_ITEMS = listOf(
-            "speed" to "车速", "speed_unit" to "单位", "limit" to "限速", "traffic" to "倒计时",
-            "navi_turn" to "转向", "navi_road" to "路名", "navi_dest" to "终点",
-            "navi_eta" to "剩余距离时间", "navi_eta_text" to "预计到达",
-            "navi_light_count" to "红绿灯数", "navi_exit" to "出口",
-            "navi_direction" to "车头方向", "navi_alert" to "电子眼"
+            "车速" to "speed", "单位" to "speed_unit", "限速" to "limit", "倒计时" to "traffic",
+            "转向" to "navi_turn", "路名" to "navi_road", "终点" to "navi_dest",
+            "剩余距离时间" to "navi_eta", "预计到达" to "navi_eta_text",
+            "红绿灯数" to "navi_light_count", "出口" to "navi_exit",
+            "车头方向" to "navi_direction", "电子眼" to "navi_alert"
         )
         private val CRUISE_ORDER_ITEMS = listOf(
-            "speed" to "车速", "speed_unit" to "单位", "limit" to "限速", "traffic" to "倒计时",
-            "cruise_road" to "路名", "cruise_direction" to "车头方向", "cruise_alert" to "电子眼"
+            "车速" to "speed", "单位" to "speed_unit", "限速" to "limit", "倒计时" to "traffic",
+            "路名" to "cruise_road", "车头方向" to "cruise_direction", "电子眼" to "cruise_alert"
         )
 
-        /** 属性面板：车速区/导航/巡航的行显隐与字号（showKey, sizeKey, 标签, 缺省字号, 字号上限） */
+        /** 属性面板：导航/巡航共用的一组行配置（showKey, sizeKey, 标签, 缺省字号, 字号上限） */
         private class PDef(val showKey: String, val sizeKey: String, val label: String, val sizeDefault: Int, val sizeMax: Int)
 
         private val NAVI_PROPS = listOf(
@@ -711,22 +731,7 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
             PDef("show_navi_alert", "ts_navi_alert", "电子眼/服务区", 17, 50)
         )
 
-        private val CRUISE_PROPS = listOf(
-            PDef("show_cruise_speed", "ts_cruise_speed", "车速数字", 110, 150),
-            PDef("show_cruise_kmh", "ts_cruise_kmh", "车速单位", 20, 50),
-            PDef("show_cruise_limit", "ts_cruise_limit", "道路限速", 17, 50),
-            PDef("show_cruise_traffic", "ts_cruise_traffic_sec", "红绿灯倒计时", 36, 50),
-            PDef("show_cruise_road", "ts_cruise_road", "当前路名", 26, 50),
-            PDef("show_cruise_direction", "ts_cruise_direction", "车头方向", 17, 50),
-            PDef("show_cruise_alert", "ts_cruise_alert", "电子眼/服务区", 17, 50)
-        )
-
         fun isMiles(context: android.content.Context): Boolean =
             "1" == SysProps.get(KEY_MILES, "0")
     }
-
-    private fun showSizeProps(p: SpeedWidget.Companion.PDef): List<WidgetProp> = listOf(
-        WidgetProp(p.showKey, "显示·${p.label}", PropType.BOOL, "1"),
-        WidgetProp(p.sizeKey, "${p.label}字号", PropType.INT, p.sizeDefault.toString(), min = 10, max = p.sizeMax)
-    )
 }

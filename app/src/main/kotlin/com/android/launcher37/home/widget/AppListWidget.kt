@@ -1,4 +1,8 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
+import com.android.launcher37.util.HoloPopup
+import com.android.launcher37.navi.MapActions
+import com.android.launcher37.util.IconCache
 
 import android.app.Activity
 import android.graphics.drawable.Drawable
@@ -8,14 +12,13 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.android.launcher37.AppDrawer
-import com.android.launcher37.AppQuery
-import com.android.launcher37.MapFeature
-import com.android.launcher37.MemoryCleaner
-import com.android.launcher37.R
-import com.android.launcher37.SharedExecutor
-import com.android.launcher37.SplitRepository
-import com.android.launcher37.Store
+import com.android.launcher37.drawer.AppDrawer
+import com.android.launcher37.data.AppQuery
+import com.android.launcher37.navi.MapFeature
+import com.android.launcher37.data.MemoryCleaner
+import com.android.launcher37.util.SharedExecutor
+import com.android.launcher37.data.SplitRepository
+import com.android.launcher37.data.Store
 
 /**
  * 竖排应用容器 Widget：垂直排列条目（图标 + 可选文字），支持绑定多种目标。
@@ -93,7 +96,7 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
     // ── 异步刷新 ─────────────────────────────────────
 
     /** 后台解析全部条目（图标预取走缓存），完成后 UI 线程重建。
-     *  第一条固定为「应用抽屉」，其余按绑定/默认应用渲染。 */
+     *  第一条缺省绑定「应用抽屉」（可换绑），其余按绑定/默认应用渲染。 */
     private fun refresh() {
         val token = ++mRefreshToken
         val count = cfgInt(CFG_COUNT, 6)
@@ -102,13 +105,9 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
             val sortedApps = AppQuery.launcherEntriesSorted(activity)
             val entries = ArrayList<Entry>(count)
             for (i in 0 until count) {
-                val entry: Entry? = if (i == 0) {
-                    Entry(i, Store.normalizedGlyphIcon(activity, R.drawable.ic_drawer),
-                        "全部应用", bindable = false) { AppDrawer.show(activity) }
-                } else {
-                    resolveEntry(i, bindings.getOrNull(i) ?: TOKEN_AUTO, sortedApps)
-                }
-                entry?.let { entries.add(it) }
+                // 第一条缺省 drawer（非 auto），全条目可换绑
+                val bindToken = bindings.getOrNull(i) ?: if (i == 0) "drawer" else TOKEN_AUTO
+                resolveEntry(i, bindToken, sortedApps)?.let { entries.add(it) }
             }
             activity.runOnUiThread {
                 if (token != mRefreshToken) return@runOnUiThread
@@ -149,7 +148,7 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
                     else -> "导航"
                 }
                 Entry(index, Store.normalizedEmoji(activity, emoji), label, bindable = true) {
-                    com.android.launcher37.MapActions.run(activity, arg)
+                    com.android.launcher37.navi.MapActions.run(activity, arg)
                 }
             }
             "split" -> {
@@ -239,11 +238,11 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
      * 全部布局 / 全部分屏 / 全部应用），图标+名称列表（后台预取），点击即绑定。
      */
     private fun pickBinding(index: Int) {
-        val themed: android.content.Context = com.android.launcher37.HoloPopup.themedContext(activity)
+        val themed: android.content.Context = com.android.launcher37.util.HoloPopup.themedContext(activity)
         val list = android.widget.ListView(themed)
-        val popup: android.widget.PopupWindow = com.android.launcher37.HoloPopup.showWithWidth(
-            activity, com.android.launcher37.HoloPopup.titledPanel(themed, "绑定第 ${index + 1} 项", list),
-            com.android.launcher37.HoloPopup.WIDTH_SMALL
+        val popup: android.widget.PopupWindow = com.android.launcher37.util.HoloPopup.showWithWidth(
+            activity, com.android.launcher37.util.HoloPopup.titledPanel(themed, "绑定第 ${index + 1} 项", list),
+            com.android.launcher37.util.HoloPopup.WIDTH_SMALL
         )
         val token = ++mPickerToken
         SharedExecutor.io().execute {
@@ -290,7 +289,7 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
     override fun onThemeChange() {
         // 卡底色 + 文字色随日夜主题重取；图标归一化缓存失效后重刷
         setCardBackground(true)
-        com.android.launcher37.IconCache.clearNormalized()
+        com.android.launcher37.util.IconCache.clearNormalized()
         refresh()
     }
 

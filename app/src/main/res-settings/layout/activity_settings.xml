@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:orientation="vertical"
+    android:padding="16px">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <!-- ── 左侧 Tab 栏 + 重启按钮 ── -->
+        <LinearLayout
+            android:id="@+id/tab_box"
+            android:layout_width="140px"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0px"
+                android:layout_weight="1"
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView android:id="@+id/tab_layout" style="@style/Tab" android:text="布局" />
+                        <TextView android:id="@+id/tab_apps" style="@style/Tab" android:text="应用" />
+                        <TextView android:id="@+id/tab_general" style="@style/Tab" android:text="通用" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <Button
+                    android:id="@+id/btn_restart_launcher"
+                    style="@style/ThemeButton"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="12px"
+                    android:text="重启桌面" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="0px"
+                android:layout_height="match_parent"
+                android:layout_marginStart="24px"
+                android:layout_weight="1">
+
+                <!-- ── 布局 ── -->
+                <ScrollView android:id="@+id/panel_layout" style="@style/Panel" android:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- 布局管理（内嵌）：默认布局 + 添加按钮 + 自定义布局行（删除/重命名/属性/设计器） -->
+                        <LinearLayout
+                            android:id="@+id/layout_list_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="12px" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="40px"
+                            android:layout_marginTop="12px"
+                            android:text="主页即设计器：添加/删除/拖动/缩放部件、保存/打开命名布局"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- ── 应用（抽屉排序与隐藏） ── -->
+                <ScrollView android:id="@+id/panel_apps" style="@style/Panel">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/box_drawer_seeks"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="40px"
+                            android:layout_marginTop="12px"
+                            android:text="设置抽屉与悬浮窗的图标大小、间距、字体大小，下次打开时生效"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
+
+                        <com.android.launcher37.util.WrapRecyclerView
+                            android:id="@+id/box_apps"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2px"
+                            android:clipToPadding="false"
+                            android:nestedScrollingEnabled="false"
+                            android:overScrollMode="never" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="40px"
+                            android:layout_marginTop="12px"
+                            android:text="排序和隐藏在下次打开抽屉时生效，无需重启桌面；隐藏的应用仍可添加到底栏和分屏"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- ── 通用 ── -->
+                <ScrollView android:id="@+id/panel_general" style="@style/Panel">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout style="@style/CheckRow">
+                            <TextView style="@style/CheckRowLabel" android:text="启动直接打开全部应用" />
+                            <CheckBox android:id="@+id/cb_home_direct_drawer" style="@style/CheckRowCheck" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/box_general_seeks"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <LinearLayout style="@style/CheckRow">
+                            <TextView
+                                android:id="@+id/tv_version_info"
+                                style="@style/CheckRowLabel"
+                                android:text="当前版本：--" />
+                            <Button
+                                android:id="@+id/btn_check_update"
+                                style="@style/ThemeButton"
+                                android:text="检查更新" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tv_update_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8px"
+                            android:text="未检查"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="17px" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16px"
+                            android:text="从 GitHub Releases 拉取最新版本，发现新版本时自动下载并弹出系统安装器"
+                            android:textColor="@color/foreground_secondary"
+                            android:textSize="15px" />
+                    </LinearLayout>
+                </ScrollView>
+            </FrameLayout>
+    </LinearLayout>
+</LinearLayout>

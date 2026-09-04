@@ -1,4 +1,5 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -16,7 +17,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
-import com.android.launcher37.R
 import kotlin.math.roundToInt
 
 /**
@@ -41,8 +41,6 @@ class DesignerController(
         private const val DEFAULT_VD_PKG = "com.autonavi.amapauto"
 
         // 缩放手柄方位标志
-        private const val H_L = 1
-        private const val H_T = 2
         private const val H_R = 4
         private const val H_B = 8
     }
@@ -50,10 +48,19 @@ class DesignerController(
     /** 退出设计模式回调（Activity 恢复状态栏/隐藏工具栏） */
     var onExit: (() -> Unit)? = null
 
-    /** 选中框 + 8 缩放手柄（container 最顶层；空白区域事件穿透） */
+    /** 选中框 + 缩放手柄（container 最顶层；空白区域事件穿透） */
     val selectionOverlay: FrameLayout = FrameLayout(activity).apply {
         setBackgroundResource(R.drawable.design_sel_stroke)
         visibility = View.GONE
+    }
+
+    /** 选中框顶部的尺寸/位置标签：X/Y/W/H 实时显示 */
+    private val sizeLabel = TextView(activity).apply {
+        setTextColor(Color.WHITE)
+        setBackgroundColor(0x99000000.toInt())
+        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 16f)
+        setPadding(8, 2, 8, 2)
+        gravity = Gravity.CENTER
     }
     private var mSelected: Int = -1
     private var mLastRawX = 0f
@@ -61,14 +68,13 @@ class DesignerController(
 
     init {
         container.addView(selectionOverlay, FrameLayout.LayoutParams(0, 0))
-        addHandle(Gravity.TOP or Gravity.START, H_L or H_T, 4f, 4f)
-        addHandle(Gravity.TOP or Gravity.CENTER_HORIZONTAL, H_T, 0f, 4f)
-        addHandle(Gravity.TOP or Gravity.END, H_R or H_T, -4f, 4f)
-        addHandle(Gravity.CENTER_VERTICAL or Gravity.START, H_L, 4f, 0f)
+        // 尺寸/位置标签：框内顶部居中
+        selectionOverlay.addView(sizeLabel, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = 4 })
+        // 仅右/下缩放手柄：左上角定位固定（只允许向右/向下调整大小）
         addHandle(Gravity.CENTER_VERTICAL or Gravity.END, H_R, -4f, 0f)
-        addHandle(Gravity.BOTTOM or Gravity.START, H_L or H_B, 4f, -4f)
         addHandle(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, H_B, 0f, -4f)
-        addHandle(Gravity.BOTTOM or Gravity.END, H_R or H_B, -4f, -4f)
     }
 
     /** 设计器拆除（退出设计模式）：移除选中框 */
@@ -79,7 +85,9 @@ class DesignerController(
 
     // ── 选择 / 拖动 / 缩放 ───────────────────────────
 
-    /** Widget 容器触摸（WidgetView.designMode 拦截后转发至此）：DOWN 选中，MOVE 拖动 */
+    /** Widget 容器触摸（WidgetView.designMode 拦截后转发至此）：DOWN 选中，MOVE 拖动。
+     *  控件间不允许重叠（含布局间距）：合法状态下撞墙分轴滑动；
+     *  起始已重叠（历史布局）时允许自由拖动以便解脱。 */
     fun onWidgetTouch(v: View, ev: MotionEvent): Boolean {
         val w = v as? WidgetView ?: return false
         when (ev.actionMasked) {
@@ -90,9 +98,28 @@ class DesignerController(
             MotionEvent.ACTION_MOVE -> {
                 val dx = (ev.rawX - mLastRawX).roundToInt()
                 val dy = (ev.rawY - mLastRawY).roundToInt()
-                if (dx == 0 && dy == 0) return true
                 mLastRawX = ev.rawX; mLastRawY = ev.rawY
-                host.updateRect(w.spec.id, w.spec.x + dx, w.spec.y + dy, w.spec.w, w.spec.h)
+                if (dx == 0 && dy == 0) return true
+                val nx = w.spec.x + dx; val ny = w.spec.y + dy
+                // 移动：全向碰撞检测；被挡时按主方向单轴滑动（滑墙）；
+                // 仅真实压住其他控件（历史布局）允许自由拖动解脱
+                val legal = !host.overlaps(w.spec.id, w.spec.x, w.spec.y, w.spec.w, w.spec.h)
+                if (!legal) {
+                    host.updateRect(w.spec.id, nx, ny, w.spec.w, w.spec.h)
+                } else {
+                    // 自动吸附：接近其他控件边缘/中心或画布边距线/中线时对齐
+                    val (snx, sny) = snapPosition(nx, ny, w.spec.w, w.spec.h, w.spec.id)
+                    if (host.collides(w.spec.id, snx, sny, w.spec.w, w.spec.h)) {
+                        when {
+                            !host.collides(w.spec.id, snx, w.spec.y, w.spec.w, w.spec.h) ->
+                                host.updateRect(w.spec.id, snx, w.spec.y, w.spec.w, w.spec.h)
+                            !host.collides(w.spec.id, w.spec.x, sny, w.spec.w, w.spec.h) ->
+                                host.updateRect(w.spec.id, w.spec.x, sny, w.spec.w, w.spec.h)
+                        }
+                    } else {
+                        host.updateRect(w.spec.id, snx, sny, w.spec.w, w.spec.h)
+                    }
+                }
                 layoutSelection()
             }
         }
@@ -116,6 +143,38 @@ class DesignerController(
         lp.leftMargin = w.spec.x; lp.topMargin = w.spec.y
         lp.width = w.spec.w; lp.height = w.spec.h
         selectionOverlay.layoutParams = lp
+        // 实时显示控件位置与尺寸
+        sizeLabel.text = "X:${w.spec.x} Y:${w.spec.y}  ${w.spec.w}×${w.spec.h}"
+    }
+
+    /** 自动吸附：当前控件左/右/中心边在阈值内接近参考线时对齐。
+     *  参考线：画布边距线/中线 + 其他控件边缘（含间距外扩，吸附后正好满足碰撞间距） */
+    private fun snapPosition(nx: Int, ny: Int, w: Int, h: Int, id: Int): Pair<Int, Int> {
+        val T = 10
+        val sw = host.screenW(); val sh = host.screenH()
+        val m = host.margin; val g = host.gap
+        val xLines = ArrayList<Int>().apply { add(m); add(sw / 2); add(sw - m) }
+        val yLines = ArrayList<Int>().apply { add(m); add(sh / 2); add(sh - m) }
+        for (o in host.allWidgets()) {
+            if (o.spec.id == id) continue
+            xLines.add(o.spec.x - g); xLines.add(o.spec.x)
+            xLines.add(o.spec.x + o.spec.w); xLines.add(o.spec.x + o.spec.w + g)
+            yLines.add(o.spec.y - g); yLines.add(o.spec.y)
+            yLines.add(o.spec.y + o.spec.h); yLines.add(o.spec.y + o.spec.h + g)
+        }
+        fun snap1(v: Int, size: Int, lines: List<Int>): Int {
+            var best = v; var bestD = T + 1
+            for (L in lines) {
+                var d = kotlin.math.abs(v - L)                       // 左/上边对齐
+                if (d <= T && d < bestD) { bestD = d; best = L }
+                d = kotlin.math.abs(v + size - L)                    // 右/下边对齐
+                if (d <= T && d < bestD) { bestD = d; best = L - size }
+                d = kotlin.math.abs(v + size / 2 - L)                // 中心对齐
+                if (d <= T && d < bestD) { bestD = d; best = L - size / 2 }
+            }
+            return best
+        }
+        return snap1(nx, w, xLines) to snap1(ny, h, yLines)
     }
 
     private fun addHandle(gravity: Int, flags: Int, dx: Float, dy: Float) {
@@ -136,22 +195,29 @@ class DesignerController(
             MotionEvent.ACTION_MOVE -> {
                 val dx = (ev.rawX - mLastRawX).roundToInt()
                 val dy = (ev.rawY - mLastRawY).roundToInt()
-                if (dx == 0 && dy == 0) return@OnTouchListener true
                 mLastRawX = ev.rawX; mLastRawY = ev.rawY
-                var x = w.spec.x; var y = w.spec.y
+                if (dx == 0 && dy == 0) return@OnTouchListener true
+                // 左上角定位固定：仅右/下方向调整宽高，x/y 恒定不变；
+                // 宽高上限为右/下边距线——贴边后继续拖动不再变化（不会从对侧反向变大）
                 var width = w.spec.w; var height = w.spec.h
-                val minW = w.minSizeW(); val minH = w.minSizeH()
-                if (flags and H_L != 0) {
-                    val nx = (x + dx).coerceIn(0, x + width - minW)
-                    width -= nx - x; x = nx
+                val minSize = 40
+                val m = host.margin
+                val maxW = (host.screenW() - m - w.spec.x).coerceAtLeast(minSize)
+                val maxH = (host.screenH() - m - w.spec.y).coerceAtLeast(minSize)
+                if (flags and H_R != 0) width = (width + dx).coerceIn(minSize, maxW)
+                if (flags and H_B != 0) height = (height + dy).coerceIn(minSize, maxH)
+                // 缩放碰撞按手柄轴向单轴检测：水平手柄仅查水平碰撞、垂直手柄仅查垂直碰撞；
+                // 缩小是原矩形子集不会新增碰撞，始终放行；仅真实压住时允许自由缩放解脱
+                val legal = !host.overlaps(w.spec.id, w.spec.x, w.spec.y, w.spec.w, w.spec.h)
+                val shrink = width <= w.spec.w && height <= w.spec.h
+                val blocked = if (flags and H_R != 0) {
+                    host.collidesH(w.spec.id, w.spec.x, w.spec.y, width, height)
+                } else {
+                    host.collidesV(w.spec.id, w.spec.x, w.spec.y, width, height)
                 }
-                if (flags and H_R != 0) width = (width + dx).coerceAtLeast(minW)
-                if (flags and H_T != 0) {
-                    val ny = (y + dy).coerceIn(0, y + height - minH)
-                    height -= ny - y; y = ny
+                if (!legal || shrink || !blocked) {
+                    host.updateRect(w.spec.id, w.spec.x, w.spec.y, width, height)
                 }
-                if (flags and H_B != 0) height = (height + dy).coerceAtLeast(minH)
-                host.updateRect(w.spec.id, x, y, width, height)
                 layoutSelection()
             }
         }
@@ -210,11 +276,11 @@ class DesignerController(
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), dp(10), dp(12), dp(6))
+            setPadding(dp(16), dp(8), dp(12), dp(4))
             addView(TextView(activity).apply {
                 text = "属性 - ${w.displayName}"
                 setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dp(24).toFloat())
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 17f)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
             addView(Button(activity).apply {
@@ -224,7 +290,7 @@ class DesignerController(
         })
         val box = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(4), dp(16), dp(10))
+            setPadding(dp(12), dp(2), dp(12), dp(8))
         }
         for (def in defs) box.addView(buildPropRow(w, def))
         val scroll = ScrollView(activity).apply {
@@ -233,9 +299,9 @@ class DesignerController(
             ))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
-        // 高度自适应：先测内容高度，内容少时收缩到内容高度；默认宽 50% 屏宽、封顶 80% 屏高
+        // 高度自适应：先测内容高度，内容少时收缩到内容高度；默认宽 55% 屏宽、封顶 80% 屏高
         val dm = activity.resources.displayMetrics
-        val dialogW = (dm.widthPixels * 0.5f).toInt()
+        val dialogW = (dm.widthPixels * 0.55f).toInt()
         box.measure(
             View.MeasureSpec.makeMeasureSpec(dialogW - dp(32), View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -254,12 +320,12 @@ class DesignerController(
         dialog.window?.setLayout(dialogW, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
-    /** 属性行：左侧名称 + 右侧控件（BOOL=开关 / INT=滑条 / CHOICE=选择 / STRING=输入） */
+    /** 属性行：左侧名称 + 右侧控件（SHOW_SIZE=开关+字号滑条 / BOOL=开关 / INT=滑条 / CHOICE=选择 / STRING=输入 / ORDER=行序） */
     private fun buildPropRow(w: WidgetView, def: WidgetProp): View {
         val label = TextView(activity).apply {
             text = def.label
             setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dp(20).toFloat())
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
             includeFontPadding = false
             maxLines = 1
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -267,15 +333,53 @@ class DesignerController(
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(64)
+            minimumHeight = dp(44)
             background = activity.resources.getDrawable(R.drawable.bg_app_order_row)
-            setPadding(dp(16), 0, dp(16), 0)
+            setPadding(dp(12), 0, dp(8), 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp(6) }
+            ).apply { topMargin = dp(4) }
             addView(label)
         }
         when (def.type) {
+            PropType.SHOW_SIZE -> {
+                // 显隐开关 + 字号滑条同行（key=显隐键，pairKey=字号键）
+                val cb = CheckBox(activity).apply {
+                    isChecked = w.cfgBool(def.key, true)
+                    setOnCheckedChangeListener { _, checked ->
+                        host.updateConfig(w.spec.id, def.key, if (checked) "1" else "0")
+                    }
+                }
+                val sizeDef = def.default.toIntOrNull() ?: def.min
+                val value = TextView(activity).apply {
+                    text = "${w.cfgInt(def.pairKey, sizeDef)}"
+                    setTextColor(activity.resources.getColor(R.color.foreground_secondary, activity.theme))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 13f)
+                    minWidth = dp(40)
+                    gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                    includeFontPadding = false
+                }
+                val bar = SeekBar(activity).apply {
+                    max = (def.max - def.min) / def.step
+                    progress = (w.cfgInt(def.pairKey, sizeDef) - def.min) / def.step
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginStart = dp(6)
+                    }
+                    setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                        override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                            if (!fromUser) return
+                            val v = def.min + progress * def.step
+                            value.text = "$v"
+                            host.updateConfig(w.spec.id, def.pairKey, v.toString())
+                        }
+                        override fun onStartTrackingTouch(sb: SeekBar) {}
+                        override fun onStopTrackingTouch(sb: SeekBar) {}
+                    })
+                }
+                row.addView(cb)
+                row.addView(value)
+                row.addView(bar)
+            }
             PropType.BOOL -> {
                 val cb = CheckBox(activity)
                 cb.isChecked = w.cfgBool(def.key, def.default == "1")
@@ -289,8 +393,8 @@ class DesignerController(
                 val value = TextView(activity).apply {
                     text = "$cur"
                     setTextColor(activity.resources.getColor(R.color.foreground_secondary, activity.theme))
-                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dp(15).toFloat())
-                    minWidth = dp(52)
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 13f)
+                    minWidth = dp(40)
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
                     includeFontPadding = false
                 }
@@ -298,7 +402,7 @@ class DesignerController(
                     max = (def.max - def.min) / def.step
                     progress = (cur - def.min) / def.step
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        marginStart = dp(8)
+                        marginStart = dp(6)
                     }
                     setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
@@ -326,11 +430,11 @@ class DesignerController(
                 val tv = TextView(activity).apply {
                     text = currentLabel
                     setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
-                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dp(20).toFloat())
-                    setPadding(dp(12), dp(6), dp(12), dp(6))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
+                    setPadding(dp(10), dp(4), dp(10), dp(4))
                     setBackgroundResource(R.drawable.design_handle)
                     isClickable = true
-                    layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f)
+                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
                     gravity = Gravity.CENTER_VERTICAL
                     setOnClickListener {
                         AlertDialog.Builder(activity)
@@ -350,7 +454,7 @@ class DesignerController(
                 val et = EditText(activity).apply {
                     setText(w.cfg(def.key, def.default))
                     setSingleLine(true)
-                    layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f)
+                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
                     setOnFocusChangeListener { _, hasFocus ->
                         if (!hasFocus) host.updateConfig(w.spec.id, def.key, text.toString().trim())
                     }
@@ -368,11 +472,11 @@ class DesignerController(
                     setSingleLine(true)
                     ellipsize = android.text.TextUtils.TruncateAt.END
                     setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
-                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dp(22).toFloat())
-                    setPadding(dp(12), dp(6), dp(12), dp(6))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
+                    setPadding(dp(10), dp(4), dp(10), dp(4))
                     setBackgroundResource(R.drawable.design_handle)
                     isClickable = true
-                    layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f)
+                    layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
                     gravity = Gravity.CENTER_VERTICAL
                     setOnClickListener { showOrderDialog(w, def) }
                 }
@@ -424,7 +528,8 @@ class DesignerController(
             .setPositiveButton("完成", null)
             .create()
         dialog.show()
-        dialog.window?.setLayout(dp(560), dp(600))
+        // 屏高 720px：560×640px 避免溢出（原 dp(560)×dp(600)=840×900 超出屏幕）
+        dialog.window?.setLayout(560, 640)
     }
 
     /** 行序拖动适配器：维护有序 key 列表并渲染标签 */

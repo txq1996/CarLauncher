@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主页 = 单页 Widget 画布：widget_container 绝对定位放置 Widget；
+     design_toolbar 悬浮顶层仅设计模式显示（不占画布高度，保证设计/普通坐标一致）。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <FrameLayout
+        android:id="@+id/widget_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 悬浮设计工具栏：仅设计模式显示；单行、60px 高、实色 surface 底；
+         按钮 50×30px 圆角胶囊（bg_design_btn）贴边排列、字号 12px。 -->
+    <LinearLayout
+        android:id="@+id/design_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="60px"
+        android:layout_gravity="top"
+        android:background="@color/surface"
+        android:elevation="8px"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4px"
+        android:paddingEnd="4px"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/btn_design_add"
+            style="@style/DesignToolbarButton"
+            android:text="🧩添加" />
+
+        <Button
+            android:id="@+id/btn_design_del"
+            style="@style/DesignToolbarButton"
+            android:text="🗑删除" />
+
+        <Button
+            android:id="@+id/btn_design_props"
+            style="@style/DesignToolbarButton"
+            android:text="⚙属性" />
+
+        <Button
+            android:id="@+id/btn_design_status"
+            style="@style/DesignToolbarButton"
+            android:text="👁状态栏" />
+
+        <Button
+            android:id="@+id/btn_design_save"
+            style="@style/DesignToolbarButton"
+            android:text="💾保存" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,10 +1,23 @@
 package com.android.launcher37
+import com.android.launcher37.LauncherApp
+import com.android.launcher37.SettingsActivity
+import com.android.launcher37.R
+import com.android.launcher37.drawer.DrawerOverlay
+import com.android.launcher37.util.Dbg
+import com.android.launcher37.drawer.AppDrawer
+import com.android.launcher37.music.MediaHelper
+import com.android.launcher37.util.IconCache
+import com.android.launcher37.drawer.DrawerService
+import com.android.launcher37.util.Prefs
+import com.android.launcher37.data.MemoryCleaner
 
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Toast
 import com.android.launcher37.home.UpdateDelegate
 import com.android.launcher37.home.widget.LyricsWidget
 import com.android.launcher37.home.widget.PageHost
@@ -28,7 +41,16 @@ class LauncherActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 设计模式入口（设置页）：跳过 direct/悬浮分支，直接以桌面形态进入
-        val designerRequested = intent?.getBooleanExtra(EXTRA_DESIGNER, false) == true
+        var designerRequested = intent?.getBooleanExtra(EXTRA_DESIGNER, false) == true
+        // 默认布局只读：不可进设计器（正常回落桌面形态）
+        if (designerRequested &&
+            com.android.launcher37.home.widget.LayoutRepository.activeName(this) ==
+            com.android.launcher37.home.widget.LayoutRepository.BUILTIN_NAME
+        ) {
+            designerRequested = false
+            intent?.removeExtra(EXTRA_DESIGNER)
+            Toast.makeText(this, "默认布局只读，请先在布局管理中添加自定义布局", Toast.LENGTH_LONG).show()
+        }
         // 用内存焦点状态 sLauncherForeground 判定"启动前是否在本 launcher"：
         // 冷启动（新进程）默认 false → 走悬浮；进程存活的重建保留原焦点状态。
         val direct = !designerRequested &&
@@ -171,7 +193,13 @@ class LauncherActivity : Activity() {
         mNeedVdSync = true
         val isDesigner = intent.getBooleanExtra(EXTRA_DESIGNER, false)
         if (isDesigner && !mDesignMode) {
-            enterDesign()
+            // 默认布局只读：不可进设计器
+            if (com.android.launcher37.home.widget.LayoutRepository.activeName(this) ==
+                com.android.launcher37.home.widget.LayoutRepository.BUILTIN_NAME) {
+                Toast.makeText(this, "默认布局只读，请先在布局管理中添加自定义布局", Toast.LENGTH_LONG).show()
+            } else {
+                enterDesign()
+            }
         }
         // 进入设计器意图：不弹全部应用/悬浮，直接回到桌面
         if (isDesigner) return
@@ -249,6 +277,9 @@ class LauncherActivity : Activity() {
         // uiMode 切换不重建 Activity：重读状态栏主题 + 通知全部 Widget 重读日/夜色
         applyStatusBarVisibility()
         applySystemBarTheme()
+        // 桌面根布局背景重读日/夜色（已 inflate 的背景不会随配置自动更新）
+        (findViewById<ViewGroup>(android.R.id.content))?.getChildAt(0)
+            ?.setBackgroundColor(resources.getColor(R.color.background, theme))
         host?.onThemeChange()
     }
 
@@ -319,6 +350,17 @@ class LauncherActivity : Activity() {
         mDesignMode = false
         findViewById<View>(R.id.design_toolbar).visibility = View.GONE
         applyStatusBarVisibility()
+        // 退出设计器返回设置界面
+        startActivity(android.content.Intent(this, SettingsActivity::class.java))
+    }
+
+    /** 返回键：设计模式下退出设计器（未点保存的更改丢弃），由 exitDesign 返回设置页 */
+    override fun onBackPressed() {
+        if (mDesignMode) {
+            host?.exitDesignMode()
+            return
+        }
+        super.onBackPressed()
     }
 
     fun cleanMemory() = MemoryCleaner.cleanFromUi(this)

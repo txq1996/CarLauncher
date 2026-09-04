@@ -1,4 +1,5 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.content.Context
@@ -6,9 +7,8 @@ import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import com.android.launcher37.MapPipHost
-import com.android.launcher37.Prefs
-import com.android.launcher37.R
+import com.android.launcher37.navi.MapPipHost
+import com.android.launcher37.util.Prefs
 import com.android.launcher37.SettingsActivity
 
 /**
@@ -73,11 +73,13 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         tvLabel?.visibility = if (designMode) View.VISIBLE else View.GONE
     }
 
-    /** 最小尺寸 = 屏幕 20%（宽/高各自按屏幕对应边） */
-    override fun minSizeW(): Int =
-        (activity.resources.displayMetrics.widthPixels * 0.2f).toInt()
-    override fun minSizeH(): Int =
-        (activity.resources.displayMetrics.heightPixels * 0.2f).toInt()
+    override fun onThemeChange() {
+        // 边框 stroke（divider 色）与标签文字色随日夜主题重取
+        background = activity.resources.getDrawable(R.drawable.bg_pip_frame)
+        tvLabel?.setTextColor(
+            activity.resources.getColor(R.color.foreground_secondary, activity.theme)
+        )
+    }
 
     override fun ensureLaunched() {
         val pkg = boundPkg ?: return

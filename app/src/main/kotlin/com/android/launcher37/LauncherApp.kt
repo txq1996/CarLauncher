@@ -1,4 +1,9 @@
 package com.android.launcher37
+import com.android.launcher37.navi.AmapNaviListener
+import com.android.launcher37.drawer.DrawerOverlay
+import com.android.launcher37.navi.NaviTextClient
+import com.android.launcher37.data.Store
+import com.android.launcher37.data.MemoryCleaner
 
 import android.app.Application
 import com.android.launcher37.home.widget.PageHost

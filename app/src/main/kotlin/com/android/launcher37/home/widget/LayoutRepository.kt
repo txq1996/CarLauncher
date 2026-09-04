@@ -35,7 +35,7 @@ object LayoutRepository {
     const val BUILTIN_NAME = "经典布局"
     /** 迁移/首启用户布局默认名 */
     const val DEFAULT_NAME = "默认布局"
-    const val MIN_SIZE = 20
+    const val MIN_SIZE = 40
 
     fun file(context: Context): File = File(context.filesDir, FILE)
     private fun legacyFile(context: Context): File = File(context.filesDir, LEGACY_FILE)
@@ -125,25 +125,32 @@ object LayoutRepository {
 
     // ── 单页工具（原样保留，供 builtin/迁移/加载复用） ─────
 
-    /** 校正：屏幕尺寸变化按比例缩放；越界/小于最小尺寸的 widget 收回边界内 */
+    /** 校正：屏幕尺寸变化按比例缩放；越界/小于最小尺寸的 widget 收回边界内。
+     *  同宽且高度差 ≤64px（状态栏显隐导致的画布微调）不缩放，避免控件被反复放大变形 */
     fun normalize(layout: HomeLayout, screenW: Int, screenH: Int): HomeLayout {
         if (layout.screenWidth <= 0 || layout.screenHeight <= 0 || layout.widgets.isEmpty()) {
             return layout.copy(screenWidth = screenW, screenHeight = screenH)
         }
+        val drift = layout.screenWidth == screenW &&
+            kotlin.math.abs(layout.screenHeight - screenH) <= 64
         val rx = screenW.toFloat() / layout.screenWidth
         val ry = screenH.toFloat() / layout.screenHeight
         val scaled = layout.widgets.map { s ->
-            val w = max(MIN_SIZE, (s.w * rx).roundToInt()).coerceAtMost(screenW)
-            val h = max(MIN_SIZE, (s.h * ry).roundToInt()).coerceAtMost(screenH)
+            val w = if (drift) s.w else max(MIN_SIZE, (s.w * rx).roundToInt()).coerceAtMost(screenW)
+            val h = if (drift) s.h else max(MIN_SIZE, (s.h * ry).roundToInt()).coerceAtMost(screenH)
             WidgetSpec(
                 id = s.id, type = s.type,
-                x = s.x.coerceIn(0, screenW - w),
-                y = s.y.coerceIn(0, screenH - h),
+                x = s.x.coerceIn(0, maxOf(0, screenW - w)),
+                y = s.y.coerceIn(0, maxOf(0, screenH - h)),
                 w = w, h = h,
                 visible = s.visible, config = s.config
             )
         }
-        return HomeLayout(HomeLayout.CURRENT_VERSION, screenW, screenH, scaled)
+        // 保留每布局独立参数（间距/边距/状态栏），仅重排 widgets
+        return HomeLayout(
+            HomeLayout.CURRENT_VERSION, screenW, screenH, scaled,
+            layout.gap, layout.margin, layout.hideStatusBar
+        )
     }
 
     /** 无保存布局时的默认布局：左窄条应用列表（7 条，首条抽屉）/中 VD（默认高德，65%宽）/右车速+歌词，无底栏 */
@@ -177,7 +184,7 @@ object LayoutRepository {
             )),
             spec(WidgetTypes.LYRICS, rightX, pad + speedH + gap, rightW, lyricsH)
         )
-        return HomeLayout(HomeLayout.CURRENT_VERSION, screenW, screenH, widgets)
+        return HomeLayout(HomeLayout.CURRENT_VERSION, screenW, screenH, widgets, gap = 10, margin = 10)
     }
 
     // ── JSON ─────────────────────────────────────────
@@ -186,6 +193,9 @@ object LayoutRepository {
         put("version", l.version)
         put("screenWidth", l.screenWidth)
         put("screenHeight", l.screenHeight)
+        put("gap", l.gap)
+        put("margin", l.margin)
+        put("hideStatusBar", l.hideStatusBar)
         put("widgets", JSONArray().apply {
             for (s in l.widgets) put(JSONObject().apply {
                 put("id", s.id)
@@ -219,7 +229,10 @@ object LayoutRepository {
         return HomeLayout(
             o.optInt("version", HomeLayout.CURRENT_VERSION),
             o.optInt("screenWidth", 0), o.optInt("screenHeight", 0),
-            widgets
+            widgets,
+            o.optInt("gap", HomeLayout.DEFAULT_GAP),
+            o.optInt("margin", 0),
+            o.optBoolean("hideStatusBar", false)
         )
     }
 

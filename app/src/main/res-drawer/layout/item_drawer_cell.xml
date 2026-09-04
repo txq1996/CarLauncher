@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_drawer_cell"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8px">
+
+    <ImageView
+        android:id="@+id/drawer_icon"
+        android:layout_width="64px"
+        android:layout_height="64px"
+        android:scaleType="centerInside" />
+
+    <TextView
+        android:id="@+id/drawer_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6px"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/foreground"
+        android:textSize="17px" />
+</LinearLayout>

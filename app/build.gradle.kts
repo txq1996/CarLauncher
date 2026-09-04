@@ -34,8 +34,19 @@ android {
     }
 
     // 源码根目录：标准 Kotlin 工程用 kotlin/ 而非 java/。
+    // 资源分层：layout 按模块拆分到独立资源根（res-home / res-widget / res-drawer / res-settings），
+    // 各目录内为标准 res 结构（layout/ 子目录）；values/drawable 等仍在主 res。
     sourceSets {
-        getByName("main").kotlin.srcDirs("src/main/kotlin")
+        getByName("main") {
+            kotlin.srcDirs("src/main/kotlin")
+            res.srcDirs(
+                "src/main/res",
+                "src/main/res-home",
+                "src/main/res-widget",
+                "src/main/res-drawer",
+                "src/main/res-settings"
+            )
+        }
         getByName("test").kotlin.srcDirs("src/test/kotlin")
     }
 

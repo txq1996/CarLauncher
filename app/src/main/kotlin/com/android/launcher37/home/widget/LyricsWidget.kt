@@ -1,4 +1,6 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.LauncherActivity
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.graphics.Bitmap
@@ -10,12 +12,11 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.android.launcher37.FormatUtils
-import com.android.launcher37.MediaHelper
-import com.android.launcher37.MusicLauncher
-import com.android.launcher37.R
-import com.android.launcher37.SharedExecutor
-import com.android.launcher37.Store
+import com.android.launcher37.util.FormatUtils
+import com.android.launcher37.music.MediaHelper
+import com.android.launcher37.music.MusicLauncher
+import com.android.launcher37.util.SharedExecutor
+import com.android.launcher37.data.Store
 import com.android.launcher37.home.LrcParser
 import com.android.launcher37.home.LrcTimedLine
 import com.android.launcher37.home.LrclibProvider
@@ -150,6 +151,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
             musicLauncher.onButton(mediaHelper::next, boundPkg())
         }
         refreshAppBadge()
+        applyControlTint()
         buildLineViews()
     }
 
@@ -202,13 +204,36 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     }
 
     override fun onThemeChange() {
+        setCardBackground(true)
         buildLineViews()
         refreshLines()
         for (id in intArrayOf(R.id.btn_lyrics_prev, R.id.btn_lyrics_play, R.id.btn_lyrics_next)) {
             findViewById<ImageButton>(id)?.setBackgroundResource(R.drawable.bg_icon_btn)
         }
+        applyControlTint()
         findViewById<android.widget.ProgressBar>(R.id.lyrics_progress)?.progressDrawable =
             activity.resources.getDrawable(R.drawable.progress_music)
+        // 静态文字色重读主题（歌名主色，其余副色/三级色）
+        fun text(id: Int, color: Int) {
+            findViewById<TextView>(id)?.setTextColor(
+                activity.resources.getColor(color, activity.theme)
+            )
+        }
+        text(R.id.tv_lyrics_track, R.color.foreground)
+        text(R.id.tv_lyrics_artist, R.color.foreground_tertiary)
+        text(R.id.lyrics_cur_time, R.color.foreground_tertiary)
+        text(R.id.lyrics_total_time, R.color.foreground_tertiary)
+        text(R.id.tv_lyrics_app_name, R.color.foreground_tertiary)
+    }
+
+    /** 播放控制按钮图标着色：矢量图 fillColor 只在 inflate 时解析，日夜切换需重设 tint */
+    private fun applyControlTint() {
+        val tint = android.content.res.ColorStateList.valueOf(
+            activity.resources.getColor(R.color.foreground, activity.theme)
+        )
+        for (id in intArrayOf(R.id.btn_lyrics_prev, R.id.btn_lyrics_play, R.id.btn_lyrics_next)) {
+            findViewById<ImageButton>(id)?.imageTintList = tint
+        }
     }
 
     // ── 绑定 / 唤醒（绑定存实例 config；未绑定时默认 QQ 音乐车机版） ──

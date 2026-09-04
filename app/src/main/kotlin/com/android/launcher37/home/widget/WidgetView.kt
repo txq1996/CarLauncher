@@ -1,11 +1,11 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.graphics.drawable.GradientDrawable
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import com.android.launcher37.R
 
 /**
  * 主页 Widget 基类：绝对定位容器（[WidgetHost] 的画布直接 addView）。

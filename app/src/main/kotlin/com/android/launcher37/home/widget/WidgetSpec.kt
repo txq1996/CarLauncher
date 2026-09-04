@@ -1,4 +1,5 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.SettingsActivity
 
 /**
  * 主页 Widget 数据模型。
@@ -50,10 +51,17 @@ data class HomeLayout(
     val version: Int = 1,
     val screenWidth: Int = 0,
     val screenHeight: Int = 0,
-    val widgets: List<WidgetSpec> = emptyList()
+    val widgets: List<WidgetSpec> = emptyList(),
+    /** 设计器控件间最小间距（px），碰撞检测/自动摆放用；每布局独立 */
+    val gap: Int = DEFAULT_GAP,
+    /** 控件距屏幕边缘的最小边距（px）；每布局独立 */
+    val margin: Int = 0,
+    /** 该布局是否隐藏状态栏（应用布局时同步全局开关） */
+    val hideStatusBar: Boolean = false
 ) {
     companion object {
         const val CURRENT_VERSION = 1
+        const val DEFAULT_GAP = 5
     }
 }
 

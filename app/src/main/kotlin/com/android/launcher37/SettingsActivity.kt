@@ -1,4 +1,16 @@
 package com.android.launcher37
+import com.android.launcher37.LauncherActivity
+import com.android.launcher37.R
+import com.android.launcher37.drawer.DrawerAdapter
+import com.android.launcher37.data.SplitRepository
+import com.android.launcher37.pip.PipService
+import com.android.launcher37.data.UpdateChecker
+import com.android.launcher37.drawer.AppDrawer
+import com.android.launcher37.data.Store
+import com.android.launcher37.util.Prefs
+import com.android.launcher37.util.SharedExecutor
+import com.android.launcher37.navi.MapFeature
+import com.android.launcher37.data.AppQuery
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -14,6 +26,11 @@ import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
+import com.android.launcher37.home.widget.HomeLayout
+import com.android.launcher37.home.widget.LayoutRepository
+import com.android.launcher37.home.widget.NamedLayout
+import com.android.launcher37.home.widget.PageHost
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,24 +58,15 @@ class SettingsActivity : Activity() {
         const val KEY_SHOW_NAVI_EXIT = "show_navi_exit"
         const val KEY_SHOW_NAVI_DIRECTION = "show_navi_direction"
         const val KEY_SHOW_NAVI_ALERT = "show_navi_alert"
-        // 巡航行显隐（每个字段独立）
-        const val KEY_SHOW_CRUISE_ROAD = "show_cruise_road"
-        const val KEY_SHOW_CRUISE_DIRECTION = "show_cruise_direction"
-        const val KEY_SHOW_CRUISE_ALERT = "show_cruise_alert"
         // 时间
         const val KEY_TS_TIME = "ts_time"
 
         // ── 字号/尺寸（px，int）──
-        // 车速区域字号（导航模式）
+        // 车速区域字号（导航/巡航共用）
         const val KEY_TS_NAVI_SPEED = "ts_navi_speed"
         const val KEY_TS_NAVI_KMH = "ts_navi_kmh"
         const val KEY_TS_NAVI_LIMIT = "ts_navi_limit"
         const val KEY_TS_NAVI_TRAFFIC_SEC = "ts_navi_traffic_sec"
-        // 车速区域字号（巡航模式）
-        const val KEY_TS_CRUISE_SPEED = "ts_cruise_speed"
-        const val KEY_TS_CRUISE_KMH = "ts_cruise_kmh"
-        const val KEY_TS_CRUISE_LIMIT = "ts_cruise_limit"
-        const val KEY_TS_CRUISE_TRAFFIC_SEC = "ts_cruise_traffic_sec"
         // 导航行字号
         const val KEY_TS_NAVI_TURN = "ts_navi_turn"
         const val KEY_TS_NAVI_ROAD = "ts_navi_road"
@@ -69,10 +77,6 @@ class SettingsActivity : Activity() {
         const val KEY_TS_NAVI_EXIT = "ts_navi_exit"
         const val KEY_TS_NAVI_DIRECTION = "ts_navi_direction"
         const val KEY_TS_NAVI_ALERT = "ts_navi_alert"
-        // 巡航行字号
-        const val KEY_TS_CRUISE_ROAD = "ts_cruise_road"
-        const val KEY_TS_CRUISE_DIRECTION = "ts_cruise_direction"
-        const val KEY_TS_CRUISE_ALERT = "ts_cruise_alert"
         // 音乐（AppDrawer 列表标题字号沿用）
         const val KEY_TS_MUSIC_TITLE = "ts_music_title"
 
@@ -99,8 +103,7 @@ class SettingsActivity : Activity() {
 
         /** 车速卡字号 key：范围 [10,150]；其余字体 [10,50] */
         private val FONT_RANGE_SMALL = setOf(
-            KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC,
-            KEY_TS_CRUISE_SPEED, KEY_TS_CRUISE_KMH, KEY_TS_CRUISE_LIMIT, KEY_TS_CRUISE_TRAFFIC_SEC
+            KEY_TS_NAVI_SPEED, KEY_TS_NAVI_KMH, KEY_TS_NAVI_LIMIT, KEY_TS_NAVI_TRAFFIC_SEC
         )
     }
 
@@ -189,16 +192,225 @@ class SettingsActivity : Activity() {
 
     private fun bindLayoutTab() {
         // 卡片显隐/尺寸/状态栏已全部移交主页设计器（布局 JSON 持久化 / 工具栏开关），
-        // 此处仅保留设计入口
-        findViewById<Button>(R.id.btn_layout_design).setOnClickListener {
-            // 主页即设计器：以设计模式拉起桌面（singleTask，运行中走 onNewIntent）
-            startActivity(
-                android.content.Intent(this, LauncherActivity::class.java)
-                    .putExtra(LauncherActivity.EXTRA_DESIGNER, true)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        }
+        // 此处仅保留布局管理；设计器入口在布局行的「设计器」按钮
+        rebuildLayoutList()
     }
+
+    // ── 布局管理（内嵌列表：默认布局 / 添加 / 自定义布局行右侧 删除·重命名·属性） ──────
+
+    /** 内嵌布局列表：默认布局行 + 添加按钮 + 自定义布局行（右侧 删除/重命名/属性） */
+    private fun rebuildLayoutList() {
+        val ctx = this
+        val container = findViewById<LinearLayout>(R.id.layout_list_container) ?: return
+        container.removeAllViews()
+        val active = LayoutRepository.activeName(ctx)
+        val names = LayoutRepository.listNames(ctx)
+        val sw = resources.displayMetrics.widthPixels
+        val sh = resources.displayMetrics.heightPixels
+
+        // 按钮样式与通用卡 ThemeButton 一致：18px 字号、前景色、56px 高、左右 20px 内边距
+        // （注意直接用 px 值，不经 px() 缩放，保持与 XML ThemeButton 同高）
+        fun actionButton(text: String, onClick: () -> Unit): Button =
+            Button(ctx).apply {
+                this.text = text
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 18f)
+                setTextColor(resources.getColor(R.color.foreground, theme))
+                minHeight = 56
+                minimumHeight = 0
+                minimumWidth = 0
+                minWidth = 0
+                setPadding(20, 0, 20, 0)
+                setOnClickListener { onClick() }
+            }
+
+        // 复制布局为「布局N」并激活应用
+        fun copyLayout(srcName: String) {
+            val src = LayoutRepository.load(ctx, srcName, sw, sh) ?: return
+            var n = 1
+            while (names.any { it == "布局$n" }) n++
+            LayoutRepository.save(ctx, NamedLayout("布局$n", src.pages))
+            LayoutRepository.setActive(ctx, "布局$n")
+            PageHost.instance?.applyLayout("布局$n")
+            Toast.makeText(ctx, "已复制为「布局$n」，进入设计器可编辑", Toast.LENGTH_LONG).show()
+            rebuildLayoutList()
+        }
+
+        fun nameRow(name: String, isBuiltin: Boolean) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                // 与应用/通用界面的 CheckRow 同款配色：bg_app_order_row 背景、64px 高、行间 6px
+                setBackgroundResource(R.drawable.bg_app_order_row)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 64).apply { topMargin = 6 }
+                setPadding(16, 0, 16, 0)
+            }
+            row.addView(TextView(ctx).apply {
+                text = buildString {
+                    append(name)
+                    if (isBuiltin) append("（默认·只读）")
+                }
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 17f)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                maxLines = 1
+            })
+            // 设为默认布局（启动时加载）：当前默认置灰不可点
+            val isDefault = name == active
+            row.addView(actionButton(if (isDefault) "✅ 默认" else "⭐ 设默认") {
+                LayoutRepository.setActive(ctx, name)
+                PageHost.instance?.applyLayout(name)
+                Toast.makeText(ctx, "已设「$name」为默认布局", Toast.LENGTH_SHORT).show()
+                rebuildLayoutList()
+            }.apply { isEnabled = !isDefault })
+            if (isBuiltin) {
+                row.addView(actionButton("📋 复制") { copyLayout(name) })
+            } else {
+                row.addView(actionButton("🗑️ 删除") {
+                    AlertDialog.Builder(ctx)
+                        .setTitle("删除布局")
+                        .setMessage("确定删除「$name」？")
+                        .setPositiveButton("删除") { _, _ ->
+                            LayoutRepository.delete(ctx, name)
+                            PageHost.instance?.applyLayout(LayoutRepository.activeName(ctx))
+                            rebuildLayoutList()
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+                })
+                row.addView(actionButton("✏️ 重命名") {
+                    val input = android.widget.EditText(ctx)
+                    input.setText(name)
+                    AlertDialog.Builder(ctx)
+                        .setTitle("重命名布局")
+                        .setView(input)
+                        .setPositiveButton("确定") { _, _ ->
+                            val newName = input.text.toString().trim()
+                            if (newName.isNotEmpty() && newName != name &&
+                                !LayoutRepository.listNames(ctx).any { it == newName }) {
+                                val src = LayoutRepository.load(ctx, name, sw, sh) ?: return@setPositiveButton
+                                LayoutRepository.save(ctx, NamedLayout(newName, src.pages))
+                                LayoutRepository.delete(ctx, name)
+                                if (active == name) {
+                                    LayoutRepository.setActive(ctx, newName)
+                                    PageHost.instance?.applyLayout(newName)
+                                }
+                                rebuildLayoutList()
+                            }
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+                })
+                row.addView(actionButton("⚙️ 属性") { showLayoutProps(name) })
+                // 设计器入口（原顶部「布局设计」按钮移此）：先切到该布局，再以设计模式拉起桌面
+                row.addView(actionButton("🎨 设计器") {
+                    if (name != LayoutRepository.activeName(ctx)) {
+                        PageHost.instance?.applyLayout(name)
+                    }
+                    ctx.startActivity(
+                        android.content.Intent(ctx, LauncherActivity::class.java)
+                            .putExtra(LauncherActivity.EXTRA_DESIGNER, true)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                })
+                row.addView(actionButton("📋 复制") { copyLayout(name) })
+            }
+            container.addView(row)
+        }
+
+        for (name in names) nameRow(name, LayoutRepository.isBuiltIn(name))
+    }
+
+    /** 单布局属性：状态栏显隐 + 控件间距 + 屏幕边距（保存并应用） */
+    private fun showLayoutProps(name: String) {
+        val ctx = this
+        val sw = resources.displayMetrics.widthPixels
+        val sh = resources.displayMetrics.heightPixels
+        val page = LayoutRepository.load(ctx, name, sw, sh)?.pages?.firstOrNull()
+
+        val box = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(px(24), px(8), px(24), 0)
+        }
+        var hideBar = page?.hideStatusBar ?: false
+        box.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(TextView(ctx).apply {
+                text = "显示状态栏"
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(android.widget.CheckBox(ctx).apply {
+                isChecked = !(page?.hideStatusBar ?: false)
+                setOnCheckedChangeListener { _, checked -> hideBar = !checked }
+            })
+        })
+
+        fun sliderRow(label: String, value: Int, onApply: (Int) -> Unit): android.view.View {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(0, px(10), 0, 0)
+            }
+            row.addView(TextView(ctx).apply {
+                text = label
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            // 实时数值显示（px）
+            val valueText = TextView(ctx).apply {
+                text = "${value}px"
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+                setPadding(0, 0, px(8), 0)
+            }
+            row.addView(valueText)
+            row.addView(SeekBar(ctx).apply {
+                max = 50
+                progress = value
+                layoutParams = LinearLayout.LayoutParams(px(280),
+                    LinearLayout.LayoutParams.WRAP_CONTENT)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
+                        valueText.text = "${p}px"
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar) {}
+                    override fun onStopTrackingTouch(sb: SeekBar) = onApply(sb.progress)
+                })
+            })
+            return row
+        }
+
+        fun savePage(transform: (HomeLayout) -> HomeLayout) {
+            val src = LayoutRepository.load(ctx, name, sw, sh)?.pages?.firstOrNull() ?: return
+            LayoutRepository.save(ctx, NamedLayout(name, listOf(transform(src))))
+            // 修改的是激活布局 → 实时应用桌面
+            if (LayoutRepository.activeName(ctx) == name) {
+                PageHost.instance?.applyLayout(name)
+            }
+        }
+
+        // 经典布局只读：间距/边距不允许设置，仅可复制后编辑
+        if (!LayoutRepository.isBuiltIn(name)) {
+            box.addView(sliderRow("控件间距", page?.gap ?: HomeLayout.DEFAULT_GAP) { v ->
+                savePage { it.copy(gap = v) }
+            })
+            box.addView(sliderRow("屏幕边距", page?.margin ?: 0) { v ->
+                savePage { it.copy(margin = v) }
+            })
+        }
+
+        AlertDialog.Builder(ctx)
+            .setTitle("布局属性 - $name")
+            .setView(box)
+            .setPositiveButton("确定") { _, _ ->
+                savePage { it.copy(hideStatusBar = hideBar) }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /** dp→px（density 1.5） */
+    private fun px(v: Int): Int = (v * resources.displayMetrics.density + 0.5f).toInt()
 
     // ── 应用选项卡（抽屉排序与隐藏 + 全部应用外观） ──────────────────────
 

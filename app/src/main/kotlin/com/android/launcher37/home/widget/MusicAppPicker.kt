@@ -1,4 +1,5 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.content.pm.ResolveInfo
@@ -6,10 +7,9 @@ import android.widget.BaseAdapter
 import android.widget.ListView
 import android.widget.PopupWindow
 import android.widget.TextView
-import com.android.launcher37.AppQuery
-import com.android.launcher37.HoloPopup
-import com.android.launcher37.R
-import com.android.launcher37.SharedExecutor
+import com.android.launcher37.data.AppQuery
+import com.android.launcher37.util.HoloPopup
+import com.android.launcher37.util.SharedExecutor
 
 /**
  * 音乐应用选择器（音乐/歌词 Widget 共用）：列出全部可启动应用，回调 `pkg/cls` 标识。

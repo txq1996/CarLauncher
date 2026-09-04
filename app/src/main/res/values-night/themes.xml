@@ -1,6 +1,12 @@
 <resources>
+    <!--
+        夜间主题变体：parent 换用 framework Dark 版，
+        使 AlertDialog、CheckBox、EditText 等框架控件默认配色跟随夜色板；
+        palette token 仍映射到 values-night/colors.xml。
+        uiMode 切换不重建 LauncherActivity（configChanges 含 uiMode），
+        其已 inflate 界面的刷新由 onConfigurationChanged 手动处理。
+    -->
     <style name="Theme.Launcher37" parent="android:Theme.Material.NoActionBar">
-        <!-- 窗口与状态栏 -->
         <item name="android:windowBackground">@color/background</item>
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>

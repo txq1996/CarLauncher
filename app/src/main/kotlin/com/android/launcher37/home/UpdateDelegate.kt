@@ -3,7 +3,7 @@ package com.android.launcher37.home
 import android.app.AlertDialog
 import android.util.Log
 import android.widget.Toast
-import com.android.launcher37.UpdateChecker
+import com.android.launcher37.data.UpdateChecker
 
 /**
  * 更新委派：构造时一次性创建 [UpdateChecker]（持 application，

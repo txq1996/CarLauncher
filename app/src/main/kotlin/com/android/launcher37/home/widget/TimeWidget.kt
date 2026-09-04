@@ -1,10 +1,10 @@
 package com.android.launcher37.home.widget
+import com.android.launcher37.R
 
 import android.app.Activity
 import android.util.TypedValue
 import android.widget.TextView
-import com.android.launcher37.MainThread
-import com.android.launcher37.R
+import com.android.launcher37.util.MainThread
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -65,6 +65,11 @@ class TimeWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, sp
         onSpecApplied()
         updateTime()
         scheduleNext()
+    }
+
+    override fun onThemeChange() {
+        setCardBackground(true)
+        tvTime.setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
     }
 
     override fun start() {
