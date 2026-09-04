@@ -182,7 +182,10 @@ class WidgetHost private constructor(
     }
 
     fun onThemeChange() {
-        for (w in widgets.values) w.onThemeChange()
+        for (w in widgets.values) {
+            w.onThemeChange()
+            w.refreshDesignLabelTheme()
+        }
     }
 
     /** 窗口焦点就绪后拉起 VD（带 pip_start_delay 延迟，原 PIP 时序语义） */

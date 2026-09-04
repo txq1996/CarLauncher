@@ -10,7 +10,7 @@
 	<color name="surface_variant">#C0C6CD</color>
 
 	<!-- 交互状态：Pressed、Selected、Focused、对话框等强调区域 -->
-	<color name="surface_highlight">#9FA7B0</color>
+        <color name="surface_highlight">#ADB4BC</color>
 
 	<!-- 一级内容：标题、正文、主要文字、主要 Icon -->
 	<color name="foreground">#121820</color>
@@ -22,7 +22,7 @@
 	<color name="foreground_tertiary">#68737F</color>
 
 	<!-- 结构边界：分割线、边框、描边 -->
-	<color name="divider">#A7AFB8</color>
+        <color name="divider">#99A1AA</color>
 
     <!-- 红绿灯（固定视觉语言，不随日/夜切换） -->
     <color name="trafficRed">#FFFF5252</color>

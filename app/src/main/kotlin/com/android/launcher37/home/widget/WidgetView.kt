@@ -84,6 +84,15 @@ abstract class WidgetView(
         designLabel?.text = "${displayName}  X:${spec.x} Y:${spec.y}  ${spec.w}×${spec.h}"
     }
 
+    /** 日/夜主题切换后由 [WidgetHost.onThemeChange] 调用：重读设计标签底/字色
+     *  （标签仅在进入设计器时创建一次，色值不会随 uiMode 自动更新） */
+    internal fun refreshDesignLabelTheme() {
+        designLabel?.apply {
+            setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
+            setBackgroundColor(activity.resources.getColor(R.color.surface_highlight, activity.theme))
+        }
+    }
+
     /** 设计模式切换钩子（子类按需隐藏 SurfaceView 等独立图层，见 VdWidget） */
     protected open fun onDesignModeChanged(design: Boolean) {}
 

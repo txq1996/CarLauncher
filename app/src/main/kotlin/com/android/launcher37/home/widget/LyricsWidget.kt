@@ -422,6 +422,8 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         mTransLines = emptyList()
         mPlain = null
         mCurIndex = -1
+        // 停播/换歌时同步隐藏封面（取词成功后由异步任务重新显示）
+        ivCover?.visibility = View.GONE
         setPlaceholder("暂无播放")
     }
 
