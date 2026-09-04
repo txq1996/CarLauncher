@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.android.launcher37.navi.MapPipHost
+import com.android.launcher37.util.Dbg
 import com.android.launcher37.util.Prefs
 import com.android.launcher37.SettingsActivity
 
@@ -51,6 +52,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         applyLabelVisibility()
         // 设计模式（进入设计器时安装）不挂 surface，避免 :pip 自动拉起应用；
         // 普通模式立即挂载 surface。
+        Dbg.i(TAG) { "onBind slot=${spec.id + 1} pkg=$boundPkg attachSurface=${!designMode}" }
         if (!designMode) host.attach(findViewById(R.id.vd_container))
     }
 
@@ -80,11 +82,13 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
 
     override fun ensureLaunched() {
         val pkg = boundPkg ?: return
+        Dbg.i(TAG) { "ensureLaunched slot=${spec.id + 1} pkg=$pkg" }
         host.launch(pkg)
     }
 
     /** config 更新后由 WidgetHost 调用：刷新标签并拉起新绑定的 App（设计模式不拉起） */
     internal fun onAppChanged() {
+        Dbg.i(TAG) { "onAppChanged slot=${spec.id + 1} pkg=$boundPkg designMode=$designMode" }
         refreshLabel()
         if (!designMode) boundPkg?.let { host.launch(it) }
     }
@@ -100,6 +104,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
 
     override fun destroy() {
         // 摘 surface（VD 与任务留在 :pip，Activity 重建后恢复显示）
+        Dbg.i(TAG) { "destroy slot=${spec.id + 1} (surface detached, VD kept in :pip)" }
         host.releaseTransient()
     }
 
@@ -131,6 +136,8 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
     }
 
     companion object {
+        private const val TAG = "VdWidget"
+
         /** 默认延迟（桌面拉起 VD 前，0=立即；原 pip_start_delay 语义） */
         fun startDelayMs(context: Context): Int =
             try {

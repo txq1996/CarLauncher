@@ -89,6 +89,8 @@ data class LyricsData(
 
 object Lyrics {
 
+    private const val TAG = "LyricsSrc"
+
     private val mVkeys = VkeysProvider()
 
     /** filesDir 缓存文件名（lrclib 兜底路径）：歌手_标题.providerId.lrc */
@@ -101,11 +103,15 @@ object Lyrics {
     fun loadOrFetch(ctx: Context, provider: LyricsProvider, artist: String, title: String, durationSec: Int): LyricsData? {
         if (title.isBlank()) return null
         // 1. 本地优先：/sdcard/CarLauncher/music/ 结构化存储
-        SdcardMusicStore.load(artist, title)?.let { return it }
+        SdcardMusicStore.load(artist, title)?.let {
+            Log.i(TAG, "lyrics from sdcard: '$artist|$title'")
+            return it
+        }
         // 2. vkeys QQ音乐（搜索→mid→歌词），成功即持久化歌曲信息+歌词到 sdcard
         try {
             mVkeys.fetch(artist, title, durationSec)?.let { data ->
                 if (!data.isEmpty) {
+                    Log.i(TAG, "lyrics from vkeys: '$artist|$title' (persisted)")
                     SdcardMusicStore.save(artist, title, data)
                     return data
                 }
@@ -115,14 +121,19 @@ object Lyrics {
         }
         // 3. 兜底：传入 provider（lrclib），缓存到内部存储
         val key = cacheKey(artist, title, provider.id)
-        LyricsCache.load(ctx, key)?.let { return it }
+        LyricsCache.load(ctx, key)?.let {
+            Log.i(TAG, "lyrics from cache(${provider.id}): '$artist|$title'")
+            return it
+        }
         val data = try {
             provider.fetch(artist, title, durationSec)
         } catch (e: Exception) {
             Log.w("Lyrics", "fetch failed", e)
             null
-        } ?: return null
-        if (!data.isEmpty) LyricsCache.save(ctx, key, data)
+        }
+        Log.i(TAG, "lyrics from ${provider.id}: '$artist|$title' hit=${data?.isEmpty == false}")
+        if (data == null || data.isEmpty) return null
+        LyricsCache.save(ctx, key, data)
         return data
     }
 }

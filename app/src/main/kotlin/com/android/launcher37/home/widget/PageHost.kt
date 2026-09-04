@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
+import com.android.launcher37.util.Dbg
 import com.android.launcher37.util.Prefs
 import com.android.launcher37.SettingsActivity
 
@@ -25,6 +26,8 @@ class PageHost(
     private val container: FrameLayout
 ) {
     companion object {
+        private const val TAG = "PageHost"
+
         /** 当前活跃 PageHost（Activity 销毁时置 null） */
         @Volatile
         var instance: PageHost? = null
@@ -65,12 +68,14 @@ class PageHost(
         val doc = LayoutRepository.loadActive(activity, screenW(), screenH())
         val layout = doc.pages.firstOrNull()
             ?: HomeLayout(HomeLayout.CURRENT_VERSION, screenW(), screenH(), emptyList())
+        Dbg.i(TAG) { "install designRequested=$designRequested active=${LayoutRepository.activeName(activity)} widgets=${layout.widgets.size} canvas=${screenW()}x${screenH()}" }
         rebuild(layout, designRequested)
     }
 
     /** 用给定单页布局重建 WidgetHost（打开布局/重置/抽屉切换用）。
      *  重建后统一 startAll：冷启动 onResume 早于装配、切换布局后新 Widget 均需补启动监听。 */
     private fun rebuild(layout: HomeLayout, designRequested: Boolean) {
+        Dbg.i(TAG) { "rebuild widgets=${layout.widgets.size} designRequested=$designRequested isDesignMode=$isDesignMode" }
         destroyHost()
         val h = WidgetHost.create(activity, container)
         h.onLayoutChanged = { persistAll() }
@@ -132,12 +137,14 @@ class PageHost(
     fun enterDesignMode() {
         if (isDesignMode) return
         isDesignMode = true
+        Dbg.i(TAG) { "enterDesignMode" }
         host?.enterDesignMode()
     }
 
     fun exitDesignMode() {
         if (!isDesignMode) return
         isDesignMode = false
+        Dbg.i(TAG) { "exitDesignMode dirty=$mDirty" }
         host?.exitDesignMode() // 内部 save() 标脏
         if (mDirty) {
             // 未点保存退出：丢弃所有更改，从盘上重载激活布局
@@ -145,6 +152,7 @@ class PageHost(
             val doc = LayoutRepository.loadActive(activity, screenW(), screenH())
             val page = doc.pages.firstOrNull()
                 ?: HomeLayout(HomeLayout.CURRENT_VERSION, screenW(), screenH(), emptyList())
+            Dbg.i(TAG) { "exitDesignMode: discard draft, reload from disk" }
             rebuild(page, false)
         }
         onDesignerExit?.invoke()
@@ -168,6 +176,7 @@ class PageHost(
         val layout = host?.snapshotLayout() ?: return
         // 状态栏显隐为全局 SP 运行态，保存布局时一并记录（每布局独立恢复）
         val hide = Prefs.of(activity).getBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, false)
+        Dbg.i(TAG) { "doPersist layout=$name widgets=${layout.widgets.size} hideStatusBar=$hide" }
         LayoutRepository.save(activity, NamedLayout(name, listOf(layout.copy(hideStatusBar = hide))))
     }
 
@@ -188,9 +197,10 @@ class PageHost(
     /** 按名应用布局（布局管理"进入"调用）：置 active + 重建。成功返回 true */
     fun applyLayout(name: String): Boolean {
         val doc = LayoutRepository.load(activity, name, screenW(), screenH())
-            ?: return false
-        val page = doc.pages.firstOrNull() ?: return false
+            ?: return false.also { Dbg.i(TAG) { "applyLayout $name FAILED (not found)" } }
+        val page = doc.pages.firstOrNull() ?: return false.also { Dbg.i(TAG) { "applyLayout $name FAILED (empty pages)" } }
         LayoutRepository.setActive(activity, name)
+        Dbg.i(TAG) { "applyLayout $name widgets=${page.widgets.size}" }
         rebuild(page, false)
         return true
     }

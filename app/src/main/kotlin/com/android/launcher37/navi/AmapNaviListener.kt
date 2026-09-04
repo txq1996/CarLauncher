@@ -227,6 +227,7 @@ object AmapNaviListener {
                 mContext!!.registerReceiver(mReceiver, filter)
             }
             mRegistered = true
+            Log.i(TAG, "registered (all-key broadcast listener)")
         } catch (e: Exception) {
             Log.w(TAG, "registerReceiver failed: ${e.message}")
         }
@@ -249,6 +250,7 @@ object AmapNaviListener {
         broadcastCount++
         lastKeyType = keyType
         lastReceiveAt = System.currentTimeMillis()
+        Log.d(TAG, "recv keyType=$keyType count=$broadcastCount")
 
         when (keyType) {
             KEY_TYPE_STATE -> handleState(extras)

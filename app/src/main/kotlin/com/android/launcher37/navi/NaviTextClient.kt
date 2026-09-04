@@ -1,5 +1,6 @@
 package com.android.launcher37.navi
 import com.android.launcher37.R
+import com.android.launcher37.util.Dbg
 import com.android.launcher37.util.MainThread
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -62,6 +63,8 @@ class NaviTextClient(
     )
 
     companion object {
+        private const val TAG = "Navi"
+
         private const val KEY_TYPE_ROUTE = 0x2711     // 10001
         private const val KEY_TYPE_STATE = 0x2723     // 10019
         private const val KEY_TYPE_CRUISE = 0xEA85    // 60021 巡航
@@ -146,6 +149,7 @@ class NaviTextClient(
             if (mRegistered && mInfo.mode != Mode.IDLE
                 && SystemClock.elapsedRealtime() - mLastStamp > STALE_MS
             ) {
+                Dbg.i(TAG) { "watchdog: no broadcast for ${STALE_MS}ms, treat as stopped (mode=${mInfo.mode})" }
                 reset()
                 mListener.onNaviStopped()
             }
@@ -184,12 +188,14 @@ class NaviTextClient(
             mRegistered = true
             mLastStamp = SystemClock.elapsedRealtime()
             mHandler.postDelayed(mWatchdog, STALE_MS)
+            Dbg.i(TAG) { "registered" }
         } catch (e: Exception) {
             // 静默
         }
     }
 
     fun stop() {
+        Dbg.i(TAG) { "stop (registered=$mRegistered)" }
         mHandler.removeCallbacks(mWatchdog)
         if (mRegistered) {
             try {
@@ -272,6 +278,7 @@ class NaviTextClient(
     }
 
     private fun setMode(mode: Mode) {
+        if (mInfo.mode != mode) Dbg.d(TAG) { "mode ${mInfo.mode} -> $mode" }
         if (mInfo.mode != mode && mode == Mode.NAV) {
             // 新一轮导航开始时清掉上一轮巡航遗留的电子眼/服务区数据
             mInfo.cameraDist = -1

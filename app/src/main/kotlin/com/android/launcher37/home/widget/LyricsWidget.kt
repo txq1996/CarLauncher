@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.android.launcher37.util.FormatUtils
+import com.android.launcher37.util.Dbg
 import com.android.launcher37.music.MediaHelper
 import com.android.launcher37.music.MusicLauncher
 import com.android.launcher37.util.SharedExecutor
@@ -233,13 +234,21 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         refreshLines()
     }
 
-    override fun start() = mediaHelper.start()
-    override fun stop() = mediaHelper.stop()
+    override fun start() {
+        Dbg.i(TAG) { "start" }
+        mediaHelper.start()
+    }
+
+    override fun stop() {
+        Dbg.i(TAG) { "stop" }
+        mediaHelper.stop()
+    }
 
     /** 内存清理保护读取（LauncherActivity.playingPkgs） */
     fun mediaHelper(): MediaHelper = mediaHelper
 
     override fun destroy() {
+        Dbg.i(TAG) { "destroy" }
         mediaHelper.stop()
         musicLauncher.cancelPending()
         mGen++
@@ -314,7 +323,11 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         if (key == mTrackKey) return
         mTrackKey = key
         resetLyrics()
-        if (title.isBlank() || title == "未在播放" || title == "未授权") return
+        if (title.isBlank() || title == "未在播放" || title == "未授权") {
+            Dbg.d(TAG) { "onTrackChanged skip: '$key'" }
+            return
+        }
+        Dbg.i(TAG) { "onTrackChanged '$key' -> fetch lyrics (gen=${mGen + 1})" }
         setPlaceholder("歌词获取中…")
         // 封面延后加载：未就绪前不显示专辑图片
         ivCover?.visibility = View.GONE
@@ -323,7 +336,10 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
             // 1. 歌词优先：取词完成立即上屏
             val data = Lyrics.loadOrFetch(activity, mProvider, artist, title, 0)
             activity.runOnUiThread {
-                if (gen != mGen || activity.isDestroyed || activity.isFinishing) return@runOnUiThread
+                if (gen != mGen || activity.isDestroyed || activity.isFinishing) {
+                    Dbg.d(TAG) { "stale lyrics dropped gen=$gen cur=$mGen" }
+                    return@runOnUiThread
+                }
                 applyData(data)
             }
             // 2. 封面延后：歌词上屏后再下载（cover.jpg 缓存后直接读文件）
@@ -429,6 +445,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     private fun applyData(data: LyricsData?) {
         if (data == null || data.isEmpty) {
             mHasTrans = false
+            Dbg.i(TAG) { "applyData: no lyrics" }
             setPlaceholder("暂无歌词")
             return
         }
@@ -437,6 +454,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         val raw = data.syncedLrc
         mLines = if (raw != null) parseLrc(raw) else emptyList()
         mPlain = if (mLines.isEmpty()) (data.plain ?: raw) else null
+        Dbg.i(TAG) { "applyData: lines=${mLines.size} trans=${mTransLines.size} plain=${mPlain != null} from=${data.songInfo?.singer ?: "-"}" }
         mCurIndex = -1
         refreshLines()
     }
@@ -554,6 +572,8 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     }
 
     companion object {
+        private const val TAG = "Lyrics"
+
         /** 默认绑定的音乐 app：QQ 音乐车机版（属性面板/长按可改） */
         const val DEFAULT_MUSIC_PKG = "com.tencent.qqmusiccar"
 

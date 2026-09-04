@@ -1,5 +1,6 @@
 package com.android.launcher37.home.widget
 import com.android.launcher37.R
+import com.android.launcher37.util.Dbg
 
 import android.app.Activity
 import android.view.MotionEvent
@@ -26,6 +27,8 @@ class WidgetHost private constructor(
     private val container: FrameLayout
 ) {
     companion object {
+        private const val TAG = "WidgetHost"
+
         /** 当前设计目标 host（设计器/Widget 手势回调用；PageHost 维护） */
         @Volatile
         var instance: WidgetHost? = null
@@ -128,6 +131,7 @@ class WidgetHost private constructor(
         mMargin = layout.margin.coerceAtLeast(0)
         val norm = LayoutRepository.normalize(layout, sw, sh)
         mNextId = (norm.widgets.maxOfOrNull { it.id } ?: 0) + 1
+        Dbg.i(TAG) { "install sw=$sw sh=$sh gap=$mGap margin=$mMargin designRequested=$designRequested widgets=${norm.widgets.size} types=${norm.widgets.joinToString { it.type }}" }
         for (spec in norm.widgets) {
             // 装配后按布局边距/边界钳制一次，保证屏幕边距对已保存布局立即生效
             val w = createWidget(spec) ?: continue
@@ -187,6 +191,7 @@ class WidgetHost private constructor(
         val runnable = Runnable {
             for (w in widgets.values) if (w is VdWidget && w.spec.visible) w.ensureLaunched()
         }
+        Dbg.i(TAG) { "ensureVdLaunched delay=${delayMs}ms vdCount=${widgets.values.count { it is VdWidget }}" }
         if (delayMs > 0) container.postDelayed(runnable, delayMs.toLong())
         else container.post(runnable)
     }
@@ -201,12 +206,14 @@ class WidgetHost private constructor(
         designer = DesignerController(activity, this, container).also { it.onExit = { onDesignerExit?.invoke() } }
     }
 
-    /** 退出设计模式：保存布局 → 恢复正常运行（widget 实时预览无需重载） */
+    /** 退出设计模式：恢复正常运行（widget 实时预览无需重载）。
+     *  注意：不在此 save() —— 设计期间每条修改路径（updateRect/updateConfig/增删）
+     *  均已实时标脏，此处再标会令"无修改退出"也被 PageHost 判为脏而全量重建。 */
     fun exitDesignMode() {
         val d = designer ?: return
+        Dbg.i(TAG) { "exitDesignMode (widgets=${widgets.size})" }
         designer = null
         d.detach()
-        save()
         for (w in widgets.values) {
             w.designMode = false
             // 退出设计模式时隐藏的 widget 恢复可见由 spec 决定（visible=false 直接 GONE）
@@ -250,6 +257,7 @@ class WidgetHost private constructor(
 
     fun updateRect(id: Int, x: Int, y: Int, w: Int, h: Int) {
         val widget = widgets[id] ?: return
+        Dbg.d(TAG) { "updateRect id=$id (${widget.spec.x},${widget.spec.y} ${widget.spec.w}x${widget.spec.h}) -> ($x,$y ${w}x$h)" }
         widget.spec = clampSpec(widget.spec.copy(x = x, y = y, w = w, h = h))
         widget.applySpec()
         save()
@@ -258,7 +266,11 @@ class WidgetHost private constructor(
     fun updateConfig(id: Int, key: String, value: String) {
         val widget = widgets[id] ?: return
         // 同页同 App 禁止重复绑定：忽略本次修改
-        if (key == CFG_VD_PKG && isVdPkgTaken(value, excludeId = id)) return
+        if (key == CFG_VD_PKG && isVdPkgTaken(value, excludeId = id)) {
+            Dbg.i(TAG) { "updateConfig REJECT dup VD pkg=$value id=$id" }
+            return
+        }
+        Dbg.d(TAG) { "updateConfig id=$id $key=$value" }
         widget.spec = widget.spec.copy(config = widget.spec.config + (key to value))
         widget.onPropChanged(key, value)
         if (widget is VdWidget) widget.onAppChanged()
@@ -290,6 +302,7 @@ class WidgetHost private constructor(
         )
         val widget = createWidget(spec) ?: return null
         save()
+        Dbg.i(TAG) { "addWidget type=$type id=$id vdPkg=$vdPkg at=($px,$py ${w}x$h)" }
         return widget
     }
 
@@ -312,6 +325,7 @@ class WidgetHost private constructor(
     /** 删除 Widget（VD 先搬回任务）；返回是否成功 */
     fun removeWidget(id: Int): Boolean {
         val widget = widgets.remove(id) ?: return false
+        Dbg.i(TAG) { "removeWidget id=$id type=${widget.displayName}" }
         if (widget is VdWidget) widget.removeWithTaskRecovery()
         else widget.destroy()
         container.removeView(widget)

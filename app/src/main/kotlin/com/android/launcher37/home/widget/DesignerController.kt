@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
+import com.android.launcher37.util.Dbg
 import kotlin.math.roundToInt
 
 /**
@@ -34,6 +35,8 @@ class DesignerController(
     private val container: FrameLayout
 ) {
     companion object {
+        private const val TAG = "Designer"
+
         private const val HANDLE_PX = 28
 
         /** 新添加 VD 的默认绑定应用：高德地图车机版 */
@@ -110,6 +113,7 @@ class DesignerController(
     }
 
     private fun select(id: Int) {
+        Dbg.d(TAG) { "select id=$id" }
         mSelected = id
         layoutSelection()
         // 新添加的 Widget 会加到 container 末尾盖住选中框，选中时把框提到最顶层

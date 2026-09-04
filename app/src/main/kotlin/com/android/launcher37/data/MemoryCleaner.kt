@@ -1,6 +1,7 @@
 package com.android.launcher37.data
 import com.android.launcher37.LauncherActivity
 import com.android.launcher37.util.MainThread
+import com.android.launcher37.util.Dbg
 import com.android.launcher37.util.SharedExecutor
 import android.app.ActivityManager
 import android.content.Context
@@ -24,6 +25,8 @@ import java.lang.reflect.Method
  * 即使目标包不在 forceStop 列表里也可能受牵连（如其他 vendor 的 vold symlink 扫描）。
  */
 object MemoryCleaner {
+
+    private const val TAG = "Cleaner"
 
     private val forceStopMethod: Method? by lazy {
         val amClass = ActivityManager::class.java
@@ -111,9 +114,11 @@ object MemoryCleaner {
      */
     @JvmStatic
     fun cleanAsync(c: Context, playingPkgs: Set<String>?, vdPkgs: Set<String>?) {
+        Dbg.i(TAG) { "cleanAsync: playing=$playingPkgs vd=$vdPkgs" }
         SharedExecutor.io().execute {
             val freedMb = clean(c, playingPkgs, vdPkgs)
             val msg = if (freedMb > 0) "已释放 $freedMb MB 内存" else "当前无后台进程可清理"
+            Dbg.i(TAG) { "clean done: freed=${freedMb}MB" }
             // Toast 统一 post 回主线程；Activity 死亡时静默
             MainThread.handler.post {
                 try { android.widget.Toast.makeText(c, msg, android.widget.Toast.LENGTH_SHORT).show() }

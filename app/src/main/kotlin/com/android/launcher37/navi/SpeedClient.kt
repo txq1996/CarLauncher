@@ -1,4 +1,5 @@
 package com.android.launcher37.navi
+import com.android.launcher37.util.Dbg
 import com.android.launcher37.util.MainThread
 import android.content.ComponentName
 import android.content.Context
@@ -40,6 +41,8 @@ class SpeedClient(
     }
 
     companion object {
+        private const val TAG = "SpeedClient"
+
         /** GPS 车速 code */
         const val CODE_GPS_SPEED = 0x65
 
@@ -66,10 +69,12 @@ class SpeedClient(
             if (mStopped) return
             if (updateCode == CODE_GPS_SPEED) {
                 val speed = if (ints[0] == 1) 0 else ints[0]
+                Dbg.d(TAG) { "speed=$speed" }
                 mMain.post {
                     if (!mStopped) mListener.onSpeedChanged(speed)
                 }
             } else if (updateCode == CODE_ACC_ON && ints[0] == 0) {
+                Dbg.i(TAG) { "ACC off" }
                 mMain.post {
                     if (!mStopped) mListener.onAccOff()
                 }
@@ -78,11 +83,13 @@ class SpeedClient(
     }
 
     fun start() {
+        Dbg.i(TAG) { "start (stopped=$mStopped)" }
         mStopped = false
         bind()
     }
 
     fun stop() {
+        Dbg.i(TAG) { "stop" }
         mStopped = true
         mMain.removeCallbacks(mRebind)
         unbind()
@@ -94,8 +101,10 @@ class SpeedClient(
         mBound = try {
             mContext.bindService(intent, this, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
+            Dbg.i(TAG) { "bind exception: ${e.message}" }
             false
         }
+        Dbg.i(TAG) { "bind ok=$mBound" }
         if (!mBound) scheduleRebind()
     }
 
@@ -107,16 +116,19 @@ class SpeedClient(
             // 静默
         }
         mBound = false
+        Dbg.d(TAG) { "unbound" }
     }
 
     private fun scheduleRebind() {
         if (mStopped) return
+        Dbg.i(TAG) { "scheduleRebind in ${mRebindDelayMs}ms" }
         mMain.removeCallbacks(mRebind)
         mMain.postDelayed(mRebind, mRebindDelayMs)
         mRebindDelayMs = minOf(mRebindDelayMs * 2, REBIND_DELAY_MAX_MS)
     }
 
     override fun onServiceConnected(name: ComponentName?, service: IBinder) {
+        Dbg.i(TAG) { "onServiceConnected" }
         try {
             val toolkit = IRemoteToolkit.Stub.asInterface(service)
             val module = toolkit.getRemoteModule(MODULE_MAIN)
@@ -125,11 +137,13 @@ class SpeedClient(
             // 连接成功复位退避：运行中 ms 重启断连后仍能秒级重试恢复
             mRebindDelayMs = REBIND_DELAY_MIN_MS
         } catch (e: RemoteException) {
+            Dbg.i(TAG) { "onServiceConnected register failed: ${e.message}" }
             scheduleRebind()
         }
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
+        Dbg.i(TAG) { "onServiceDisconnected (ms died?)" }
         mBound = false
         scheduleRebind()
     }

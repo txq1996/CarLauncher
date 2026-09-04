@@ -10,6 +10,7 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
+import com.android.launcher37.util.Dbg
 
 /**
  * 音乐播放控制（`MediaSessionManager`）。
@@ -60,6 +61,7 @@ class MediaHelper(
     private var mPlayingPkgs: Set<String> = emptySet()
 
     fun start() {
+        Dbg.i(TAG) { "start" }
         if (mMsm == null) {
             mMsm = mContext.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
         }
@@ -95,6 +97,7 @@ class MediaHelper(
     private val mWarmupEvals = Array(5) { Runnable { evaluate(safeActiveSessions()) } }
 
     fun stop() {
+        Dbg.i(TAG) { "stop" }
         mHandler.removeCallbacks(mTicker)
         mHandler.removeCallbacks(mPlayingPkgsRefresher)
         for (r in mWarmupEvals) mHandler.removeCallbacks(r)
@@ -243,6 +246,7 @@ class MediaHelper(
         if (best !== mActive) {
             detachActive()
             mActive = best
+            Dbg.i(TAG) { "evaluate: active=${best?.packageName ?: "none"} sessions=${list?.size ?: 0}" }
             if (mActive != null) {
                 mActive!!.registerCallback(mSessionCallback, mHandler)
                 refreshMetadata()
@@ -292,9 +296,13 @@ class MediaHelper(
 
     private fun recordState(state: PlaybackState?) {
         if (state == null) return
+        val wasPlaying = mPlaying
         mStatePosMs = state.position
         mStateSpeed = state.playbackSpeed
         mPlaying = isPlaying(state)
+        if (wasPlaying != mPlaying) {
+            Dbg.i(TAG) { "playback state=${state.state} playing=$mPlaying pkg=${mActive?.packageName}" }
+        }
         mStateStampMs = SystemClock.elapsedRealtime()
     }
 

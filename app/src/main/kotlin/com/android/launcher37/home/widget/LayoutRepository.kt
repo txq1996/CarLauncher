@@ -2,6 +2,7 @@ package com.android.launcher37.home.widget
 
 import android.content.Context
 import android.util.Log
+import com.android.launcher37.util.Dbg
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -73,6 +74,7 @@ object LayoutRepository {
 
     /** 保存命名布局（经典布局的修改同样写盘；重置用 [delete] 清除） */
     fun save(context: Context, layout: NamedLayout): Boolean {
+        Dbg.d(TAG) { "save name=${layout.name} pages=${layout.pages.size}" }
         val repo = loadRepo(context)
         val idx = repo.layouts.indexOfFirst { it.name == layout.name }
         val layouts = ArrayList(repo.layouts)
@@ -107,7 +109,9 @@ object LayoutRepository {
      */
     fun loadActive(context: Context, screenW: Int, screenH: Int): NamedLayout {
         migrateIfNeeded(context)
-        return load(context, activeName(context), screenW, screenH)
+        val name = activeName(context)
+        Dbg.d(TAG) { "loadActive name=$name screen=${screenW}x$screenH" }
+        return load(context, name, screenW, screenH)
             ?: builtin(screenW, screenH)
     }
 
