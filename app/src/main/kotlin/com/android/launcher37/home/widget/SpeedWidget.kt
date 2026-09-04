@@ -115,9 +115,13 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
     }
 
     override fun start() {
-        AmapNaviListener.addListener(this)
-        mSpeedClient = SpeedClient(activity, this).also { it.start() }
-        mNaviClient.start()
+        // 幂等注册：VD 抢焦只 pause 不 stop（无 stopAll），返回桌面时 onResume 会再次
+        // startAll —— 重复 start 不得重建 SpeedClient（旧实例的 ServiceConnection 泄漏）
+        if (mSpeedClient == null) {
+            AmapNaviListener.addListener(this)
+            mSpeedClient = SpeedClient(activity, this).also { it.start() }
+            mNaviClient.start()
+        }
         // 启动时默认显示巡航区域（包含车速）
         setCruise(true)
         mPanel.visibility = View.VISIBLE

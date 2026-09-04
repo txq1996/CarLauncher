@@ -89,11 +89,6 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         if (!designMode) boundPkg?.let { host.launch(it) }
     }
 
-    /** 切页时清空（非当前页同 App VD）：摘 surface 并取消挂起，避免其抢回同一任务 */
-    fun pauseVd() {
-        host.releaseTransient()
-    }
-
     /** 设计器删除：任务搬回主屏再摘 surface（避免任务困在无 surface 的 VD 上） */
     fun removeWithTaskRecovery() {
         boundPkg?.let { host.moveTaskToDefault(it) }

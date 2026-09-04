@@ -14,7 +14,6 @@ import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.view.View
 import android.view.ViewGroup
 
 /**
@@ -37,7 +36,6 @@ internal class MapPipHost private constructor(
 
     companion object {
         private const val TAG = "MapPipLocal"
-        fun available(): Boolean = android.os.Build.VERSION.SDK_INT in 28..35
 
         /**
          * 按 slotId 缓存复用：同一槽位（spec.id+1 唯一）同一时间只有一个活跃 VdWidget，
@@ -121,10 +119,6 @@ internal class MapPipHost private constructor(
             mBinding = false
         }
     }
-
-    fun view(): View = mSurfaceView
-
-    fun displayId(): Int = try { mService?.displayId ?: -1 } catch (t: Throwable) { -1 }
 
     fun attach(parent: ViewGroup) {
         if (mAttached) {

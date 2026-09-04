@@ -6,7 +6,6 @@ import com.android.launcher37.util.HoloPopup
 import com.android.launcher37.drawer.DrawerStats
 import com.android.launcher37.drawer.DrawerAdapter
 import com.android.launcher37.drawer.AppDrawer
-import com.android.launcher37.music.MediaHelper
 import com.android.launcher37.util.Prefs
 import com.android.launcher37.data.MemoryCleaner
 import com.android.launcher37.drawer.DrawerActions
@@ -68,10 +67,6 @@ object DrawerOverlay {
         DrawerStats.stop()
         sDismissAction?.run()
         sDismissAction = null
-    }
-
-    fun toggle(ctx: Context) {
-        if (isShowing()) dismiss() else show(ctx, null)
     }
 
     fun show(ctx: Context, dismissAction: Runnable?) {
@@ -180,10 +175,9 @@ object DrawerOverlay {
                 onDismiss = { dismiss() },
                 onClean = {
                     // 悬浮窗拿不到 Activity 侧 MediaHelper，仅保留 VD 保护
+                    // （cleanAsync：forceStop 走 SharedExecutor.io，避免主线程阻塞）
                     val vdPkgs = (appCtx as? LauncherApp)?.activeHost?.vdBoundedPkgs()
-                    val freed = MemoryCleaner.clean(appCtx, null, vdPkgs)
-                    val msg = if (freed > 0) "已释放 $freed MB 内存" else "当前无后台进程可清理"
-                    Toast.makeText(appCtx, msg, Toast.LENGTH_SHORT).show()
+                    MemoryCleaner.cleanAsync(appCtx, null, vdPkgs)
                 },
                 onSplitNew = {
                     Toast.makeText(appCtx, "请长按桌面应用列表条目添加分屏", Toast.LENGTH_SHORT).show()

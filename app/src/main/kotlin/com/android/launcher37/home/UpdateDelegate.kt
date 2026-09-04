@@ -89,6 +89,5 @@ class UpdateDelegate(
     })
 
     fun checkOnLaunch() = mChecker.checkOnLaunch()
-    fun checkManually() = mChecker.checkManually()
     fun release() = mChecker.release()
 }

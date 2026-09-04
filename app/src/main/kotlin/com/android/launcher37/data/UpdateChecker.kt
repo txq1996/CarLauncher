@@ -175,11 +175,14 @@ class UpdateChecker(
      */
     fun confirmUpdate() {
         val info = mPending ?: return
-        if (mDownloading.get()) return
+        // CAS 抢占下载标志：mDownloading 原在 IO 任务内才置位，快速双击"立即更新"
+        // 会双双通过检查 → 两个任务并发写同一 update.apk（文件损坏）。此处先置位拦截。
+        if (!mDownloading.compareAndSet(false, true)) return
         mExecutor.execute {
             try {
                 downloadAndInstall(info)
             } catch (e: Throwable) {
+                mDownloading.set(false)
                 Log.e(TAG, "[Updater] download failed in confirmUpdate", e)
                 postError("下载更新失败：${e.message ?: e.javaClass.simpleName}")
             }
@@ -309,7 +312,7 @@ class UpdateChecker(
 
     private fun downloadAndInstall(info: UpdateInfo) {
         mPending = null
-        mDownloading.set(true)
+        // mDownloading 已由 confirmUpdate 的 CAS 置位（此处不再重复 set）
         val apk = File(mApp.cacheDir, UPDATE_FILE)
         if (apk.exists()) apk.delete()
         Log.i(TAG, "[Updater] download start: ${info.apkUrl.takeLast(40)} (expected=${info.sizeBytes}B)")

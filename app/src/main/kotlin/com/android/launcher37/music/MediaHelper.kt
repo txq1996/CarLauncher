@@ -48,9 +48,6 @@ class MediaHelper(
     private var mStateSpeed: Float = 0f
     private var mStateStampMs: Long = 0
 
-    val isPlaying: Boolean
-        get() = mPlaying && mActive != null
-
     val activePackage: String?
         get() = mActive?.packageName
 

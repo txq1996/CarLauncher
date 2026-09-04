@@ -80,20 +80,25 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     private val lineGap: Int get() = cfgInt(CFG_GAP, 15)
     private val lineSpacing: Int get() = cfgInt(CFG_LINE_SPACING, 7)
 
-    override val props: List<WidgetProp> = listOf(
-        WidgetProp(CFG_MUSIC_PKG, "绑定音乐应用", PropType.CHOICE, "", choices = launcherChoices()),
-        WidgetProp(CFG_SHOW_TRACK, "显示歌名", PropType.BOOL, "1"),
-        WidgetProp(CFG_SHOW_ARTIST, "显示作者", PropType.BOOL, "1"),
-        WidgetProp(CFG_SHOW_BAR, "显示进度", PropType.BOOL, "1"),
-        WidgetProp(CFG_SHOW_LYRICS, "显示歌词", PropType.BOOL, "1"),
-        WidgetProp(CFG_LINES, "歌词行数", PropType.INT, "10", min = 3, max = 15),
-        WidgetProp(CFG_SIZE_CUR, "当前句字号", PropType.INT, "20", min = 10, max = 50),
-        WidgetProp(CFG_SIZE_OTHER, "其他行字号", PropType.INT, "15", min = 10, max = 50),
-        WidgetProp(CFG_SIZE_TRACK, "歌名字号", PropType.INT, "20", min = 10, max = 50),
-        WidgetProp(CFG_SIZE_ARTIST, "作者字号", PropType.INT, "14", min = 10, max = 50),
-        WidgetProp(CFG_SIZE_TIME, "时间字号", PropType.INT, "14", min = 10, max = 50),
-        WidgetProp(CFG_GAP, "内部间距", PropType.INT, "7", min = 0, max = 30)
-    )
+    // getter 惰性求值：launcherChoices() 是主线程 PackageManager 全量枚举，
+    // 若在构造期（val 初始化）执行，每次退出设置页 CLEAR_TASK 重启桌面都阻塞首帧；
+    // 改为打开属性面板时才构建（与 VdWidget.props 一致）
+    override val props: List<WidgetProp>
+        get() = listOf(
+            WidgetProp(CFG_MUSIC_PKG, "绑定音乐应用", PropType.CHOICE, "", choices = launcherChoices()),
+            WidgetProp(CFG_SHOW_TRACK, "显示歌名", PropType.BOOL, "1"),
+            WidgetProp(CFG_SHOW_ARTIST, "显示作者", PropType.BOOL, "1"),
+            WidgetProp(CFG_SHOW_BAR, "显示进度", PropType.BOOL, "1"),
+            WidgetProp(CFG_SHOW_LYRICS, "显示歌词", PropType.BOOL, "1"),
+            WidgetProp(CFG_LINES, "歌词行数", PropType.INT, "10", min = 3, max = 15),
+            WidgetProp(CFG_SIZE_CUR, "当前句字号", PropType.INT, "20", min = 10, max = 50),
+            WidgetProp(CFG_SIZE_OTHER, "其他行字号", PropType.INT, "15", min = 10, max = 50),
+            WidgetProp(CFG_SIZE_TRACK, "歌名字号", PropType.INT, "20", min = 10, max = 50),
+            WidgetProp(CFG_SIZE_ARTIST, "作者字号", PropType.INT, "14", min = 10, max = 50),
+            WidgetProp(CFG_SIZE_TIME, "时间字号", PropType.INT, "14", min = 10, max = 50),
+            WidgetProp(CFG_GAP, "内部间距", PropType.INT, "7", min = 0, max = 30),
+            WidgetProp(CFG_LINE_SPACING, "歌词行距", PropType.INT, "7", min = 0, max = 30)
+        )
 
     /** 全部可启动应用（label to packageName，字典序）供绑定选择 */
     private fun launcherChoices(): List<Pair<String, String>> = try {

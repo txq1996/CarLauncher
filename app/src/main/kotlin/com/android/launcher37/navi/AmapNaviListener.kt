@@ -213,6 +213,7 @@ object AmapNaviListener {
      *
      * 设计成幂等的原因：LauncherApp.onCreate 默认就会调，调试页也可能想直接拉起；
      * 重复 registerReceiver 会抛 IllegalArgumentException，必须先 try/catch。
+     * 进程级常驻（launcher 常驻），无 stop 入口。
      */
     @JvmStatic
     fun start(context: Context) {
@@ -230,24 +231,6 @@ object AmapNaviListener {
             Log.w(TAG, "registerReceiver failed: ${e.message}")
         }
     }
-
-    /**
-     * 停止监听。注销 receiver 并清空注册标记，下一次 [start] 可再次注册。
-     */
-    @JvmStatic
-    fun stop() {
-        if (!mRegistered) return
-        try {
-            mContext?.unregisterReceiver(mReceiver)
-        } catch (e: Exception) {
-            // 静默
-        }
-        mRegistered = false
-        resetTrafficLight()
-    }
-
-    @JvmStatic
-    fun isRunning(): Boolean = mRegistered
 
     @JvmStatic
     fun addListener(l: Listener) {

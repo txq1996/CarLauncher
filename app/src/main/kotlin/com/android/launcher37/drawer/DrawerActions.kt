@@ -6,7 +6,6 @@ import com.android.launcher37.drawer.DrawerOverlay
 import com.android.launcher37.drawer.DrawerAdapter
 import com.android.launcher37.data.SplitRepository
 import com.android.launcher37.drawer.AppDrawer
-import com.android.launcher37.music.MediaHelper
 import com.android.launcher37.data.Store
 import com.android.launcher37.util.Prefs
 import com.android.launcher37.util.SharedExecutor

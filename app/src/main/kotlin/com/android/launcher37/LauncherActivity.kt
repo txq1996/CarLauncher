@@ -5,11 +5,9 @@ import com.android.launcher37.R
 import com.android.launcher37.drawer.DrawerOverlay
 import com.android.launcher37.util.Dbg
 import com.android.launcher37.drawer.AppDrawer
-import com.android.launcher37.music.MediaHelper
 import com.android.launcher37.util.IconCache
 import com.android.launcher37.drawer.DrawerService
 import com.android.launcher37.util.Prefs
-import com.android.launcher37.data.MemoryCleaner
 
 import android.app.Activity
 import android.content.Intent
@@ -190,11 +188,6 @@ class LauncherActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         Dbg.i("VDFocusDbg") { "onNewIntent act=${intent.action} fromHome=${intent.hasCategory(Intent.CATEGORY_HOME)} mHasFocus=$mHasFocus lastPauseHadFocus=$sLastPauseHadFocus fg=$sLauncherForeground top=${dbgTop()}" }
-        // 设置页返回：重建本 Activity 以应用最新设置（无 CLEAR_TASK，避免桌面未到前台被 VD 任务抢先）
-        if (intent.getBooleanExtra(EXTRA_APPLY_SETTINGS, false)) {
-            recreate()
-            return
-        }
         mNeedVdSync = true
         val isDesigner = intent.getBooleanExtra(EXTRA_DESIGNER, false)
         if (isDesigner && !mDesignMode) {
@@ -369,8 +362,6 @@ class LauncherActivity : Activity() {
         super.onBackPressed()
     }
 
-    fun cleanMemory() = MemoryCleaner.cleanFromUi(this)
-
     /** 内存清理保护：正在播放音乐的包（全部 LyricsWidget 汇总） */
     internal fun playingPkgs(): Set<String> {
         val out = HashSet<String>()
@@ -398,9 +389,6 @@ class LauncherActivity : Activity() {
     companion object {
         /** 设置页入口：以设计器模式启动主页 */
         const val EXTRA_DESIGNER = "designer"
-
-        /** 设置页返回：走 onNewIntent 后 recreate 重建（应用设置），替代 CLEAR_TASK 重启 */
-        const val EXTRA_APPLY_SETTINGS = "apply_settings"
 
         /** 本 launcher 是否曾进入前台（onResume=true / onPause=false）。仅用于 onCreate 冷启动兜底判定。 */
         @Volatile

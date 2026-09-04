@@ -217,25 +217,6 @@ class WidgetHost private constructor(
         startAll()
     }
 
-    /**
-     * 设计模式内切页用的轻量切换：只切 widget.designMode + 建/拆 designer，
-     * 不触发 startAll/stopAll/save（避免 Music 重复注册 receiver、VD 时序抖动）。
-     * 由 PageHost 在切设计目标页时调用。
-     */
-    internal fun setDesignModeActive(active: Boolean) {
-        if (active) {
-            if (designer == null) {
-                for (w in widgets.values) w.designMode = true
-                designer = DesignerController(activity, this, container)
-                    .also { it.onExit = { onDesignerExit?.invoke() } }
-            }
-        } else {
-            designer?.detach()
-            designer = null
-            for (w in widgets.values) w.designMode = false
-        }
-    }
-
     /** 画布尺寸变化（状态栏切换）后重放全部 widget 到新边界 */
     internal fun reflow() {
         for (w in widgets.values) {
@@ -350,13 +331,6 @@ class WidgetHost private constructor(
     /** 全部 VDWidget 绑定的包名（内存清理保护集合） */
     fun vdBoundedPkgs(): Set<String> =
         widgets.values.filterIsInstance<VdWidget>().mapNotNull { it.boundPkg }.toSet()
-
-    /** 暂停绑定 [pkg] 的 VD（切页时清空其他页同 App VD，避免其抢回同一任务） */
-    fun clearVdByPkg(pkg: String) {
-        for (w in widgets.values) if (w is VdWidget && w.boundPkg == pkg) {
-            w.pauseVd()
-        }
-    }
 
     /**
      * 把绑定 [pkg] 的 VD 任务搬回主屏全屏（dock/抽屉点击 VD 同款 App 时走此路径，

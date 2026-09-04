@@ -1,7 +1,7 @@
 package com.android.launcher37.data
 import com.android.launcher37.LauncherActivity
-import com.android.launcher37.music.MediaHelper
 import com.android.launcher37.util.MainThread
+import com.android.launcher37.util.SharedExecutor
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Process
@@ -93,7 +93,7 @@ object MemoryCleaner {
 
     /**
      * 触发内存清理（UI 入口）：探测 Activity 上 Widget 的 MediaHelper / VD 绑定包
-     * （若是 [LauncherActivity]），执行 [clean] 并 Toast 释放结果。
+     * （若是 [LauncherActivity]），异步执行 [clean] 并 Toast 释放结果。
      *
      * 保护正在播放的所有 app：从 MediaHelper.playingPackages 拿到整个集合（不止
      * activePackage 一个），避免多 app 同时在播时漏掉第二个。
@@ -102,12 +102,24 @@ object MemoryCleaner {
     fun cleanFromUi(a: android.app.Activity) {
         val playing = if (a is LauncherActivity) a.playingPkgs() else null
         val vdPkgs = (a as? LauncherActivity)?.vdPkgs()
-        val freedMb = clean(a, playing, vdPkgs)
-        val msg = if (freedMb > 0) "已释放 $freedMb MB 内存" else "当前无后台进程可清理"
-        // clean() 可能在任意线程被调（UI 点击 / 抽屉动作），Toast 统一 post 回主线程
-        MainThread.handler.post {
-            try { android.widget.Toast.makeText(a, msg, android.widget.Toast.LENGTH_SHORT).show() }
-            catch (_: Throwable) { /* Activity 死亡时静默 */ }
+        cleanAsync(a, playing, vdPkgs)
+    }
+
+    /**
+     * 异步清理 + Toast 结果（AGENTS #5：forceStop 为同步 binder + killProcessGroup，
+     * 进程多时主线程阻塞秒级有 ANR 风险，须调度到 SharedExecutor.io）。
+     * playing/vdPkgs 在调用线程（主线程）先捕获，避免跨线程读 Widget 状态。
+     */
+    @JvmStatic
+    fun cleanAsync(c: Context, playingPkgs: Set<String>?, vdPkgs: Set<String>?) {
+        SharedExecutor.io().execute {
+            val freedMb = clean(c, playingPkgs, vdPkgs)
+            val msg = if (freedMb > 0) "已释放 $freedMb MB 内存" else "当前无后台进程可清理"
+            // Toast 统一 post 回主线程；Activity 死亡时静默
+            MainThread.handler.post {
+                try { android.widget.Toast.makeText(c, msg, android.widget.Toast.LENGTH_SHORT).show() }
+                catch (_: Throwable) { }
+            }
         }
     }
 }
