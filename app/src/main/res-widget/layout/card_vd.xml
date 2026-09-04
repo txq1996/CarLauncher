@@ -12,6 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- 标签叠在半透明黑遮罩上（遮罩随视频内容，固定语义）：文字固定白，日夜均保持对比 -->
     <TextView
         android:id="@+id/tv_vd_label"
         android:layout_width="match_parent"
@@ -24,6 +25,6 @@
         android:maxLines="1"
         android:padding="6px"
         android:text="VD：未选择应用"
-        android:textColor="@color/foreground_secondary"
+        android:textColor="@android:color/white"
         android:textSize="15px" />
 </FrameLayout>

@@ -247,7 +247,9 @@ class SettingsActivity : Activity() {
             }
             row.addView(TextView(ctx).apply {
                 text = name
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, 17f)
+                // 与应用/通用行主文字一致：20px + foreground（未显式设色会走主题默认色，色值有偏差）
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, 20f)
+                setTextColor(resources.getColor(R.color.foreground, theme))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 maxLines = 1
             })
@@ -347,6 +349,7 @@ class SettingsActivity : Activity() {
             addView(TextView(ctx).apply {
                 text = "显示状态栏"
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+                setTextColor(getColor(R.color.foreground))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
             addView(android.widget.CheckBox(ctx).apply {
@@ -364,12 +367,14 @@ class SettingsActivity : Activity() {
             row.addView(TextView(ctx).apply {
                 text = label
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+                setTextColor(getColor(R.color.foreground))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
-            // 实时数值显示（px）
+            // 实时数值显示（px）：辅助信息走 secondary（与 item_seek_row 的 seek_value 同层级）
             val valueText = TextView(ctx).apply {
                 text = "${value}px"
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, 15f)
+                setTextColor(getColor(R.color.foreground_secondary))
                 setPadding(0, 0, px(8), 0)
             }
             row.addView(valueText)
@@ -438,11 +443,13 @@ class SettingsActivity : Activity() {
         setPadding(18, 12, 18, 0)
     }
 
-    /** 紧凑按钮（与布局行 actionButton 同款：18px 字、56px 高、20px 水平内边距） */
+    /** 紧凑按钮（与布局行 actionButton 同款：18px 字、56px 高、20px 水平内边距、统一 bg_btn 背景） */
     private fun dialogButton(text: String, onClick: () -> Unit): Button = Button(this).apply {
         this.text = text
         setTextSize(TypedValue.COMPLEX_UNIT_PX, 18f)
         setTextColor(getColor(R.color.foreground))
+        setBackgroundResource(R.drawable.bg_btn)
+        stateListAnimator = null
         minHeight = 56
         minimumHeight = 0
         minimumWidth = 0
@@ -469,7 +476,7 @@ class SettingsActivity : Activity() {
         }
         root.addView(btnRow)
         dlg = AlertDialog.Builder(this).setView(root).create()
-        dlg.window?.setBackgroundDrawableResource(R.color.surface)
+        dlg.window?.setBackgroundDrawableResource(R.color.surface_highlight)
         dlg.show()
         dlg.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.5f).toInt(),

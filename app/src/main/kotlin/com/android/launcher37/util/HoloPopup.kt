@@ -66,6 +66,8 @@ object HoloPopup {
         val titleSize = try { Prefs.of(themed).getInt(SettingsActivity.KEY_TS_TIME, 28) } catch (_: Exception) { 28 }
         val tv = TextView(themed, null, android.R.attr.textAppearanceLarge).apply {
             text = title
+            // 标题为主文字：显式 foreground（textAppearanceLarge 走 framework 默认色，与 token 色值有偏差）
+            setTextColor(androidx.core.content.ContextCompat.getColor(themed, R.color.foreground))
             setPadding(24, 18, 24, 6)
             setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, titleSize.toFloat())
         }

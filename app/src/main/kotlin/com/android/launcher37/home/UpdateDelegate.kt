@@ -31,6 +31,9 @@ class UpdateDelegate(
                     this.text = text
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 18f)
                     setTextColor(ctx.getColor(com.android.launcher37.R.color.foreground))
+                    // 统一按钮样式（与设置页 actionButton 一致）
+                    setBackgroundResource(com.android.launcher37.R.drawable.bg_btn)
+                    stateListAnimator = null
                     minHeight = 56
                     minimumHeight = 0
                     minimumWidth = 0
@@ -68,7 +71,7 @@ class UpdateDelegate(
                     addView(btnRow)
                 }
                 dlg = AlertDialog.Builder(act).setView(root).create()
-                dlg.window?.setBackgroundDrawableResource(com.android.launcher37.R.color.surface)
+                dlg.window?.setBackgroundDrawableResource(com.android.launcher37.R.color.surface_highlight)
                 dlg.show()
                 dlg.window?.setLayout(
                     (act.resources.displayMetrics.widthPixels * 0.5f).toInt(),

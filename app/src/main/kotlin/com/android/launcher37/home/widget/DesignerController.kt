@@ -259,7 +259,7 @@ class DesignerController(
         val dialog = AlertDialog.Builder(activity)
             .setView(root)
             .create()
-        dialog.window?.setBackgroundDrawableResource(R.color.surface)
+        dialog.window?.setBackgroundDrawableResource(R.color.surface_highlight)
         dialog.show()
         dialog.window?.setLayout(dialogW, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
@@ -474,7 +474,7 @@ class DesignerController(
         val dialog = AlertDialog.Builder(activity)
             .setView(root)
             .create()
-        dialog.window?.setBackgroundDrawableResource(R.color.surface)
+        dialog.window?.setBackgroundDrawableResource(R.color.surface_highlight)
         dialog.show()
         // 紧凑自适应：宽 560px，高度随内容收缩
         dialog.window?.setLayout(560, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -604,7 +604,7 @@ class DesignerController(
         )
         root.addView(scroll)
         dialog = AlertDialog.Builder(activity).setView(root).create()
-        dialog.window?.setBackgroundDrawableResource(R.color.surface)
+        dialog.window?.setBackgroundDrawableResource(R.color.surface_highlight)
         if (onCancel != null) dialog.setOnDismissListener { if (!picked) onCancel() }
         dialog.show()
         dialog.window?.setLayout(dialogW, ViewGroup.LayoutParams.WRAP_CONTENT)

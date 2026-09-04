@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 抽屉格子（一级内容卡片）：surface 底，浮于 surface_highlight 抽屉面板之上 -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="?android:attr/colorControlHighlight">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/surface_variant" />
+            <solid android:color="@color/surface" />
             <corners android:radius="5px" />
         </shape>
     </item>

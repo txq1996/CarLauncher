@@ -1,39 +1,28 @@
-<!--
-    调色板：A_深灰蓝（浅色模式 / values/）
-    来源：out/car_launcher_color_palettes/A_深灰蓝/res/values/colors.xml
-    8 个核心 token 直接对应 palette 命名：
-      background / surface / surface_variant / surface_highlight
-      foreground / foreground_secondary / foreground_tertiary
-      divider
-    另保留：trafficRed / trafficYellow / trafficGreen（红绿灯语义固定，不随主题变）。
-    其它 M3 token（primary / secondary / error / outline 等）已删除——
-    layout / drawable / themes 中按组件语义直接引用 8 色。
--->
 <resources>
 
-    <!-- 页面背景 -->
-    <color name="background">#F5F7FA</color>
+	<!-- 页面背景：整个 Launcher 的最底层背景 -->
+	<color name="background">#F7F8FA</color>
 
-    <!-- 卡片 / 按钮 / 普通组件 -->
-    <color name="surface">#FFFFFF</color>
+	<!-- 一级容器：卡片、按钮、普通组件 -->
+	<color name="surface">#DEE2E7</color>
 
-    <!-- 输入框 / 选中区域 / 特殊组件 / 进度条底 -->
-    <color name="surface_variant">#E9EDF2</color>
+	<!-- 二级容器：输入框、进度条底、特殊组件、次级区域 -->
+	<color name="surface_variant">#C0C6CD</color>
 
-    <!-- Hover / Pressed / 选中状态 / 对话框底 -->
-    <color name="surface_highlight">#DDE5EE</color>
+	<!-- 交互状态：Pressed、Selected、Focused、对话框等强调区域 -->
+	<color name="surface_highlight">#9FA7B0</color>
 
-    <!-- 主文字 / 所有 icon stroke -->
-    <color name="foreground">#18202A</color>
+	<!-- 一级内容：标题、正文、主要文字、主要 Icon -->
+	<color name="foreground">#121820</color>
 
-    <!-- 次级文字 / 单位 / 限速 / 副标题 -->
-    <color name="foreground_secondary">#5F6B78</color>
+	<!-- 二级内容：副标题、单位、辅助信息、次要文字 -->
+	<color name="foreground_secondary">#424D59</color>
 
-    <!-- 辅助文字 / 选中主色 -->
-    <color name="foreground_tertiary">#8994A0</color>
+	<!-- 三级内容：弱辅助信息、次要提示、低优先级文字 -->
+	<color name="foreground_tertiary">#68737F</color>
 
-    <!-- 分割线 / 边框 / 描边 -->
-    <color name="divider">#D7DDE4</color>
+	<!-- 结构边界：分割线、边框、描边 -->
+	<color name="divider">#A7AFB8</color>
 
     <!-- 红绿灯（固定视觉语言，不随日/夜切换） -->
     <color name="trafficRed">#FFFF5252</color>

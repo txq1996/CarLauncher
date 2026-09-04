@@ -1,16 +1,25 @@
-<!--
-    夜间调色板（A_深灰蓝 夜色版）
-    来源：out/car_launcher_color_palettes/A_深灰蓝/res/values-night/colors.xml
-    走系统 UiMode 日/夜自动切换：系统进入夜间模式时自动启用本文件，
-    drawable-night-nodpi/ 下的资源同步切换。
--->
 <resources>
-    <color name="background">#0B1016</color>
-    <color name="surface">#151C24</color>
-    <color name="surface_variant">#1D2732</color>
-    <color name="surface_highlight">#293746</color>
-    <color name="foreground">#F1F5F9</color>
-    <color name="foreground_secondary">#AAB6C3</color>
-    <color name="foreground_tertiary">#748291</color>
-    <color name="divider">#303B47</color>
+	<!-- 页面背景：整个 Launcher 的最底层背景 -->
+	<color name="background">#101318</color>
+
+	<!-- 一级容器：卡片、按钮、普通组件 -->
+	<color name="surface">#1D2229</color>
+
+	<!-- 二级容器：输入框、进度条底、特殊组件、次级区域 -->
+	<color name="surface_variant">#2A3038</color>
+
+	<!-- 交互状态：Pressed、Selected、Focused、对话框等强调区域 -->
+	<color name="surface_highlight">#3A424C</color>
+
+	<!-- 一级内容：标题、正文、主要文字、主要 Icon -->
+	<color name="foreground">#F1F3F5</color>
+
+	<!-- 二级内容：副标题、单位、辅助信息、次要文字 -->
+	<color name="foreground_secondary">#B5BDC7</color>
+
+	<!-- 三级内容：弱辅助信息、次要提示、低优先级文字 -->
+	<color name="foreground_tertiary">#858E99</color>
+
+	<!-- 结构边界：分割线、边框、描边 -->
+	<color name="divider">#464E58</color>
 </resources>

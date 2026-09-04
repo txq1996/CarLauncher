@@ -74,11 +74,8 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
     }
 
     override fun onThemeChange() {
-        // 边框 stroke（divider 色）与标签文字色随日夜主题重取
+        // 边框 stroke（divider 色）随日夜主题重取；标签文字为固定白（叠视频黑遮罩，不随主题）
         background = activity.resources.getDrawable(R.drawable.bg_pip_frame)
-        tvLabel?.setTextColor(
-            activity.resources.getColor(R.color.foreground_secondary, activity.theme)
-        )
     }
 
     override fun ensureLaunched() {

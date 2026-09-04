@@ -40,5 +40,6 @@
         android:paddingStart="8px"
         android:paddingEnd="8px"
         android:progressTint="@color/foreground"
+        android:progressBackgroundTint="@color/surface_variant"
         android:thumbTint="@color/foreground" />
 </LinearLayout>

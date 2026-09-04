@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 设置-应用 排序列行卡片：圆角 surface_variant 底 -->
+<!-- 设置页列表行卡片（一级容器）：圆角 surface 底，行内轨道/输入框为 surface_variant 次级 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/surface_variant" />
+    <solid android:color="@color/surface" />
     <corners android:radius="10px" />
 </shape>
