@@ -40,7 +40,4 @@
     <color name="trafficYellow">#FFFFD740</color>
     <color name="trafficGreen">#FF69F0AE</color>
 
-    <!-- 抽屉图标格子底色（日间默认：与 surface_variant 一致） -->
-    <color name="drawer_icon_bg">#E9EDF2</color>
-
 </resources>

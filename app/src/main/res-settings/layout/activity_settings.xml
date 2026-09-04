@@ -145,6 +145,11 @@
                             <Button
                                 android:id="@+id/btn_check_update"
                                 style="@style/ThemeButton"
+                                android:layout_height="44px"
+                                android:paddingStart="16px"
+                                android:paddingEnd="16px"
+                                android:textSize="16px"
+                                android:singleLine="true"
                                 android:text="检查更新" />
                         </LinearLayout>
 

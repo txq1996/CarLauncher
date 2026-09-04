@@ -259,6 +259,7 @@ class DesignerController(
         val dialog = AlertDialog.Builder(activity)
             .setView(root)
             .create()
+        dialog.window?.setBackgroundDrawableResource(R.color.surface)
         dialog.show()
         dialog.window?.setLayout(dialogW, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
@@ -393,6 +394,12 @@ class DesignerController(
                 val et = EditText(activity).apply {
                     setText(w.cfg(def.key, def.default))
                     setSingleLine(true)
+                    // 输入框统一配色（surface_variant 底 + foreground 字），去系统下划线风格
+                    setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
+                    includeFontPadding = false
+                    setBackgroundResource(R.drawable.bg_input)
+                    setPadding(10, 0, 10, 0)
                     layoutParams = LinearLayout.LayoutParams(0, 48, 1f)
                     setOnFocusChangeListener { _, hasFocus ->
                         if (!hasFocus) host.updateConfig(w.spec.id, def.key, text.toString().trim())
@@ -467,6 +474,7 @@ class DesignerController(
         val dialog = AlertDialog.Builder(activity)
             .setView(root)
             .create()
+        dialog.window?.setBackgroundDrawableResource(R.color.surface)
         dialog.show()
         // 紧凑自适应：宽 560px，高度随内容收缩
         dialog.window?.setLayout(560, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -596,6 +604,7 @@ class DesignerController(
         )
         root.addView(scroll)
         dialog = AlertDialog.Builder(activity).setView(root).create()
+        dialog.window?.setBackgroundDrawableResource(R.color.surface)
         if (onCancel != null) dialog.setOnDismissListener { if (!picked) onCancel() }
         dialog.show()
         dialog.window?.setLayout(dialogW, ViewGroup.LayoutParams.WRAP_CONTENT)

@@ -113,9 +113,12 @@ object DrawerOverlay {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
-        // 半透遮罩，点击关闭（无动画）
+        // 半透遮罩，点击关闭（无动画）；复用 foreground token + 30% 视图透明度（不新增颜色）
         val scrim = View(appCtx).apply {
-            setBackgroundColor(0x4D000000) // 30% 黑
+            setBackgroundColor(
+                androidx.core.content.ContextCompat.getColor(appCtx, R.color.foreground)
+            )
+            alpha = 0.3f
             isClickable = true
             setOnClickListener { dismiss() }
         }

@@ -62,8 +62,9 @@ abstract class WidgetView(
     private fun ensureDesignLabel() {
         if (designLabel != null) return
         val tv = android.widget.TextView(activity).apply {
-            setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0x99000000.toInt())
+            // 标签配色走主题 token：日/夜自适应（浅底深字 / 深底浅字）
+            setTextColor(activity.resources.getColor(R.color.foreground, activity.theme))
+            setBackgroundColor(activity.resources.getColor(R.color.surface_highlight, activity.theme))
             setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 12f)
             setPadding(8, 2, 8, 2)
             gravity = android.view.Gravity.CENTER

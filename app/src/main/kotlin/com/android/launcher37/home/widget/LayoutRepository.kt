@@ -174,12 +174,12 @@ object LayoutRepository {
             spec(WidgetTypes.VD, pad + leftW + gap, pad, midW, contentH, mapOf(
                 CFG_VD_PKG to "com.autonavi.amapauto"
             )),
-            // 音乐卡（歌词 + 控制按钮），默认绑定 QQ 音乐
+            // 音乐卡（歌词 + 控制按钮），默认绑定 QQ 音乐（配置取自用户"我的布局"）
             spec(WidgetTypes.LYRICS, rightX, pad, rightW, contentH, mapOf(
                 LyricsWidget.CFG_MUSIC_PKG to "com.tencent.qqmusiccar",
-                LyricsWidget.CFG_LINES to "8",
-                LyricsWidget.CFG_SIZE_CUR to "20",
-                LyricsWidget.CFG_SIZE_OTHER to "18",
+                LyricsWidget.CFG_LINES to "10",
+                LyricsWidget.CFG_SIZE_CUR to "16",
+                LyricsWidget.CFG_SIZE_OTHER to "15",
                 LyricsWidget.CFG_SIZE_TIME to "15",
                 LyricsWidget.CFG_SIZE_ARTIST to "15",
                 LyricsWidget.CFG_GAP to "10"

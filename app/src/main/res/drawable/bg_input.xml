@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 输入框统一底色：surface_variant 填充 + divider 描边（日夜自适应） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/surface_variant" />
+    <stroke android:width="1px" android:color="@color/divider" />
+    <corners android:radius="4px" />
+</shape>

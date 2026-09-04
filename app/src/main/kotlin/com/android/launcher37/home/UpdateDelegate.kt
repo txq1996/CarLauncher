@@ -68,6 +68,7 @@ class UpdateDelegate(
                     addView(btnRow)
                 }
                 dlg = AlertDialog.Builder(act).setView(root).create()
+                dlg.window?.setBackgroundDrawableResource(com.android.launcher37.R.color.surface)
                 dlg.show()
                 dlg.window?.setLayout(
                     (act.resources.displayMetrics.widthPixels * 0.5f).toInt(),

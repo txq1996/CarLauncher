@@ -246,10 +246,7 @@ class SettingsActivity : Activity() {
                 setPadding(16, 0, 16, 0)
             }
             row.addView(TextView(ctx).apply {
-                text = buildString {
-                    append(name)
-                    if (isBuiltin) append("（默认·只读）")
-                }
+                text = name
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, 17f)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 maxLines = 1
@@ -282,6 +279,11 @@ class SettingsActivity : Activity() {
                 row.addView(actionButton("✏️ 重命名") {
                     val input = android.widget.EditText(ctx)
                     input.setText(name)
+                    // 输入框统一配色（surface_variant 底 + foreground 字），去系统下划线风格
+                    input.setTextColor(ctx.getColor(com.android.launcher37.R.color.foreground))
+                    input.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15f)
+                    input.setBackgroundResource(com.android.launcher37.R.drawable.bg_input)
+                    input.setPadding(12, 10, 12, 10)
                     compactDialog(
                         "重命名布局",
                         input,
@@ -467,6 +469,7 @@ class SettingsActivity : Activity() {
         }
         root.addView(btnRow)
         dlg = AlertDialog.Builder(this).setView(root).create()
+        dlg.window?.setBackgroundDrawableResource(R.color.surface)
         dlg.show()
         dlg.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.5f).toInt(),
@@ -524,6 +527,14 @@ class SettingsActivity : Activity() {
             MapFeature.RESTART_EMOJI
         )
         for (i in tags.indices) rows.add(OrderRow(tags[i], names[i], Store.normalizedEmoji(this, emojis[i])))
+        // 已保存布局（与 DrawerAdapter 同序：内置 + 用户），参与应用排序
+        for (name in LayoutRepository.listNames(this)) {
+            rows.add(OrderRow(
+                "${DrawerAdapter.LAYOUT_PREFIX}$name",
+                name,
+                Store.normalizedGlyphIcon(this, R.drawable.ic_layout)
+            ))
+        }
         val splits = SplitRepository.load(this)
         for (i in splits.indices) {
             val pair = splits[i]
