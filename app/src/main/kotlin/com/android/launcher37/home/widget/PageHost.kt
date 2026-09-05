@@ -112,9 +112,13 @@ class PageHost(
     }
 
     private fun destroyHost() {
-        host?.destroyAll() // 不落盘：未点保存的草稿随销毁丢弃
+        val h = host
         host = null
-        WidgetHost.setInstance(null)
+        h?.destroyAll() // 不落盘：未点保存的草稿随销毁丢弃
+        // 旧 Activity 的 onDestroy 在 CLEAR_TASK 重启时延迟执行（晚于新 Activity 装配）：
+        // 仅当 instance 仍指向本 host 时才清空，避免误杀新 Activity 注册的实例
+        // （换绑走 WidgetHost.instance.updateConfig，被误清空后静默失效 → 图标不变）
+        if (WidgetHost.instance === h) WidgetHost.setInstance(null)
     }
 
     fun onThemeChange() {

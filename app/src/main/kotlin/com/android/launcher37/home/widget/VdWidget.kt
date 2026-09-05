@@ -53,7 +53,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         // 设计模式（进入设计器时安装）不挂 surface，避免 :pip 自动拉起应用；
         // 普通模式立即挂载 surface。
         Dbg.i(TAG) { "onBind slot=${spec.id + 1} pkg=$boundPkg attachSurface=${!designMode}" }
-        if (!designMode) host.attach(findViewById(R.id.vd_container))
+        if (!designMode) host.attach(findViewById(R.id.vd_container), this)
     }
 
     /** 设计模式下隐藏 surface（SurfaceView 独立图层会拦截触摸，导致无法选中/拖动），
@@ -66,7 +66,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         applyLabelVisibility()
         // 恢复且 surface 尚未挂载时补挂（进入设计器时 onBind 跳过挂载的场景）
         if (!design && container is ViewGroup && container.childCount == 0) {
-            host.attach(container)
+            host.attach(container, this)
         }
     }
 
@@ -96,16 +96,17 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
     /** 设计器删除：任务搬回主屏再摘 surface（避免任务困在无 surface 的 VD 上） */
     fun removeWithTaskRecovery() {
         boundPkg?.let { host.moveTaskToDefault(it) }
-        host.releaseTransient()
+        host.releaseTransient(this)
     }
 
     /** 把本 Widget 承载的任务搬回主屏全屏（dock/抽屉启动同款 App 时调用） */
     fun moveTaskToMainScreen(): Boolean = boundPkg?.let { host.moveTaskToDefault(it) } ?: false
 
     override fun destroy() {
-        // 摘 surface（VD 与任务留在 :pip，Activity 重建后恢复显示）
+        // 摘 surface（VD 与任务留在 :pip，Activity 重建后恢复显示）；
+        // 传归属：旧 Activity 延迟销毁时不得误摘新 Widget 已挂的 surface
         Dbg.i(TAG) { "destroy slot=${spec.id + 1} (surface detached, VD kept in :pip)" }
-        host.releaseTransient()
+        host.releaseTransient(this)
     }
 
     private fun refreshLabel() {

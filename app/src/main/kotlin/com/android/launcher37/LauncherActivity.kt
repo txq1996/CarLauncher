@@ -262,9 +262,13 @@ class LauncherActivity : Activity() {
 
     override fun onDestroy() {
         AppDrawer.dismissIfShowing()
+        val h = host
         host?.destroyAll()
         host = null
-        (application as? LauncherApp)?.activeHost = null
+        // 旧 Activity 延迟销毁（CLEAR_TASK 重启时晚于新 Activity onCreate）：
+        // 仅当 activeHost 仍指向本实例时才清空，避免误杀新 Activity 注册的 host
+        // （Store/DrawerOverlay 的 VD 查询依赖 activeHost）
+        (application as? LauncherApp)?.let { if (it.activeHost === h) it.activeHost = null }
         update?.release()
         update = null
         super.onDestroy()

@@ -49,7 +49,9 @@ internal class MapPipHost private constructor(
             sHosts.getOrPut(slotId) { MapPipHost(context.applicationContext, slotId) }
     }
 
-    private val mSurfaceView = SurfaceView(mContext).apply {
+    private var mSurfaceView = newSurfaceView()
+
+    private fun newSurfaceView(): SurfaceView = SurfaceView(mContext).apply {
         isFocusable = false
         isFocusableInTouchMode = false
     }
@@ -63,6 +65,9 @@ internal class MapPipHost private constructor(
     private var mPendingLaunch: Intent? = null
     private var mSurfacePaused = false
 
+    /** 当前持有 surface 的 Widget（attach 时登记；延迟销毁防护用） */
+    private var mOwner: Any? = null
+
     /**
      * SurfaceHolder 回调：单例，attach 时复用。
      * 之前在 attach() 内联 addCallback，每次 Activity 重建都新增一个匿名实例，
@@ -75,6 +80,7 @@ internal class MapPipHost private constructor(
 
         override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
             Log.i(TAG, "surfaceChanged ${width}x$height")
+            if (holder !== mSurfaceView.holder) return // 旧 view 的过期回调，忽略
             if (width <= 0 || height <= 0) return
             mSurfaceWidth = width
             mSurfaceHeight = height
@@ -84,6 +90,7 @@ internal class MapPipHost private constructor(
 
         override fun surfaceDestroyed(holder: SurfaceHolder) {
             Log.i(TAG, "surfaceDestroyed")
+            if (holder !== mSurfaceView.holder) return // 旧 view 的过期回调，忽略
             mLastSurface = null
             detachSurface()
         }
@@ -120,10 +127,19 @@ internal class MapPipHost private constructor(
         }
     }
 
-    fun attach(parent: ViewGroup) {
+    fun attach(parent: ViewGroup, owner: Any? = null) {
+        // 每次 attach 新建 SurfaceView（不复用旧实例 reparent）：
+        // Android 10+ 上 SurfaceView 跨窗口的 surface 销毁/重建是异步事务，
+        // 复用旧实例会把失效的旧 surface 推给 :pip（VD 渲染到死 surface →
+        // DisplayDevice state OFF → 黑屏，A9 时序不同故未见此问题）。
+        // 新建保证 surfaceCreated/Changed 必然触发，推送的永远是有效新 surface。
         if (mAttached) {
+            mSurfaceView.holder.removeCallback(mSurfaceCallback)
             (mSurfaceView.parent as? ViewGroup)?.removeView(mSurfaceView)
         }
+        mSurfaceView = newSurfaceView()
+        mLastSurface = null // 旧 surface 属于旧窗口，不再复用
+        mOwner = owner // 登记 surface 归属（延迟销毁防护：旧 Widget 不得摘新 surface）
         mAttached = true
         val lp = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -133,8 +149,7 @@ internal class MapPipHost private constructor(
 
         mSurfaceView.setOnTouchListener { _, event -> forwardTouch(event) }
 
-        // 复用单例 callback，Activity 重建时先 removeCallback 避免累积监听器
-        mSurfaceView.holder.removeCallback(mSurfaceCallback)
+        // 复用单例 callback；过期回调由 holder 身份校验拦截
         mSurfaceView.holder.addCallback(mSurfaceCallback)
 
         bindServiceIfNeeded()
@@ -229,8 +244,15 @@ internal class MapPipHost private constructor(
 
     /**
      * 瞬时释放：摘 surface（不影响 VD，VD 由 :pip 进程持有）。
+     * [owner] = 请求释放的 Widget：CLEAR_TASK 重启时旧 Activity 的 onDestroy
+     * 延迟执行（晚于新 Widget attach），此时旧 Widget 的释放会误摘新 Widget
+     * 刚挂上的 surface（VD state OFF 黑屏根因）——归属已换人时跳过。
      */
-    fun releaseTransient() {
+    fun releaseTransient(owner: Any? = null) {
+        if (owner != null && mOwner != null && owner !== mOwner) {
+            Log.i(TAG, "releaseTransient skipped: stale owner (slot=$mSlotId)")
+            return
+        }
         Log.i(TAG, "releaseTransient")
         detachSurface()
         mPendingLaunch = null

@@ -68,12 +68,20 @@ class PipService : Service() {
             )
         } catch (t: Throwable) { null }
 
+        // A10+ per-display focus：VD 上的应用窗口会把输入焦点带去 VD 显示器，
+        // 主屏（桌面）随之收不到任何触摸（A9 无 per-display focus 不受影响）。
+        // 探测 setFocusedDisplay 用于把焦点归还主屏：
+        // 优先客户端 InputManager 实例方法，回退 IInputManager binder 代理（mIm 字段）。
+        private val sFocusTarget: Any?
+        private val sSetFocusedDisplay: Method?
+
         // ActivityManager hidden API（跨 display 任务搬移）
         private val sActivityTaskManagerService: Any?
         private val sMoveStackToDisplay: Method?
         private val sMoveTaskToBack: Method?
 
         init {
+            val intClass = Int::class.javaPrimitiveType!!
             var service: Any? = null
             var moveStack: Method? = null
             var moveBack: Method? = null
@@ -90,7 +98,6 @@ class PipService : Service() {
             }
             if (service != null) {
                 val cls = service.javaClass
-                val intClass = Int::class.javaPrimitiveType!!
                 // 统一搬移接口：API 28 IActivityManager.moveStackToDisplay
                 //               API 29-30 IActivityTaskManager.moveStackToDisplay
                 //               API 31+ IActivityTaskManager.moveRootTaskToDisplay
@@ -102,6 +109,37 @@ class PipService : Service() {
             sMoveStackToDisplay = moveStack
             sMoveTaskToBack = moveBack
 
+            // 焦点归还能力探测（A9 无 setFocusedDisplay → null，调用侧自动跳过）
+            var focusTarget: Any? = null
+            var focusMethod: Method? = null
+            if (sGetInputManager != null) {
+                try {
+                    val im = sGetInputManager.invoke(null)
+                    focusMethod = findMethod(
+                        android.hardware.input.InputManager::class.java,
+                        "setFocusedDisplay", intClass
+                    )
+                    if (focusMethod != null) focusTarget = im
+                } catch (t: Throwable) {
+                    Log.w(TAG, "probe client setFocusedDisplay failed", t)
+                }
+                if (focusMethod == null) {
+                    try {
+                        val im = sGetInputManager.invoke(null)
+                        val f = android.hardware.input.InputManager::class.java
+                            .getDeclaredField("mIm")
+                        f.isAccessible = true
+                        val proxy = f.get(im)
+                        focusMethod = findMethod(proxy.javaClass, "setFocusedDisplay", intClass)
+                        if (focusMethod != null) focusTarget = proxy
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "probe IInputManager.setFocusedDisplay failed", t)
+                    }
+                }
+            }
+            sFocusTarget = focusTarget
+            sSetFocusedDisplay = focusMethod
+
             Log.i(
                 TAG,
                 "API: sdk=${Build.VERSION.SDK_INT}" +
@@ -110,7 +148,8 @@ class PipService : Service() {
                     " inject=${sInjectInputEvent != null}" +
                     " forwarder=${sCreateInputForwarder != null}" +
                     " moveStack=${sMoveStackToDisplay != null}" +
-                    " moveBack=${sMoveTaskToBack != null}"
+                    " moveBack=${sMoveTaskToBack != null}" +
+                    " setFocusedDisplay=${sSetFocusedDisplay != null}"
             )
         }
 
@@ -146,6 +185,12 @@ class PipService : Service() {
             pendingLaunch = null
             if (displayId() < 0) return@Runnable
             if (!moveStaleTask(pkg, displayId())) doStart(this, pkg)
+            // VD 应用窗口就位后会抢走输入焦点（A10+ per-display focus），
+            // 主屏桌面随之收不到触摸：分三档延迟把焦点归还主屏，
+            // 覆盖应用冷/热启动的时序差异（A9 探测为空自动跳过）
+            for (delay in longArrayOf(600, 2500, 5000)) {
+                mHandler.postDelayed({ focusBackToDefaultDisplay() }, delay)
+            }
         }
 
         fun displayId(): Int = try { vd?.display?.displayId ?: -1 } catch (t: Throwable) { -1 }
@@ -442,6 +487,22 @@ class PipService : Service() {
 
     private fun moveTaskToTargetDisplay(packageName: String, targetDisplay: Int): Boolean =
         findAndMoveTask(packageName, targetDisplay, stackMoveOnlyToDefault = false, allowMoveToBack = true)
+
+    /**
+     * A10+ per-display focus：把输入焦点归还主屏（A9 无此 API，探测为空时静默跳过）。
+     * VD 拉起应用后其窗口会抢走输入焦点，主屏桌面随之收不到任何触摸
+     * （弹窗点击、桌面交互全部失效），启动后必须显式归还。
+     */
+    private fun focusBackToDefaultDisplay() {
+        val m = sSetFocusedDisplay ?: return
+        val target = sFocusTarget ?: return
+        try {
+            m.invoke(target, Display.DEFAULT_DISPLAY)
+            Log.i(TAG, "setFocusedDisplay -> default(0)")
+        } catch (t: Throwable) {
+            Log.w(TAG, "setFocusedDisplay failed", t)
+        }
+    }
 
     private fun doStart(s: Slot, packageName: String) {
         val targetDisplay = s.displayId()

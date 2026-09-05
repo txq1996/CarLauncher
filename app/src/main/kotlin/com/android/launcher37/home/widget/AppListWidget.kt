@@ -248,14 +248,13 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
     /**
      * 长按换绑：直接弹出全量绑定选择器浮窗（应用抽屉 / 回家 / 公司 / 清理 /
      * 全部布局 / 全部分屏 / 全部应用），图标+名称列表（后台预取），点击即绑定。
+     * 列表内容就绪后再显示弹窗：空列表时以小尺寸居中显示、适配器到达后
+     * 窗口不重定位，下半部分会超出屏幕不可点（Gravity.CENTER 定位竞态）。
      */
     private fun pickBinding(index: Int) {
         val themed: android.content.Context = com.android.launcher37.util.HoloPopup.themedContext(activity)
         val list = android.widget.ListView(themed)
-        val popup: android.widget.PopupWindow = com.android.launcher37.util.HoloPopup.showWithWidth(
-            activity, com.android.launcher37.util.HoloPopup.titledPanel(themed, "绑定第 ${index + 1} 项", list),
-            com.android.launcher37.util.HoloPopup.WIDTH_SMALL
-        )
+        var popup: android.widget.PopupWindow? = null
         val token = ++mPickerToken
         SharedExecutor.io().execute {
             data class Item(val icon: Drawable?, val label: String, val bind: String)
@@ -291,9 +290,15 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
                     }
                 }
                 list.onItemClickListener = android.widget.AdapterView.OnItemClickListener { _, _, pos, _ ->
-                    popup.dismiss()
+                    popup?.dismiss()
                     setBinding(index, items[pos].bind)
                 }
+                // 适配器就绪后显示：窗口按完整内容测量，超高会被钳到屏内（列表可滚动）
+                popup = com.android.launcher37.util.HoloPopup.showWithWidth(
+                    activity,
+                    com.android.launcher37.util.HoloPopup.titledPanel(themed, "绑定第 ${index + 1} 项", list),
+                    com.android.launcher37.util.HoloPopup.WIDTH_SMALL
+                )
             }
         }
     }
