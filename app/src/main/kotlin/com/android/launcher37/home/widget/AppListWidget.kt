@@ -85,12 +85,20 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
     private fun bindingTokens(): List<String> =
         cfg(CFG_BINDINGS, "").split(',').map { it.trim() }.filter { it.isNotEmpty() }
 
-    /** 换绑第 [index] 条（缺位补 auto）；写 config 走 WidgetHost（触发 refresh + 持久化） */
+    /**
+     * 换绑第 [index] 条；写 config 走 WidgetHost（触发 refresh + 持久化）。
+     * 缺位补默认与渲染侧一致（第 1 条 = drawer、其余 = auto），否则换绑第 2 条时
+     * 第 1 条会从"应用抽屉"跳变为 auto（排序第一个应用）。
+     * 运行模式换绑是显式操作：立即落盘，重启不丢（设计器内触发不了长按，互不影响）。
+     */
     private fun setBinding(index: Int, token: String) {
         val tokens = bindingTokens().toMutableList()
-        while (tokens.size <= index) tokens.add(TOKEN_AUTO)
+        while (tokens.size <= index) {
+            tokens.add(if (tokens.isEmpty()) "drawer" else TOKEN_AUTO)
+        }
         tokens[index] = token
         WidgetHost.instance?.updateConfig(spec.id, CFG_BINDINGS, tokens.joinToString(","))
+        PageHost.instance?.persistNow()
     }
 
     // ── 异步刷新 ─────────────────────────────────────
