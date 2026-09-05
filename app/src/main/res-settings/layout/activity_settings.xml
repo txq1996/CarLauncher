@@ -92,14 +92,12 @@
                             android:textColor="@color/foreground_secondary"
                             android:textSize="15px" />
 
-                        <com.android.launcher37.util.WrapRecyclerView
+                        <LinearLayout
                             android:id="@+id/box_apps"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2px"
-                            android:clipToPadding="false"
-                            android:nestedScrollingEnabled="false"
-                            android:overScrollMode="never" />
+                            android:orientation="vertical" />
 
                         <TextView
                             android:layout_width="match_parent"

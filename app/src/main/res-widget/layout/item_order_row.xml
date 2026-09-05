@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 行序拖动面板单行：长按 ☰ 拖动重排（紧凑无底色） -->
+<!-- 行序排序面板单行：↑↓按钮上下调整（紧凑无底色） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -11,6 +11,24 @@
     android:paddingBottom="4px">
 
     <TextView
+        android:id="@+id/btn_move_up"
+        android:layout_width="36px"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="▲"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="16px" />
+
+    <TextView
+        android:id="@+id/btn_move_down"
+        android:layout_width="36px"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="▼"
+        android:textColor="@color/foreground_secondary"
+        android:textSize="16px" />
+
+    <TextView
         android:id="@+id/tv_order_label"
         android:layout_width="0px"
         android:layout_height="wrap_content"
@@ -18,12 +36,4 @@
         android:includeFontPadding="false"
         android:textColor="@color/foreground"
         android:textSize="15px" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="☰"
-        android:textColor="@color/foreground_secondary"
-        android:textSize="16px" />
 </LinearLayout>

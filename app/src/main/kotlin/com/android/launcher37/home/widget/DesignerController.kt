@@ -435,81 +435,55 @@ class DesignerController(
         return row
     }
 
-    /** 行序拖动对话框：RecyclerView + ItemTouchHelper 长按拖动，松手时写回 config */
+    /** 行序对话框：↑↓按钮上下调整，实时写回 config */
     private fun showOrderDialog(w: WidgetView, def: WidgetProp) {
         val current = w.cfg(def.key, def.default).split(",").map { it.trim() }.filter { it.isNotBlank() }
         val ordered = ArrayList<String>()
         for (k in current) if (def.choices.any { it.second == k }) ordered.add(k)
         for ((_, k) in def.choices) if (k !in ordered) ordered.add(k)
 
-        val rv = androidx.recyclerview.widget.RecyclerView(activity).apply {
-            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(activity)
+        val container = android.widget.LinearLayout(activity).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
             setPadding(6, 3, 6, 3)
         }
-        val adapter = OrderAdapter(def.choices, ordered)
-        rv.adapter = adapter
 
-        val touchHelper = androidx.recyclerview.widget.ItemTouchHelper(
-            object : androidx.recyclerview.widget.ItemTouchHelper.Callback() {
-                override fun isLongPressDragEnabled() = true
-                override fun getMovementFlags(recyclerView: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder) =
-                    makeMovementFlags(androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0)
-                override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, from: androidx.recyclerview.widget.RecyclerView.ViewHolder, to: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
-                    val fromPos = from.bindingAdapterPosition
-                    val toPos = to.bindingAdapterPosition
-                    if (fromPos < 0 || toPos < 0 || fromPos == toPos) return false
-                    adapter.move(fromPos, toPos)
-                    return true
+        fun rebuildList() {
+            container.removeAllViews()
+            for (i in ordered.indices) {
+                val v = android.view.LayoutInflater.from(activity)
+                    .inflate(R.layout.item_order_row, container, false)
+                v.findViewById<TextView>(R.id.tv_order_label).text =
+                    def.choices.firstOrNull { it.second == ordered[i] }?.first ?: ordered[i]
+                v.findViewById<TextView>(R.id.btn_move_up).setOnClickListener {
+                    if (i > 0) {
+                        val item = ordered.removeAt(i)
+                        ordered.add(i - 1, item)
+                        host.updateConfig(w.spec.id, def.key, ordered.joinToString(","))
+                        rebuildList()
+                    }
                 }
-                override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
-                override fun clearView(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
-                    super.clearView(recyclerView, viewHolder)
-                    // 松手时一次性写回（避免拖动中反复重建面板）
-                    host.updateConfig(w.spec.id, def.key, adapter.ordered().joinToString(","))
+                v.findViewById<TextView>(R.id.btn_move_down).setOnClickListener {
+                    if (i < ordered.size - 1) {
+                        val item = ordered.removeAt(i)
+                        ordered.add(i + 1, item)
+                        host.updateConfig(w.spec.id, def.key, ordered.joinToString(","))
+                        rebuildList()
+                    }
                 }
+                container.addView(v)
             }
-        )
-        touchHelper.attachToRecyclerView(rv)
+        }
+        rebuildList()
 
-        // 紧凑标题替代系统大标题；点空白关闭，松手即写回
         val root = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(dialogTitle("${def.label}（长按 ☰ 拖动排序）"))
-        root.addView(rv)
+        root.addView(dialogTitle("${def.label}（↑↓ 调整行序）"))
+        root.addView(container)
         val dialog = AlertDialog.Builder(activity)
             .setView(root)
             .create()
         dialog.window?.setBackgroundDrawableResource(R.color.surface_highlight)
         dialog.show()
-        // 紧凑自适应：宽 560px，高度随内容收缩
         dialog.window?.setLayout(560, ViewGroup.LayoutParams.WRAP_CONTENT)
-    }
-
-    /** 行序拖动适配器：维护有序 key 列表并渲染标签 */
-    private class OrderAdapter(
-        private val choices: List<Pair<String, String>>,
-        private val keys: ArrayList<String>
-    ) : androidx.recyclerview.widget.RecyclerView.Adapter<OrderAdapter.VH>() {
-
-        class VH(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
-            val label: TextView = view.findViewById(R.id.tv_order_label)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
-            VH(android.view.LayoutInflater.from(parent.context).inflate(R.layout.item_order_row, parent, false))
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            holder.label.text = choices.firstOrNull { it.second == keys[position] }?.first ?: keys[position]
-        }
-
-        override fun getItemCount(): Int = keys.size
-
-        fun move(from: Int, to: Int) {
-            val item = keys.removeAt(from)
-            keys.add(to, item)
-            notifyItemMoved(from, to)
-        }
-
-        fun ordered(): List<String> = keys
     }
 
     // ── VD 承载 App 选择 ─────────────────────────────

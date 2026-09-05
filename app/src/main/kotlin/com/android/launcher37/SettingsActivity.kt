@@ -547,11 +547,10 @@ class SettingsActivity : Activity() {
     }
 
     private fun rebuildAppsPanel() {
-        val list = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.box_apps) ?: return
+        val container = findViewById<LinearLayout>(R.id.box_apps) ?: return
         val defaults = buildDefaultRows()
         val byTag = HashMap<String, OrderRow>(defaults.size * 2)
         for (r in defaults) byTag[r.tag] = r
-        // 合并：已保存顺序在前（仅保留仍存在的项），新项（新装应用/分屏/返回主页）按默认序追加
         val merged = ArrayList<OrderRow>(defaults.size)
         val seen = HashSet<String>()
         for (tag in mAppOrder) {
@@ -560,115 +559,38 @@ class SettingsActivity : Activity() {
         for (r in defaults) if (seen.add(r.tag)) merged.add(r)
         mAppOrder.clear()
         mAppOrder.addAll(merged.map { it.tag })
-        // 每次进入设置页重建 adapter，避免跨 Activity 实例复用
-        mOrderAdapter = OrderAdapter()
-        list.adapter = mOrderAdapter
-        list.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
-        mItemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(mOrderAdapter!!.DragCallback())
-        mItemTouchHelper!!.attachToRecyclerView(list)
-        mOrderAdapter!!.setRows(merged)
-    }
 
-    /**
-     * 排序/隐藏列表适配器：长按行（或按住 ≡ 手柄）上下拖动排序，
-     * checkbox 勾选隐藏。数据顺序 = mAppOrder 顺序。
-     */
-    private inner class OrderAdapter :
-        androidx.recyclerview.widget.RecyclerView.Adapter<OrderAdapter.VH>() {
-
-        private val rows = ArrayList<OrderRow>()
-        /** 拖动中顺序已改：松手时持久化 */
-        private var mDragDirty = false
-
-        fun setRows(list: List<OrderRow>) {
-            rows.clear()
-            rows.addAll(list)
-            mDragDirty = false
-            notifyDataSetChanged()
-        }
-
-        fun move(from: Int, to: Int) {
-            java.util.Collections.swap(rows, from, to)
-            notifyItemMoved(from, to)
-            mAppOrder.clear()
-            mAppOrder.addAll(rows.map { it.tag })
-            mDragDirty = true
-        }
-
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH =
-            VH(layoutInflater.inflate(R.layout.item_app_order_row, parent, false))
-
-        override fun getItemCount(): Int = rows.size
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val row = rows[position]
-            holder.icon.setImageDrawable(row.icon)
-            holder.label.text = row.label
-            holder.check.setOnCheckedChangeListener(null)
-            holder.check.isChecked = row.tag in mAppHidden
-            holder.check.setOnCheckedChangeListener { _, checked ->
+        container.removeAllViews()
+        for ((idx, row) in merged.withIndex()) {
+            val v = layoutInflater.inflate(R.layout.item_app_order_row, container, false)
+            v.findViewById<android.widget.ImageView>(R.id.app_icon).setImageDrawable(row.icon)
+            v.findViewById<TextView>(R.id.app_label).text = row.label
+            val check = v.findViewById<CheckBox>(R.id.item_check)
+            check.setOnCheckedChangeListener(null)
+            check.isChecked = row.tag in mAppHidden
+            check.setOnCheckedChangeListener { _, checked ->
                 if (checked) mAppHidden.add(row.tag) else mAppHidden.remove(row.tag)
                 Store.saveDrawerHidden(this@SettingsActivity, mAppHidden)
             }
-            // 手柄拖拽（长按行也可拖：ItemTouchHelper.isLongPressDragEnabled 默认 true）
-            holder.itemView.findViewById<TextView>(R.id.btn_drag).setOnTouchListener { _, e ->
-                if (e.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
-                    mItemTouchHelper?.startDrag(holder)
-                    return@setOnTouchListener true
-                }
-                false
-            }
-        }
-
-        inner class VH(v: android.view.View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(v) {
-            val icon: android.widget.ImageView = v.findViewById(R.id.app_icon)
-            val label: TextView = v.findViewById(R.id.app_label)
-            val check: CheckBox = v.findViewById(R.id.item_check)
-        }
-
-        inner class DragCallback : androidx.recyclerview.widget.ItemTouchHelper.Callback() {
-            override fun getMovementFlags(
-                rv: androidx.recyclerview.widget.RecyclerView,
-                vh: androidx.recyclerview.widget.RecyclerView.ViewHolder
-            ): Int = androidx.recyclerview.widget.ItemTouchHelper.Callback.makeMovementFlags(
-                androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0)
-
-            override fun isLongPressDragEnabled(): Boolean = true
-
-            override fun onMove(
-                rv: androidx.recyclerview.widget.RecyclerView,
-                from: androidx.recyclerview.widget.RecyclerView.ViewHolder,
-                to: androidx.recyclerview.widget.RecyclerView.ViewHolder
-            ): Boolean {
-                move(from.bindingAdapterPosition, to.bindingAdapterPosition)
-                return true
-            }
-
-            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
-
-            override fun onSelectedChanged(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder?, action: Int) {
-                super.onSelectedChanged(vh, action)
-                // 拖起浮起：放大 + 抬升，落位还原
-                if (action == androidx.recyclerview.widget.ItemTouchHelper.ACTION_STATE_DRAG) {
-                    vh?.itemView?.animate()?.scaleX(1.04f)?.scaleY(1.04f)
-                        ?.translationZ(12f)?.setDuration(80)?.start()
-                }
-            }
-
-            override fun clearView(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
-                super.clearView(rv, vh)
-                vh.itemView.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(120).start()
-                if (mDragDirty) {
-                    mDragDirty = false
+            v.findViewById<TextView>(R.id.btn_move_up).setOnClickListener {
+                if (idx > 0) {
+                    val tag = mAppOrder.removeAt(idx)
+                    mAppOrder.add(idx - 1, tag)
                     Store.saveDrawerOrder(this@SettingsActivity, mAppOrder)
+                    rebuildAppsPanel()
                 }
             }
+            v.findViewById<TextView>(R.id.btn_move_down).setOnClickListener {
+                if (idx < mAppOrder.size - 1) {
+                    val tag = mAppOrder.removeAt(idx)
+                    mAppOrder.add(idx + 1, tag)
+                    Store.saveDrawerOrder(this@SettingsActivity, mAppOrder)
+                    rebuildAppsPanel()
+                }
+            }
+            container.addView(v)
         }
-
     }
-
-    private var mOrderAdapter: OrderAdapter? = null
-    private var mItemTouchHelper: androidx.recyclerview.widget.ItemTouchHelper? = null
 
     private fun bindDrawerLooks() {
         val box = findViewById<LinearLayout>(R.id.box_drawer_seeks)
