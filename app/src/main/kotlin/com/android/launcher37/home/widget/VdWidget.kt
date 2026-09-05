@@ -50,6 +50,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         background = activity.resources.getDrawable(R.drawable.bg_pip_frame)
         refreshLabel()
         applyLabelVisibility()
+        applyContainerClip()
         // 设计模式（进入设计器时安装）不挂 surface，避免 :pip 自动拉起应用；
         // 普通模式立即挂载 surface。
         Dbg.i(TAG) { "onBind slot=${spec.id + 1} pkg=$boundPkg attachSurface=${!designMode}" }
@@ -78,6 +79,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
     override fun onThemeChange() {
         // 边框 stroke（divider 色）随日夜主题重取；标签文字为固定白（叠视频黑遮罩，不随主题）
         background = activity.resources.getDrawable(R.drawable.bg_pip_frame)
+        applyContainerClip()
     }
 
     override fun ensureLaunched() {
@@ -107,6 +109,16 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
         // 传归属：旧 Activity 延迟销毁时不得误摘新 Widget 已挂的 surface
         Dbg.i(TAG) { "destroy slot=${spec.id + 1} (surface detached, VD kept in :pip)" }
         host.releaseTransient(this)
+    }
+
+    private fun applyContainerClip() {
+        val container = findViewById<View>(R.id.vd_container) ?: return
+        container.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, 12f)
+            }
+        }
+        container.clipToOutline = true
     }
 
     private fun refreshLabel() {
