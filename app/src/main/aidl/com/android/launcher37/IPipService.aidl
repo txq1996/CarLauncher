@@ -54,4 +54,7 @@ interface IPipService {
 
     /** 查询指定槽位 VD 的 displayId（未创建返回 -1） */
     int getSlotDisplayId(int slotId);
+
+    /** 把所有槽位 VD 上的任务移回主屏（升级前调用，保证 Activity 不中断） */
+    void moveAllTasksToDefault();
 }

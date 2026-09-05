@@ -25,8 +25,9 @@ import java.lang.reflect.Method
  * 独立进程持有 VirtualDisplay（PIP 导航任务真正"活着"的关键）。
  *
  * 设计目标：
- * - 进程独立（android:process=":pip"）：launcher 进程被 force-stop / APK
- *   替换时本 service 仍在 → VD 仍活 → 导航任务继续运行。
+ * - 进程独立（android:process=":pip"）：launcher 进程被 force-stop 时
+ *   本 service 仍在 → VD 仍活 → 导航任务继续运行。
+ *   （升级时系统会 forceStopPackage 杀掉所有进程，包括 :pip）
  * - 触摸由 launcher 端 SurfaceView 接收后通过 [IPipService.forwardTouch]
  *   跨进程投递给本 service 注入到 VD。
  * - 启动/搬移 Activity 也由 service 直接走 ActivityManager（同一个 VD）。
@@ -211,6 +212,8 @@ class PipService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy: pid=${Process.myPid()}")
+        // 尝试把 VD 上的任务移回主屏（时间窗口可能不够，但聊胜于无）
+        moveAllTasksToDefaultInternal()
         synchronized(mSlots) {
             for (s in mSlots.values) releaseDisplay(s)
             mSlots.clear()
@@ -312,6 +315,27 @@ class PipService : Service() {
         }
 
         override fun getSlotDisplayId(slotId: Int): Int = slotDisplayId(slotId)
+
+        override fun moveAllTasksToDefault() {
+            moveAllTasksToDefaultInternal()
+        }
+    }
+
+    private fun moveAllTasksToDefaultInternal() {
+        Log.i(TAG, "moveAllTasksToDefault: moving all VD tasks back to default display")
+        synchronized(mSlots) {
+            for (s in mSlots.values) {
+                val pkg = s.currentPkg
+                if (!pkg.isNullOrEmpty()) {
+                    try {
+                        Log.i(TAG, "moveAllTasksToDefault: moving $pkg from slot=${s.id}")
+                        moveTaskToTargetDisplay(pkg, Display.DEFAULT_DISPLAY)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "moveAllTasksToDefault: failed for $pkg", t)
+                    }
+                }
+            }
+        }
     }
 
     private fun slotDisplayId(slotId: Int): Int = slot(slotId).displayId()

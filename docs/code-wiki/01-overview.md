@@ -23,10 +23,10 @@
 | 进程 | 承载组件 | 职责 |
 |------|----------|------|
 | 主进程（默认） | `LauncherActivity`、`SettingsActivity`、`DrawerService`、全部 Widget、`MediaHelper`、导航客户端 | 桌面渲染、用户交互、音乐/导航数据接收 |
-| `:pip` 独立进程 | `PipService` | 独立持有 `VirtualDisplay`；launcher 进程被杀/APK 替换时导航任务不中断 |
+| `:pip` 独立进程 | `PipService` | 独立持有 `VirtualDisplay`；launcher 进程被杀时导航任务不中断（升级时系统会 `forceStopPackage` 杀掉所有进程） |
 
 多进程的核心价值：`MapPipHost`（launcher 进程）通过 AIDL 把 `SurfaceView` 的 `Surface`
-交给 `:pip` 进程的 `PipService`，VD 及上面的导航任务在 launcher 崩溃/升级后依然存活。
+交给 `:pip` 进程的 `PipService`，VD 及上面的导航任务在 launcher 崩溃后依然存活（升级时系统会 `forceStopPackage` 杀掉所有进程）。
 
 ## 3. 分层架构
 
@@ -84,7 +84,7 @@ flowchart TD
 - **AIDL 稳定性**：所有 AIDL 方法顺序即 transaction 号，只允许在末尾追加，禁止改动既有方法。
 - **导航数据非侵入**：`AmapNaviListener` 与 `NaviTextClient` 各自独立 `registerReceiver`
   监听同一 `AUTONAVI_STANDARD_BROADCAST_SEND`，Android 框架向所有 receiver 派发，可共存。
-- **导航不中断**：VD + 导航任务由独立进程 `PipService` 持有，规避 launcher 自身升级/强杀。
+- **导航不中断**：VD + 导航任务由独立进程 `PipService` 持有，规避 launcher 自身崩溃/被杀（升级时系统会 `forceStopPackage` 杀掉所有进程）。
 
 ## 6. 入口与生命周期
 

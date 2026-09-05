@@ -70,8 +70,9 @@
         <service android:name="com.android.launcher37.drawer.DrawerService" android:exported="false" />
 
         <!--
-            独立进程持有 VirtualDisplay：launcher 进程被 force-stop / APK 替换时
+            独立进程持有 VirtualDisplay：launcher 进程被 force-stop 时
             本 service 仍在运行 → VD 和导航任务保留，导航不中断。
+            （升级时系统会 forceStopPackage 杀掉所有进程，包括 :pip）
         -->
         <service
             android:name="com.android.launcher37.pip.PipService"

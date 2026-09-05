@@ -45,7 +45,7 @@ app/src/main/
 
 ## 3. 关键架构事实
 
-- **多进程**：VD + 导航任务在 `PipService`（`:pip`）进程，launcher 强杀/升级导航不中断。
+- **多进程**：VD + 导航任务在 `PipService`（`:pip`）进程，launcher 崩溃/被杀时导航不中断（升级时系统会 `forceStopPackage` 杀掉所有进程，PIP 会中断）。
   launcher 侧 `MapPipHost` 经 AIDL 把 `SurfaceView.Surface` 交给 service。
 - **全局入口**：`LauncherApp.activeHost: PageHost?`；Activity `onCreate` 赋值、`onDestroy` 清空。
   无 Activity 上下文的调用方（`Store`/`MemoryCleaner`/`DrawerOverlay`）靠它查询 VD 绑定包名。

@@ -12,6 +12,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
+import com.android.launcher37.IPipService
+import com.android.launcher37.pip.PipService
+import android.content.ComponentName
+import android.content.ServiceConnection
+import android.os.IBinder
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
@@ -25,6 +30,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -467,6 +474,9 @@ class UpdateChecker(
                 mApp, sessionId, statusBroadcast, flags
             )
 
+            // 升级前把 VD 上的任务移回主屏，保证 Activity 不中断
+            moveAllTasksBeforeInstall()
+
             session.commit(pi2.intentSender)
             Log.i(TAG, "[Updater] PackageInstaller session committed (id=$sessionId) → 系统安装流程启动")
         } catch (e: Exception) {
@@ -478,6 +488,38 @@ class UpdateChecker(
             postError("无法启动安装器：${e.message ?: e.javaClass.simpleName}")
         } finally {
             runCatching { session?.close() }
+        }
+    }
+
+    /**
+     * 升级前把 VD 上的任务移回主屏，保证 Activity 不中断。
+     * 同步绑定 PipService 并调用 moveAllTasksToDefault，超时 2s 静默跳过。
+     */
+    private fun moveAllTasksBeforeInstall() {
+        val latch = CountDownLatch(1)
+        var svc: IPipService? = null
+        val conn = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                svc = IPipService.Stub.asInterface(binder)
+                latch.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {}
+        }
+        try {
+            val intent = Intent(mApp, PipService::class.java)
+            val ok = mApp.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+            if (!ok) {
+                Log.w(TAG, "[Updater] moveAllTasksBeforeInstall: bindService failed")
+                return
+            }
+            // 等待服务连接，最多 2s
+            latch.await(2, TimeUnit.SECONDS)
+            svc?.moveAllTasksToDefault()
+            Log.i(TAG, "[Updater] moveAllTasksBeforeInstall: done")
+        } catch (t: Throwable) {
+            Log.w(TAG, "[Updater] moveAllTasksBeforeInstall failed", t)
+        } finally {
+            try { mApp.unbindService(conn) } catch (ignored: Throwable) {}
         }
     }
 
