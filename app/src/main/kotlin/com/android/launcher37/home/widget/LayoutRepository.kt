@@ -170,9 +170,10 @@ object LayoutRepository {
             WidgetSpec(nextId[0]++, type, x, y, w, h, true, cfg)
         val rightX = pad + leftW + gap + midW + gap
         val widgets = listOf(
-            // 应用列表：首条固定应用抽屉，其余默认系统应用，共 7 条
+            // 应用列表：首条固定应用抽屉，其余按绑定渲染，共 7 条
             spec(WidgetTypes.APPLIST, pad, pad, leftW, contentH, mapOf(
-                AppListWidget.CFG_COUNT to "7"
+                AppListWidget.CFG_COUNT to "7",
+                AppListWidget.CFG_BINDINGS to "drawer,map:home,map:company,clean,app:com.autonavi.amapauto,app:com.tencent.qqmusiccar,app:com.syu.carlink"
             )),
             // VD 默认绑定高德地图车机版
             spec(WidgetTypes.VD, pad + leftW + gap, pad, midW, contentH, mapOf(

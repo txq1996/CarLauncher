@@ -47,3 +47,4 @@ test-output/
 .commandcode/
 .vs
 out-apks/
+.trae/rules/git-commit-message.md

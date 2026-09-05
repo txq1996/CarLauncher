@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -442,33 +443,23 @@ class DesignerController(
         for (k in current) if (def.choices.any { it.second == k }) ordered.add(k)
         for ((_, k) in def.choices) if (k !in ordered) ordered.add(k)
 
-        val container = android.widget.LinearLayout(activity).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
+        val container = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(6, 3, 6, 3)
         }
-
+        fun save() = host.updateConfig(w.spec.id, def.key, ordered.joinToString(","))
         fun rebuildList() {
             container.removeAllViews()
             for (i in ordered.indices) {
-                val v = android.view.LayoutInflater.from(activity)
+                val v = LayoutInflater.from(activity)
                     .inflate(R.layout.item_order_row, container, false)
                 v.findViewById<TextView>(R.id.tv_order_label).text =
                     def.choices.firstOrNull { it.second == ordered[i] }?.first ?: ordered[i]
                 v.findViewById<TextView>(R.id.btn_move_up).setOnClickListener {
-                    if (i > 0) {
-                        val item = ordered.removeAt(i)
-                        ordered.add(i - 1, item)
-                        host.updateConfig(w.spec.id, def.key, ordered.joinToString(","))
-                        rebuildList()
-                    }
+                    if (i > 0) { ordered.removeAt(i).let { ordered.add(i - 1, it) }; save(); rebuildList() }
                 }
                 v.findViewById<TextView>(R.id.btn_move_down).setOnClickListener {
-                    if (i < ordered.size - 1) {
-                        val item = ordered.removeAt(i)
-                        ordered.add(i + 1, item)
-                        host.updateConfig(w.spec.id, def.key, ordered.joinToString(","))
-                        rebuildList()
-                    }
+                    if (i < ordered.size - 1) { ordered.removeAt(i).let { ordered.add(i + 1, it) }; save(); rebuildList() }
                 }
                 container.addView(v)
             }
