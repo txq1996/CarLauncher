@@ -215,6 +215,8 @@ class SettingsActivity : Activity() {
                 this.text = text
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, 18f)
                 setTextColor(resources.getColor(R.color.foreground, theme))
+                setBackgroundResource(R.drawable.bg_btn)
+                stateListAnimator = null
                 minHeight = 56
                 minimumHeight = 0
                 minimumWidth = 0
