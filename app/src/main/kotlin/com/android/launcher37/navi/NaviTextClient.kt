@@ -181,7 +181,9 @@ class NaviTextClient(
         }
         try {
             if (Build.VERSION.SDK_INT >= 33) {
-                mContext.registerReceiver(mReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                // 必须 EXPORTED：广播由高德（其他 uid 的应用）发出，NOT_EXPORTED 的 receiver
+                // 只能收同应用/系统广播，13+ 上会静默收不到任何导航数据
+                mContext.registerReceiver(mReceiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 mContext.registerReceiver(mReceiver, filter)
             }
@@ -238,9 +240,12 @@ class NaviTextClient(
         if (limited > 0) mInfo.limitedSpeed = limited
         val cameraSpd = intent.getIntExtra("CAMERA_SPEED", mInfo.cameraSpeed)
         if (cameraSpd > 0) mInfo.cameraSpeed = cameraSpd
-        mInfo.cameraDist = intent.getIntExtra("CAMERA_DIST", mInfo.cameraDist)
-        mInfo.cameraType = intent.getIntExtra("CAMERA_TYPE", mInfo.cameraType)
-        // cameraSpeed 上面已用 >0 守护写入；不要直接覆盖（会让 -1 覆盖 12110 的有效值）
+        // cameraSpeed/cameraDist/cameraType 均以 -1 为"无数据"守护写入，
+        // 避免无相机的 10001 推送覆盖 12110 已设置的有效值
+        val cameraDis = intent.getIntExtra("CAMERA_DIST", mInfo.cameraDist)
+        if (cameraDis >= 0) mInfo.cameraDist = cameraDis
+        val cameraTyp = intent.getIntExtra("CAMERA_TYPE", mInfo.cameraType)
+        if (cameraTyp >= 0) mInfo.cameraType = cameraTyp
         mInfo.sapaDist = intent.getIntExtra("SAPA_DIST", mInfo.sapaDist)
         mInfo.sapaName = stringOr(intent.getStringExtra("SAPA_NAME"), mInfo.sapaName)
         mInfo.endPoiName = stringOr(intent.getStringExtra("endPOIName"), mInfo.endPoiName)
@@ -258,8 +263,10 @@ class NaviTextClient(
         if (!road.isNullOrEmpty()) mInfo.curRoadName = road
         val cruiseLimited = intent.getIntExtra("LIMITED_SPEED", mInfo.limitedSpeed)
         if (cruiseLimited > 0) mInfo.limitedSpeed = cruiseLimited
-        mInfo.cameraDist = intent.getIntExtra("CAMERA_DIST", mInfo.cameraDist)
-        mInfo.cameraType = intent.getIntExtra("CAMERA_TYPE", mInfo.cameraType)
+        val cruiseDis = intent.getIntExtra("CAMERA_DIST", mInfo.cameraDist)
+        if (cruiseDis >= 0) mInfo.cameraDist = cruiseDis
+        val cruiseTyp = intent.getIntExtra("CAMERA_TYPE", mInfo.cameraType)
+        if (cruiseTyp >= 0) mInfo.cameraType = cruiseTyp
         val cruiseCameraSpd = intent.getIntExtra("CAMERA_SPEED", mInfo.cameraSpeed)
         if (cruiseCameraSpd > 0) mInfo.cameraSpeed = cruiseCameraSpd
         setMode(Mode.CRUISE)

@@ -28,8 +28,11 @@ internal object MusicAppPicker {
             val ri = parent.adapter.getItem(position) as? ResolveInfo ?: return@OnItemClickListener
             onPicked("${ri.activityInfo.packageName}/${ri.activityInfo.name}")
         }
-        val entries: List<ResolveInfo> = AppQuery.launcherEntries(activity, null)
+        // 枚举 + label/icon 解析全部在 IO 线程（queryIntentActivities 是 binder 调用，
+        // 原实现在主线程枚举，与项目其他列表加载路径不一致）
         SharedExecutor.io().execute {
+            if (activity.isDestroyed || activity.isFinishing) return@execute
+            val entries: List<ResolveInfo> = AppQuery.launcherEntries(activity, null)
             val adapter = object : BaseAdapter() {
                 private val labels = ArrayList<String>()
                 private val icons = ArrayList<android.graphics.drawable.Drawable?>()

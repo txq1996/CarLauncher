@@ -170,7 +170,10 @@ class PipService : Service() {
 
     private val mHandler = MainThread.handler
 
-    /** 一个槽位 = 独立 VirtualDisplay + Surface + 输入转发 + 当前任务 */
+    /** 一个槽位 = 独立 VirtualDisplay + Surface + 输入转发 + 当前任务。
+     *  currentPkg/pendingLaunch/surfaceWidth 等字段会被 binder 线程（attach/launch）
+     *  与主线程（launchRunnable）并发读写，字段访问必须持 [Slot] 锁；
+     *  长耗时 binder 操作（moveStaleTask/doStart）不持锁，避免阻塞 attach。 */
     private inner class Slot(val id: Int) {
         var vd: VirtualDisplay? = null
         var surface: Surface? = null
@@ -182,10 +185,11 @@ class PipService : Service() {
         var pendingLaunch: String? = null
 
         val launchRunnable = Runnable {
-            val pkg = pendingLaunch ?: return@Runnable
-            pendingLaunch = null
-            if (displayId() < 0) return@Runnable
-            if (!moveStaleTask(pkg, displayId())) doStart(this, pkg)
+            val pkg = synchronized(this) { val p = pendingLaunch; pendingLaunch = null; p }
+                ?: return@Runnable
+            val display = displayId()
+            if (display < 0) return@Runnable
+            if (!moveStaleTask(pkg, display)) doStart(this, pkg)
             // VD 应用窗口就位后会抢走输入焦点（A10+ per-display focus），
             // 主屏桌面随之收不到触摸：分三档延迟把焦点归还主屏，
             // 覆盖应用冷/热启动的时序差异（A9 探测为空自动跳过）
@@ -194,7 +198,9 @@ class PipService : Service() {
             }
         }
 
-        fun displayId(): Int = try { vd?.display?.displayId ?: -1 } catch (t: Throwable) { -1 }
+        fun displayId(): Int = synchronized(this) {
+            try { vd?.display?.displayId ?: -1 } catch (t: Throwable) { -1 }
+        }
     }
 
     private val mSlots = HashMap<Int, Slot>()
@@ -249,6 +255,7 @@ class PipService : Service() {
             }
             if (width <= 0 || height <= 0) return false
             val s = slot(slotId)
+            val relaunchPkg: String?
             synchronized(s) {
                 // 释放旧 surface（防重复 attach 泄漏）；detachSurfaceSlot 也会走这里
                 val old = s.surface
@@ -261,9 +268,9 @@ class PipService : Service() {
                 s.surfaceWidth = width
                 s.surfaceHeight = height
                 ensureDisplay(s, surface, width, height)
+                relaunchPkg = s.currentPkg?.also { s.pendingLaunch = it }
             }
-            if (s.currentPkg != null) {
-                s.pendingLaunch = s.currentPkg
+            if (relaunchPkg != null) {
                 mHandler.removeCallbacks(s.launchRunnable)
                 if (launchDelayMs > 0) mHandler.postDelayed(s.launchRunnable, launchDelayMs)
                 else mHandler.post(s.launchRunnable)
@@ -297,14 +304,16 @@ class PipService : Service() {
                 return
             }
             val s = slot(slotId)
-            s.currentPkg = packageName
-            if (s.displayId() < 0) {
-                s.pendingLaunch = packageName
+            synchronized(s) { s.currentPkg = packageName }
+            val display = s.displayId()
+            if (display < 0) {
+                // VD 尚未创建：挂起待 launch，attachSurface 到位后由 relaunchPkg 路径拉起
+                synchronized(s) { s.pendingLaunch = packageName }
                 return
             }
             mHandler.removeCallbacks(s.launchRunnable)
-            if (moveStaleTask(packageName, s.displayId())) return
-            s.pendingLaunch = packageName
+            if (moveStaleTask(packageName, display)) return
+            synchronized(s) { s.pendingLaunch = packageName }
             if (launchDelayMs > 0) mHandler.postDelayed(s.launchRunnable, launchDelayMs)
             else mHandler.post(s.launchRunnable)
         }
@@ -325,7 +334,7 @@ class PipService : Service() {
         Log.i(TAG, "moveAllTasksToDefault: moving all VD tasks back to default display")
         synchronized(mSlots) {
             for (s in mSlots.values) {
-                val pkg = s.currentPkg
+                val pkg = synchronized(s) { s.currentPkg }
                 if (!pkg.isNullOrEmpty()) {
                     try {
                         Log.i(TAG, "moveAllTasksToDefault: moving $pkg from slot=${s.id}")
@@ -419,8 +428,12 @@ class PipService : Service() {
             }
         }
         ensureInputForwarder(s)
-        val fwd = s.inputForwarder
-        val m = s.forwardEvent
+        val fwd: Any?
+        val m: Method?
+        synchronized(s) {
+            fwd = s.inputForwarder
+            m = s.forwardEvent
+        }
         if (fwd != null && m != null) {
             return try {
                 true == m.invoke(fwd, event)
@@ -545,8 +558,7 @@ class PipService : Service() {
                 or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         )
-        val w = maxOf(s.surfaceWidth, 1)
-        val h = maxOf(s.surfaceHeight, 1)
+        val (w, h) = synchronized(s) { maxOf(s.surfaceWidth, 1) to maxOf(s.surfaceHeight, 1) }
         val options = ActivityOptions.makeBasic()
         options.setLaunchBounds(android.graphics.Rect(0, 0, w, h))
         options.setLaunchDisplayId(targetDisplay)

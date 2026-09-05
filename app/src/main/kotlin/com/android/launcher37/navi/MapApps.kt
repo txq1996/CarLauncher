@@ -198,7 +198,10 @@ object MapApps {
                 }
 
                 override fun onServiceDisconnected(name: ComponentName?) {
-                    // no-op
+                    // 服务端死亡也解绑：BIND_AUTO_CREATE 下不 unbind 会一直挂着连接
+                    try { c.unbindService(this) } catch (e: Exception) {
+                        // 静默
+                    }
                 }
             }, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {

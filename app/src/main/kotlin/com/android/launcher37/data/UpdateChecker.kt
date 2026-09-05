@@ -1,4 +1,5 @@
 package com.android.launcher37.data
+import com.android.launcher37.BuildConfig
 import com.android.launcher37.data.UpdateVersion
 import com.android.launcher37.util.MainThread
 import com.android.launcher37.util.Prefs
@@ -230,7 +231,8 @@ class UpdateChecker(
         try {
             val info = fetchLatestRelease() ?: run {
                 Log.w(TAG, "[Updater] fetchLatestRelease returned null")
-                if (markAutoChecked) writeLastAutoCheck()
+                // 拉取失败（限流/瞬时网络问题）不写"已检查"时间戳：否则一次失败会
+                // 抑制之后 24h 的自动检查
                 postError("未找到最新 release")
                 return
             }
@@ -363,12 +365,14 @@ class UpdateChecker(
                 return
             }
             Log.i(TAG, "[Updater] download done: ${apk.absolutePath} size=${apk.length()}B")
-            mHandler.post {
-                if (!apk.exists() || apk.length() == 0L) {
-                    postError("下载文件无效"); return@post
-                }
-                installViaPackageInstaller(apk)
+            if (!apk.exists() || apk.length() == 0L) {
+                postError("下载文件无效")
+                return
             }
+            // 安装全流程（session 写入 APK + 搬任务 + commit）留在 IO 线程：
+            // 写入几十 MB 走 binder、moveAllTasksBeforeInstall 有 2s latch 等待，
+            // 均不可在主线程执行（ANR 风险）。postError 内部自会切回主线程。
+            installViaPackageInstaller(apk)
         } catch (e: Exception) {
             Log.e(TAG, "[Updater] download exception", e)
             postError("下载失败：${e.message ?: e.javaClass.simpleName}")
@@ -386,15 +390,17 @@ class UpdateChecker(
 
     /**
      * 当前安装包的 versionCode（构建 epoch 秒数；失败兜底 0L）。
-     * SP `test_fake_local_code` 字段可被外部写一个伪造值（>= 0）以让本地比远端
-     * "看起来更老"，强制走下载路径（用于开发 / 测试）。
+     * SP `test_fake_local_code` 测试后门仅在 debug 构建生效（外部可写伪造值强制走
+     * 下载路径）；release 构建一律读真实 versionCode。
      */
     private fun currentVersionCode(): Long {
-        val fake = mApp.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
-            .getLong("test_fake_local_code", -1L)
-        if (fake >= 0L) {
-            Log.i(TAG, "[Updater] currentVersionCode overridden by SP: $fake")
-            return fake
+        if (BuildConfig.DEBUG) {
+            val fake = mApp.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
+                .getLong("test_fake_local_code", -1L)
+            if (fake >= 0L) {
+                Log.i(TAG, "[Updater] currentVersionCode overridden by SP: $fake")
+                return fake
+            }
         }
         return try {
             val pi = mApp.packageManager.getPackageInfo(mApp.packageName, 0)
@@ -410,7 +416,7 @@ class UpdateChecker(
     }
 
     /**
-     * 用 PackageInstaller session API 安装 APK。
+     * 用 PackageInstaller session API 安装 APK（IO 线程调用）。
      * 不用 Intent.ACTION_INSTALL_PACKAGE + content URI：在 sharedUserId=system 下
      * framework 拒绝 URI grant，installer 读 URI 时 SecurityException crash。
      * PackageInstaller session 走 system_server 内部路径，不需要 URI grant。
@@ -496,6 +502,7 @@ class UpdateChecker(
      * 同步绑定 PipService 并调用 moveAllTasksToDefault，超时 2s 静默跳过。
      */
     private fun moveAllTasksBeforeInstall() {
+        // IO 线程调用：bindService 回调走主 looper，latch.await(2s) 不阻塞主线程
         val latch = CountDownLatch(1)
         var svc: IPipService? = null
         val conn = object : ServiceConnection {

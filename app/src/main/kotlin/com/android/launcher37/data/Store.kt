@@ -1,5 +1,4 @@
 package com.android.launcher37.data
-import com.android.launcher37.LauncherApp
 import com.android.launcher37.R
 import com.android.launcher37.util.IconNormalizer
 import com.android.launcher37.util.MainThread
@@ -36,9 +35,6 @@ object Store {
 
     /** Icon 缓存（256 条封顶） */
     private val ICON_CACHE = LruCache<String, Drawable>(256)
-
-    /** 当前应用包名（用于应用查询时排除自身） */
-    const val SELF_PKG = "com.android.launcher37"
 
     // ── 抽屉应用排序 / 隐藏持久化 ──────────────────────
 
@@ -175,9 +171,9 @@ object Store {
         // 优先搬移到主屏全屏
         try {
             val pkg = pkgOf(id)
-            val app = c.applicationContext as? LauncherApp
-            if (app?.activeHost?.vdBoundedPkgs()?.contains(pkg) == true) {
-                if (app.activeHost?.expandVdToFullscreen(pkg) == true) return
+            val host = com.android.launcher37.home.widget.PageHost.instance
+            if (host?.vdBoundedPkgs()?.contains(pkg) == true) {
+                if (host.expandVdToFullscreen(pkg)) return
             }
         } catch (_: Throwable) {}
         try {

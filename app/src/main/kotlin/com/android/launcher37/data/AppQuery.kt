@@ -21,7 +21,7 @@ object AppQuery {
      * 列举所有可启动的桌面应用入口。
      *
      * 自动排除：
-     * - [Store.SELF_PKG]（避免桌面把自身列为可启动项）
+     * - 自身包名（Context.packageName，避免桌面把自身列为可启动项）
      * - [excludeIds] 中已包含的 `pkg/cls` 标识（用于排除已选中的项）
      *
      * @param c          任意 Context
@@ -32,10 +32,11 @@ object AppQuery {
     fun launcherEntries(c: Context, excludeIds: Set<String>?): List<ResolveInfo> {
         val out = ArrayList<ResolveInfo>()
         val main = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val self = c.packageName
         for (ri in c.packageManager.queryIntentActivities(main, 0)) {
             if (ri == null || ri.activityInfo == null
                 || ri.activityInfo.applicationInfo == null
-                || Store.SELF_PKG == ri.activityInfo.packageName
+                || self == ri.activityInfo.packageName
             ) {
                 continue
             }

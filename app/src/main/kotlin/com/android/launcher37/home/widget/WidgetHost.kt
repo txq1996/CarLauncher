@@ -188,13 +188,19 @@ class WidgetHost private constructor(
         }
     }
 
+    /** 待执行的 VD 拉起任务（多次 ensureVdLaunched 去重，只保留最近一次延迟） */
+    private var mPendingVdRunnable: Runnable? = null
+
     /** 窗口焦点就绪后拉起 VD（带 pip_start_delay 延迟，原 PIP 时序语义） */
     fun ensureVdLaunched() {
         val delayMs = VdWidget.startDelayMs(activity)
         val runnable = Runnable {
+            mPendingVdRunnable = null
             for (w in widgets.values) if (w is VdWidget && w.spec.visible) w.ensureLaunched()
         }
         Dbg.i(TAG) { "ensureVdLaunched delay=${delayMs}ms vdCount=${widgets.values.count { it is VdWidget }}" }
+        mPendingVdRunnable?.let { container.removeCallbacks(it) }
+        mPendingVdRunnable = runnable
         if (delayMs > 0) container.postDelayed(runnable, delayMs.toLong())
         else container.post(runnable)
     }
@@ -206,7 +212,7 @@ class WidgetHost private constructor(
         // 保持 start 状态：设计器实时预览实际数据（时间走秒/车速/歌词/VD 画面）
         // 仅拦截触摸（widget.designMode），不停止业务
         for (w in widgets.values) w.designMode = true
-        designer = DesignerController(activity, this, container).also { it.onExit = { onDesignerExit?.invoke() } }
+        designer = DesignerController(activity, this, container)
     }
 
     /** 退出设计模式：恢复正常运行（widget 实时预览无需重载）。

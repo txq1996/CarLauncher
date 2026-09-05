@@ -222,7 +222,7 @@ class SettingsActivity : Activity() {
             val src = LayoutRepository.load(ctx, srcName, sw, sh) ?: return
             var n = 1
             while (names.any { it == "布局$n" }) n++
-            LayoutRepository.save(ctx, NamedLayout("布局$n", src.pages))
+            LayoutRepository.save(ctx, NamedLayout("布局$n", src.page))
             LayoutRepository.setActive(ctx, "布局$n")
             PageHost.instance?.applyLayout("布局$n")
             Toast.makeText(ctx, "已复制为「布局$n」，进入设计器可编辑", Toast.LENGTH_LONG).show()
@@ -287,12 +287,15 @@ class SettingsActivity : Activity() {
                             "取消" to { },
                             "确定" to {
                                 val newName = input.text.toString().trim()
+                                // 禁逗号/换行：布局名进入 app_bindings / drawer_order 的
+                                // 逗号分隔 token（layout:<名>），含分隔符会破坏解析
                                 val valid = newName.isNotEmpty() && newName != name &&
+                                    !newName.contains(',') && !newName.contains('\n') &&
                                     !LayoutRepository.listNames(ctx).any { it == newName }
                                 if (valid) {
                                     val src = LayoutRepository.load(ctx, name, sw, sh)
                                     if (src != null) {
-                                        LayoutRepository.save(ctx, NamedLayout(newName, src.pages))
+                                        LayoutRepository.save(ctx, NamedLayout(newName, src.page))
                                         LayoutRepository.delete(ctx, name)
                                         if (active == name) {
                                             LayoutRepository.setActive(ctx, newName)
@@ -330,7 +333,7 @@ class SettingsActivity : Activity() {
         val ctx = this
         val sw = resources.displayMetrics.widthPixels
         val sh = resources.displayMetrics.heightPixels
-        val page = LayoutRepository.load(ctx, name, sw, sh)?.pages?.firstOrNull()
+        val page = LayoutRepository.load(ctx, name, sw, sh)?.page
 
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -389,8 +392,8 @@ class SettingsActivity : Activity() {
         }
 
         fun savePage(transform: (HomeLayout) -> HomeLayout) {
-            val src = LayoutRepository.load(ctx, name, sw, sh)?.pages?.firstOrNull() ?: return
-            LayoutRepository.save(ctx, NamedLayout(name, listOf(transform(src))))
+            val src = LayoutRepository.load(ctx, name, sw, sh)?.page ?: return
+            LayoutRepository.save(ctx, NamedLayout(name, transform(src)))
             // 修改的是激活布局 → 实时应用桌面
             if (LayoutRepository.activeName(ctx) == name) {
                 PageHost.instance?.applyLayout(name)
@@ -531,12 +534,11 @@ class SettingsActivity : Activity() {
             ))
         }
         val splits = SplitRepository.load(this)
-        for (i in splits.indices) {
-            val pair = splits[i]
+        for (pair in splits) {
             rows.add(OrderRow(
-                "${DrawerAdapter.SPLIT_PREFIX}$i",
-                "${Store.label(this, pair[0])}|${Store.label(this, pair[1])}",
-                Store.normalizedSplitIcon(this, pair[0], pair[1])
+                "${DrawerAdapter.SPLIT_PREFIX}${pair.id}",
+                "${Store.label(this, pair.left)}|${Store.label(this, pair.right)}",
+                Store.normalizedSplitIcon(this, pair.left, pair.right)
             ))
         }
         for (ri in mAppEntries) {
@@ -668,8 +670,9 @@ class SettingsActivity : Activity() {
         bindCheck(R.id.cb_home_direct_drawer, KEY_HOME_DIRECT_APP_DRAWER)
         bindCheck(R.id.cb_opaque_status_bar, KEY_OPAQUE_STATUS_BAR, def = false)
         val box = findViewById<LinearLayout>(R.id.box_general_seeks)
-        bindSeek(box, "桌面拉起延迟", KEY_PIP_START_DELAY, 200, 0, 1000, unit = "毫秒", step = 10)
-        bindSeek(box, "VD拉起延迟", KEY_VD_LAUNCH_DELAY, 200, 0, 1000, unit = "毫秒", step = 10)
+        // 默认 250：与 VdWidget.startDelayMs / MapPipHost.launchDelayMs 的读取方缺省一致
+        bindSeek(box, "桌面拉起延迟", KEY_PIP_START_DELAY, 250, 0, 1000, unit = "毫秒", step = 10)
+        bindSeek(box, "VD拉起延迟", KEY_VD_LAUNCH_DELAY, 250, 0, 1000, unit = "毫秒", step = 10)
         mTvUpdateStatus = findViewById(R.id.tv_update_status)
         findViewById<TextView>(R.id.tv_version_info).text = buildVersionInfo()
         val btn = findViewById<Button>(R.id.btn_check_update)

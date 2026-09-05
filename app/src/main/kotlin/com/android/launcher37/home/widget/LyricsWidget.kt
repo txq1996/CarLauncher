@@ -15,6 +15,7 @@ import android.widget.TextView
 import com.android.launcher37.util.FormatUtils
 import com.android.launcher37.util.Dbg
 import com.android.launcher37.music.MediaHelper
+import com.android.launcher37.music.MediaHub
 import com.android.launcher37.music.MusicLauncher
 import com.android.launcher37.util.SharedExecutor
 import com.android.launcher37.data.Store
@@ -29,7 +30,8 @@ import com.android.launcher37.home.SdcardMusicStore
 /**
  * 歌词 Widget：封面 + 双语歌词行 + 播放控制（原 LyricsDelegate 逻辑迁移，自包含）。
  *
- * - 自持 [MediaHelper]（跟随系统 MediaSession）+ [MusicLauncher]（冷启动唤醒）
+ * - 媒体会话走全局共享 [MediaHub]（多音乐卡实例共用同一 MediaSessionManager
+ *   监听与兜底轮询）+ [MusicLauncher]（冷启动唤醒）
  * - 取词走 [Lyrics]（sdcard 本地优先 → vkeys QQ音乐 → lrclib 兜底），
  *   封面按 info.cover 下载并缓存 cover.jpg（同目录）
  * - 行数/字号/间距为实例 config（设计器属性面板编辑）
@@ -60,8 +62,8 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         }
     }
 
-    private val mediaHelper = MediaHelper(activity, callback)
-    private val musicLauncher = MusicLauncher(activity, mediaHelper, Runnable { returnToHome() })
+    /** 冷启动唤醒链路复用全局共享的 MediaHelper（多音乐卡共用同一会话连接） */
+    private val musicLauncher = MusicLauncher(activity, MediaHub.helper, Runnable { returnToHome() })
 
     private var tvTrack: TextView? = null
     private var tvArtist: TextView? = null
@@ -78,7 +80,8 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
     private val trackSize: Int get() = cfgInt(CFG_SIZE_TRACK, 20)
     private val artistSize: Int get() = cfgInt(CFG_SIZE_ARTIST, 14)
     private val timeSize: Int get() = cfgInt(CFG_SIZE_TIME, 14)
-    private val lineGap: Int get() = cfgInt(CFG_GAP, 15)
+    // 与属性面板 WidgetProp(CFG_GAP, ..., "7") 的缺省一致
+    private val lineGap: Int get() = cfgInt(CFG_GAP, 7)
     private val lineSpacing: Int get() = cfgInt(CFG_LINE_SPACING, 7)
 
     // getter 惰性求值：launcherChoices() 是主线程 PackageManager 全量枚举，
@@ -161,17 +164,17 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         }
         // 歌曲信息区：点击 = 启动/唤醒音乐 app（默认 QQ 音乐），播放后自动返回桌面；长按换绑
         findViewById<View>(R.id.box_lyrics_info)?.setOnClickListener {
-            musicLauncher.onButton(mediaHelper::togglePlay, boundPkg())
+            musicLauncher.onButton(MediaHub.helper::togglePlay, boundPkg())
         }
         findViewById<View>(R.id.box_lyrics_info)?.setOnLongClickListener { pickMusicApp(); true }
         findViewById<View>(R.id.btn_lyrics_prev)?.setOnClickListener {
-            musicLauncher.onButton(mediaHelper::prev, boundPkg())
+            musicLauncher.onButton(MediaHub.helper::prev, boundPkg())
         }
         findViewById<View>(R.id.btn_lyrics_play)?.setOnClickListener {
-            musicLauncher.onButton(mediaHelper::togglePlay, boundPkg())
+            musicLauncher.onButton(MediaHub.helper::togglePlay, boundPkg())
         }
         findViewById<View>(R.id.btn_lyrics_next)?.setOnClickListener {
-            musicLauncher.onButton(mediaHelper::next, boundPkg())
+            musicLauncher.onButton(MediaHub.helper::next, boundPkg())
         }
         refreshAppBadge()
         applyControlTint()
@@ -236,20 +239,17 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
 
     override fun start() {
         Dbg.i(TAG) { "start" }
-        mediaHelper.start()
+        MediaHub.start(callback)
     }
 
     override fun stop() {
         Dbg.i(TAG) { "stop" }
-        mediaHelper.stop()
+        MediaHub.stop(callback)
     }
-
-    /** 内存清理保护读取（LauncherActivity.playingPkgs） */
-    fun mediaHelper(): MediaHelper = mediaHelper
 
     override fun destroy() {
         Dbg.i(TAG) { "destroy" }
-        mediaHelper.stop()
+        MediaHub.stop(callback)
         musicLauncher.cancelPending()
         mGen++
     }
@@ -263,7 +263,7 @@ class LyricsWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, 
         }
         applyControlTint()
         findViewById<android.widget.ProgressBar>(R.id.lyrics_progress)?.progressDrawable =
-            activity.resources.getDrawable(R.drawable.progress_music)
+            activity.getDrawable(R.drawable.progress_music)
         // 静态文字色重读主题（歌名主色，其余副色/三级色）
         fun text(id: Int, color: Int) {
             findViewById<TextView>(id)?.setTextColor(

@@ -28,7 +28,7 @@ app/src/main/
 ├── aidl/com/android/launcher37/   IPipService.aidl（多槽位 VD 契约）
 ├── aidl/com/syu/ipc/              车机 IPC（IRemoteToolkit 等，SpeedClient 依赖）
 ├── kotlin/com/android/launcher37/
-│   ├── LauncherApp.kt              Application / 全局 activeHost
+│   ├── LauncherApp.kt              Application / 进程级共享 client attach（Speed/Navi/Media Hub）
 │   ├── LauncherActivity.kt         主 HOME Activity
 │   ├── SettingsActivity.kt         设置页
 │   ├── home/widget/                Widget 框架（PageHost/WidgetHost/WidgetView/Designer/5类Widget）
@@ -47,8 +47,11 @@ app/src/main/
 
 - **多进程**：VD + 导航任务在 `PipService`（`:pip`）进程，launcher 崩溃/被杀时导航不中断（升级时系统会 `forceStopPackage` 杀掉所有进程，PIP 会中断）。
   launcher 侧 `MapPipHost` 经 AIDL 把 `SurfaceView.Surface` 交给 service。
-- **全局入口**：`LauncherApp.activeHost: PageHost?`；Activity `onCreate` 赋值、`onDestroy` 清空。
+- **全局入口**：`PageHost.instance`（companion 单例）；`PageHost` 构造时注册、`destroyAll` 清空。
   无 Activity 上下文的调用方（`Store`/`MemoryCleaner`/`DrawerOverlay`）靠它查询 VD 绑定包名。
+- **共享 client**：车速 IPC（`SpeedSource`）/导航文字（`NaviSource`）/媒体会话（`MediaHub`）
+  为进程级单例扇出，`LauncherApp.onCreate` attach 上下文；同类多实例 Widget 复用同一
+  底层连接，禁止在 Widget 里各自 bindService / registerReceiver。
 - **导航数据非侵入**：`AmapNaviListener` 与 `NaviTextClient` 各自 `registerReceiver` 监听同一
   `AUTONAVI_STANDARD_BROADCAST_SEND` 广播，可共存。
 - **应用标识**：统一 `pkg/cls` 字符串。启动/图标/标签/排序/隐藏都基于它。

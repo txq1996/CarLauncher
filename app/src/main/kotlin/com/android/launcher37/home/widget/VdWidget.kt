@@ -47,7 +47,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
     override fun onBind() {
         tvLabel = findViewById(R.id.tv_vd_label)
         setCardBackground(false)
-        background = activity.resources.getDrawable(R.drawable.bg_pip_frame)
+        background = activity.getDrawable(R.drawable.bg_pip_frame)
         refreshLabel()
         applyLabelVisibility()
         applyContainerClip()
@@ -78,7 +78,7 @@ class VdWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec
 
     override fun onThemeChange() {
         // 边框 stroke（divider 色）随日夜主题重取；标签文字为固定白（叠视频黑遮罩，不随主题）
-        background = activity.resources.getDrawable(R.drawable.bg_pip_frame)
+        background = activity.getDrawable(R.drawable.bg_pip_frame)
         applyContainerClip()
     }
 

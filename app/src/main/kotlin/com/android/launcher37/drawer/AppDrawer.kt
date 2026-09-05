@@ -44,19 +44,6 @@ object AppDrawer {
     private var sPopup: PopupWindow? = null
     private var sDismissListeners: MutableList<Runnable> = mutableListOf()
 
-    // 弹窗尺寸：按屏幕宽高百分比（设置项 KEY_DRAWER_WIDTH_PCT / KEY_DRAWER_HEIGHT_PCT，默认 75%）
-    private fun drawerWidthPx(ctx: Context): Int {
-        val dm = ctx.resources.displayMetrics
-        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_WIDTH_PCT, 75)
-        return (dm.widthPixels * pct / 100f).toInt()
-    }
-
-    private fun drawerHeightPx(ctx: Context): Int {
-        val dm = ctx.resources.displayMetrics
-        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_HEIGHT_PCT, 75)
-        return (dm.heightPixels * pct / 100f).toInt()
-    }
-
     fun show(activity: Activity) {
         Dbg.i("VDFocusDbg") { "AppDrawer.show()" }  // debug-point lifecy-v1
         showInternal(activity)
@@ -97,7 +84,7 @@ object AppDrawer {
         dismissIfShowing()
         val themed: Context = HoloPopup.themedContext(activity)
         val content: View = LayoutInflater.from(themed).inflate(R.layout.dialog_app_drawer, null)
-        val popup = PopupWindow(content, drawerWidthPx(activity), drawerHeightPx(activity), true).apply {
+        val popup = PopupWindow(content, DrawerActions.drawerWidthPx(activity), DrawerActions.drawerHeightPx(activity), true).apply {
             setBackgroundDrawable(themed.getDrawable(R.drawable.bg_drawer_dialog))
             isOutsideTouchable = true
             showAtLocation(activity.window.decorView, Gravity.CENTER, 0, 0)
@@ -135,8 +122,8 @@ object AppDrawer {
         grid.onItemLongClickListener = AdapterView.OnItemLongClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String
             if (tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
-                val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull() ?: return@OnItemLongClickListener true
-                DrawerActions.removeSplitAndRefresh(activity, grid, idx)
+                val id = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length)
+                DrawerActions.removeSplitAndRefresh(activity, grid, id)
             }
             true
         }

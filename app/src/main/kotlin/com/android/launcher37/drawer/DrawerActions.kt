@@ -73,11 +73,10 @@ internal object DrawerActions {
                 } catch (_: Exception) {}
             }
             tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX) -> {
-                val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull()
-                    ?: return
-                val pair = SplitRepository.get(c, idx)
+                val id = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length)
+                val pair = SplitRepository.get(c, id)
                 if (pair != null) {
-                    onDismiss(); Store.launchSplit(c, pair[0], pair[1])
+                    onDismiss(); Store.launchSplit(c, pair.left, pair.right)
                 }
             }
             tagStr.startsWith(DrawerAdapter.LAYOUT_PREFIX) -> {
@@ -104,11 +103,27 @@ internal object DrawerActions {
         }
     }
 
-    /** 长按分屏项：删除并异步重建列表 */
-    fun removeSplitAndRefresh(c: Context, grid: GridView, idx: Int) {
-        SplitRepository.remove(c, idx)
+    /** 长按分屏项：按 id 删除并异步重建列表 */
+    fun removeSplitAndRefresh(c: Context, grid: GridView, id: String) {
+        SplitRepository.remove(c, id)
         Toast.makeText(c, "已删除分屏项", Toast.LENGTH_SHORT).show()
         loadAdapterAsync(c, grid)
+    }
+
+    // ── 抽屉窗口尺寸（AppDrawer 弹窗与 DrawerOverlay 悬浮窗共用） ──────────
+
+    /** 抽屉窗口宽：屏幕宽 × 百分比（设置项 KEY_DRAWER_WIDTH_PCT，默认 75） */
+    internal fun drawerWidthPx(c: Context): Int {
+        val dm = c.resources.displayMetrics
+        val pct = Prefs.of(c).getInt(SettingsActivity.KEY_DRAWER_WIDTH_PCT, 75)
+        return (dm.widthPixels * pct / 100f).toInt()
+    }
+
+    /** 抽屉窗口高：屏幕高 × 百分比（设置项 KEY_DRAWER_HEIGHT_PCT，默认 75） */
+    internal fun drawerHeightPx(c: Context): Int {
+        val dm = c.resources.displayMetrics
+        val pct = Prefs.of(c).getInt(SettingsActivity.KEY_DRAWER_HEIGHT_PCT, 75)
+        return (dm.heightPixels * pct / 100f).toInt()
     }
 
     /**

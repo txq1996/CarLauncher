@@ -1,5 +1,4 @@
 package com.android.launcher37.drawer
-import com.android.launcher37.LauncherApp
 import com.android.launcher37.SettingsActivity
 import com.android.launcher37.R
 import com.android.launcher37.util.HoloPopup
@@ -35,36 +34,25 @@ object DrawerOverlay {
 
     private var sOverlayRoot: ViewGroup? = null
     private var sWindowManager: WindowManager? = null
+    /** 无悬浮窗权限时的 fallback 标记：AppDrawer 弹窗代为展示，dismiss 转发 */
+    private var sFallback = false
     private var sDismissAction: Runnable? = null
 
-    private fun drawerWidthPx(ctx: Context): Int {
-        val dm = ctx.resources.displayMetrics
-        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_WIDTH_PCT, 75)
-        return (dm.widthPixels * pct / 100f).toInt()
-    }
-
-    private fun drawerHeightPx(ctx: Context): Int {
-        val dm = ctx.resources.displayMetrics
-        val pct = Prefs.of(ctx).getInt(SettingsActivity.KEY_DRAWER_HEIGHT_PCT, 75)
-        return (dm.heightPixels * pct / 100f).toInt()
-    }
-
-    fun isShowing(): Boolean = sOverlayRoot != null
+    fun isShowing(): Boolean = sOverlayRoot != null || sFallback
 
     fun dismiss() {
-        val wm = sWindowManager
-        val root = sOverlayRoot
-        if (wm != null && root != null) {
-            if (root.tag != "fallback") {
-                try { wm.removeView(root) } catch (_: Exception) {}
-            } else {
-                AppDrawer.dismissIfShowing()
-            }
-        } else if (root?.tag == "fallback") {
+        if (sFallback) {
             AppDrawer.dismissIfShowing()
+        } else {
+            val wm = sWindowManager
+            val root = sOverlayRoot
+            if (wm != null && root != null) {
+                try { wm.removeView(root) } catch (_: Exception) {}
+            }
         }
         sOverlayRoot = null
         sWindowManager = null
+        sFallback = false
         DrawerStats.stop()
         sDismissAction?.run()
         sDismissAction = null
@@ -83,8 +71,7 @@ object DrawerOverlay {
                 })
                 sDismissAction = dismissAction
                 // 标记 fallback：isShowing()==true，后续 dismiss 转发给 AppDrawer
-                sOverlayRoot = FrameLayout(ctx).apply { tag = "fallback" }
-                sWindowManager = null
+                sFallback = true
             }
             return
         }
@@ -124,7 +111,7 @@ object DrawerOverlay {
 
         // 卡片直接复用 dialog 布局，保持原有直角风格，无圆角无阴影
         val content: View = LayoutInflater.from(themed).inflate(R.layout.dialog_app_drawer, root, false)
-        val cardLp = FrameLayout.LayoutParams(drawerWidthPx(appCtx), drawerHeightPx(appCtx), Gravity.CENTER)
+        val cardLp = FrameLayout.LayoutParams(DrawerActions.drawerWidthPx(appCtx), DrawerActions.drawerHeightPx(appCtx), Gravity.CENTER)
         // 不再硬限 maxW/maxH：尺寸已由百分比设置项控制（50~95%）
         root.addView(content, cardLp)
 
@@ -177,7 +164,7 @@ object DrawerOverlay {
                 onClean = {
                     // 悬浮窗拿不到 Activity 侧 MediaHelper，仅保留 VD 保护
                     // （cleanAsync：forceStop 走 SharedExecutor.io，避免主线程阻塞）
-                    val vdPkgs = (appCtx as? LauncherApp)?.activeHost?.vdBoundedPkgs()
+                    val vdPkgs = com.android.launcher37.home.widget.PageHost.instance?.vdBoundedPkgs()
                     MemoryCleaner.cleanAsync(appCtx, null, vdPkgs)
                 },
                 onSplitNew = {
@@ -188,9 +175,8 @@ object DrawerOverlay {
         grid.onItemLongClickListener = android.widget.AdapterView.OnItemLongClickListener { _, view, _, _ ->
             val tagStr = view.tag as? String
             if (tagStr != null && tagStr.startsWith(DrawerAdapter.SPLIT_PREFIX)) {
-                val idx = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length).toIntOrNull()
-                    ?: return@OnItemLongClickListener true
-                DrawerActions.removeSplitAndRefresh(appCtx, grid, idx)
+                val id = tagStr.substring(DrawerAdapter.SPLIT_PREFIX.length)
+                DrawerActions.removeSplitAndRefresh(appCtx, grid, id)
             }
             true
         }

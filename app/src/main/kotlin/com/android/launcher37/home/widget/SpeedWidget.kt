@@ -10,6 +10,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.android.launcher37.navi.AmapNaviListener
+import com.android.launcher37.navi.NaviSource
+import com.android.launcher37.navi.SpeedSource
 import com.android.launcher37.util.FormatUtils
 import com.android.launcher37.navi.NaviTextClient
 import com.android.launcher37.SettingsActivity
@@ -20,14 +22,14 @@ import com.android.launcher37.util.SysProps
  * 车速/导航 Widget：车速区（数字/单位/限速/红绿灯倒计时）+ 导航行序渲染
  * （原 SpeedDelegate + NaviPanelDelegate 逻辑合并迁移，自包含）。
  *
- * 数据源（三路独立 receiver，合并决策）：
- * - [SpeedClient]（MS IPC 车速）：>1 km/h 优先（实时性好）
+ * 数据源（三路监听，合并决策；多实例共享同一底层连接，见 SpeedSource/NaviSource）：
+ * - [SpeedSource]（MS IPC 车速）：>1 km/h 优先（实时性好）
  * - [AmapNaviListener]（高德广播）：MS 无效时用 CUR_SPEED；红绿灯倒计时
- * - [NaviTextClient]（高德广播基础字段）：模式/限速/转向/路名/终点/ETA
+ * - [NaviSource]（高德广播基础字段）：模式/限速/转向/路名/终点/ETA
  *
- * 行序/字号/显隐为实例自身 config（设计器"属性"面板独立调整，config 键沿用原
+ * 行序/字号/显隐为实例 config（设计器"属性"面板独立调整，config 键沿用原
  * 设置页 SP 键名）；结构签名未变化时高德 ~1Hz 推送只更新文本，不重建 View。
- * 允许多实例：每个实例独立注册三路监听，渲染到各自的 navi_panel。
+ * 允许多实例：渲染到各自的 navi_panel。
  */
 class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, spec, R.layout.card_speed),
     SpeedClient.Listener, AmapNaviListener.Listener, NaviTextClient.Listener {
@@ -53,7 +55,6 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
     private lateinit var mTvDirection: TextView
 
     // ── 车速状态（原 SpeedDelegate） ────────────────────
-    private var mSpeedClient: SpeedClient? = null
     private var mIpcSpeed: Int = 0
     private var mAmapSpeed: Int? = null
     private var mCruise: Boolean = false
@@ -71,7 +72,6 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
     private var mTrafficColor: Int = 0
 
     // ── 导航面板状态（原 NaviPanelDelegate） ────────────
-    private val mNaviClient: NaviTextClient = NaviTextClient(activity, this)
     private var mLastStructureSig: String? = null
 
     override fun onBind() {
@@ -115,13 +115,11 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
     }
 
     override fun start() {
-        // 幂等注册：VD 抢焦只 pause 不 stop（无 stopAll），返回桌面时 onResume 会再次
-        // startAll —— 重复 start 不得重建 SpeedClient（旧实例的 ServiceConnection 泄漏）
-        if (mSpeedClient == null) {
-            AmapNaviListener.addListener(this)
-            mSpeedClient = SpeedClient(activity, this).also { it.start() }
-            mNaviClient.start()
-        }
+        // 共享源（SpeedSource/NaviSource）多实例复用同一 client：addListener 幂等，
+        // VD 抢焦只 pause 不 stop、onResume 再次 startAll 不会重复注册
+        AmapNaviListener.addListener(this)
+        SpeedSource.addListener(this)
+        NaviSource.addListener(this)
         // 启动时默认显示巡航区域（包含车速）
         setCruise(true)
         mPanel.visibility = View.VISIBLE
@@ -131,9 +129,8 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
 
     override fun stop() {
         AmapNaviListener.removeListener(this)
-        mSpeedClient?.stop()
-        mSpeedClient = null
-        mNaviClient.stop()
+        SpeedSource.removeListener(this)
+        NaviSource.removeListener(this)
     }
 
     /** 日/夜主题切换后清空结构签名强制全量重建（动态文字/图标重读色） */
@@ -394,7 +391,7 @@ class SpeedWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity, s
             4 -> activity.resources.getColor(R.color.trafficGreen, activity.theme)
             else -> activity.resources.getColor(R.color.trafficYellow, activity.theme)
         }
-        mTrafficText = if (info.countdown >= 0) "${info.countdown}" else "--"
+        mTrafficText = "${info.countdown}"
         mTrafficColor = color
         mTvTrafficSec?.setTextColor(color)
         mTvTrafficSec?.text = mTrafficText

@@ -1,8 +1,6 @@
 @file:Suppress("DEPRECATION")
 
 package com.android.launcher37.navi
-import com.android.launcher37.LauncherApp
-import com.android.launcher37.navi.NaviTextClient
 import com.android.launcher37.util.MainThread
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -222,7 +220,9 @@ object AmapNaviListener {
         val filter = IntentFilter(ACTION)
         try {
             if (Build.VERSION.SDK_INT >= 33) {
-                mContext!!.registerReceiver(mReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                // 必须 EXPORTED：广播由高德（其他 uid 的应用）发出，NOT_EXPORTED 的 receiver
+                // 只能收同应用/系统广播，13+ 上会静默收不到任何导航数据
+                mContext!!.registerReceiver(mReceiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 mContext!!.registerReceiver(mReceiver, filter)
             }
@@ -416,11 +416,6 @@ object AmapNaviListener {
             nextSapaType = asInt(extras.get("NEXT_SAPA_TYPE"), 0),
             etaText = extras.getString("ETA_TEXT")
         )
-    }
-
-    /** 把任务切到主线程（与 NaviTextClient 一致）。仅在已注册时 post。 */
-    private fun post(block: () -> Unit) {
-        if (mRegistered) mHandler.post(block)
     }
 
     private var mTrafficLightLastUpdate: Long = 0

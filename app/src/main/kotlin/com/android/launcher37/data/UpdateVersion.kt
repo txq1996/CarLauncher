@@ -8,7 +8,7 @@ import com.android.launcher37.data.UpdateChecker
  * - [parseVersionCodeFromBody] 从 release Markdown body 提取整数 versionCode
  *   （构建 epoch 秒数）。失败返回 0L，由调用方决定 fallback。
  * - [compareVersionName] 字典序比较。
- * - [compareVersionCode] 整数比较（构建 epoch 秒数天然单调递增）。
+ * - versionCode 为构建 epoch 秒数，天然单调递增，直接整数比较即可。
  *
  * 这些函数独立、无状态、依赖最小，如需补充单测可直接 JUnit 覆盖。
  */

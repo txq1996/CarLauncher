@@ -48,9 +48,6 @@ class DesignerController(
         private const val H_B = 8
     }
 
-    /** 退出设计模式回调（Activity 恢复状态栏/隐藏工具栏） */
-    var onExit: (() -> Unit)? = null
-
     /** 选中框 + 缩放手柄（container 最顶层；空白区域事件穿透） */
     val selectionOverlay: FrameLayout = FrameLayout(activity).apply {
         setBackgroundResource(R.drawable.design_sel_stroke)
@@ -156,7 +153,7 @@ class DesignerController(
                 // 左上角定位固定：仅右/下方向调整宽高，x/y 恒定不变；
                 // 宽高上限为右/下边距线——贴边后继续拖动不再变化（不会从对侧反向变大）
                 var width = w.spec.w; var height = w.spec.h
-                val minSize = 40
+                val minSize = LayoutRepository.MIN_SIZE
                 val m = host.margin
                 val maxW = (host.screenW() - m - w.spec.x).coerceAtLeast(minSize)
                 val maxH = (host.screenH() - m - w.spec.y).coerceAtLeast(minSize)

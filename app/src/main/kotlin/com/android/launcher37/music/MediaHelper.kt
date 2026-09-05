@@ -37,7 +37,12 @@ class MediaHelper(
     companion object {
         private const val TAG = "MediaHelper"
         private const val TICK_MS = 500L
+
+        /** 有活跃会话时的兜底轮询周期（会话状态翻转可能漏回调） */
         private const val PLAYING_PKGS_REFRESH_MS = 2_000L
+
+        /** 无任何会话时的疏轮询周期：仅兜底"新会话出现但 listener 漏通知" */
+        private const val IDLE_PKGS_REFRESH_MS = 10_000L
     }
 
     private val mHandler = MainThread.handler
@@ -59,6 +64,9 @@ class MediaHelper(
         get() = mPlayingPkgs
 
     private var mPlayingPkgs: Set<String> = emptySet()
+
+    /** 最近一次 refreshPlayingPackages 看到的活跃会话数（决定兜底轮询疏密） */
+    private var mLastSessionCount = 0
 
     fun start() {
         Dbg.i(TAG) { "start" }
@@ -205,8 +213,8 @@ class MediaHelper(
 
     private fun refreshPlayingPackages() {
         val list = safeActiveSessions()
-        val pkgs = collectPlayingPackages(list)
-        mPlayingPkgs = pkgs
+        mLastSessionCount = list?.size ?: 0
+        mPlayingPkgs = collectPlayingPackages(list)
     }
 
     private val mTicker = object : Runnable {
@@ -219,13 +227,15 @@ class MediaHelper(
     }
 
     /**
-     * 周期性重刷 mPlayingPkgs。start() 时 post 一次，之后每 2s 重 post。
-     * 兜底 OnActiveSessionsChangedListener 时序问题（framework 偶尔漏发通知）。
+     * 兜底重刷 mPlayingPkgs（framework 偶尔漏发 OnActiveSessionsChangedListener）。
+     * 自适应周期：有活跃会话 2s（状态翻转可能漏通知），完全无会话 10s
+     * （仅兜底新会话出现），无会话长挂机时 binder 轮询降至 1/5。
      */
     private val mPlayingPkgsRefresher: Runnable = object : Runnable {
         override fun run() {
             refreshPlayingPackages()
-            mHandler.postDelayed(this, PLAYING_PKGS_REFRESH_MS)
+            val period = if (mLastSessionCount > 0) PLAYING_PKGS_REFRESH_MS else IDLE_PKGS_REFRESH_MS
+            mHandler.postDelayed(this, period)
         }
     }
 

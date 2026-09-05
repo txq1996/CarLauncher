@@ -65,10 +65,12 @@ data class HomeLayout(
 }
 
 /**
- * 命名布局 = 名称 + 多页（至少一页，每页一个 [HomeLayout]）。
+ * 命名布局 = 名称 + 单页 [HomeLayout]。
  * 内置模板（[LayoutRepository.BUILTIN_NAME]）为代码常量、只读，不入库。
+ * 历史上此处是多页列表（pages），实际所有调用方只用第一页，已收敛为单字段；
+ * JSON 中布局条目 = name + [HomeLayout] 字段平铺（见 [LayoutRepository]）。
  */
 data class NamedLayout(
     val name: String,
-    val pages: List<HomeLayout>
+    val page: HomeLayout
 )

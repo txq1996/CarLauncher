@@ -1,5 +1,4 @@
 package com.android.launcher37
-import com.android.launcher37.LauncherApp
 import com.android.launcher37.SettingsActivity
 import com.android.launcher37.R
 import com.android.launcher37.drawer.DrawerOverlay
@@ -17,7 +16,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Toast
 import com.android.launcher37.home.UpdateDelegate
-import com.android.launcher37.home.widget.LyricsWidget
+import com.android.launcher37.music.MediaHub
 import com.android.launcher37.home.widget.PageHost
 
 /**
@@ -84,7 +83,8 @@ class LauncherActivity : Activity() {
         host = PageHost(this, container)
         host?.onDesignerExit = { exitDesign() }
         host?.onToggleStatusBar = { applyStatusBarVisibility() }
-        (application as LauncherApp).activeHost = host
+        // PageHost.instance（companion）即全局入口：Store/DrawerOverlay 等无 Activity
+        // 调用方经它查询 VD 绑定；销毁路径由 PageHost.destroyAll 维护
         update = UpdateDelegate(application, this)
         // 注意：mDesignMode 不在此提前置 true，否则 enterDesign() 的 `if (mDesignMode) return`
         // 会让首次进入直接返回（工具栏不显示、设计模式不激活）。由 enterDesign() 统一置位。
@@ -262,13 +262,10 @@ class LauncherActivity : Activity() {
 
     override fun onDestroy() {
         AppDrawer.dismissIfShowing()
-        val h = host
+        // 旧 Activity 延迟销毁（CLEAR_TASK 重启时晚于新 Activity onCreate）：
+        // destroyAll 仅在 PageHost.instance 仍指向本实例时清空，不会误杀新 Activity 的注册
         host?.destroyAll()
         host = null
-        // 旧 Activity 延迟销毁（CLEAR_TASK 重启时晚于新 Activity onCreate）：
-        // 仅当 activeHost 仍指向本实例时才清空，避免误杀新 Activity 注册的 host
-        // （Store/DrawerOverlay 的 VD 查询依赖 activeHost）
-        (application as? LauncherApp)?.let { if (it.activeHost === h) it.activeHost = null }
         update?.release()
         update = null
         super.onDestroy()
@@ -366,14 +363,8 @@ class LauncherActivity : Activity() {
         super.onBackPressed()
     }
 
-    /** 内存清理保护：正在播放音乐的包（全部 LyricsWidget 汇总） */
-    internal fun playingPkgs(): Set<String> {
-        val out = HashSet<String>()
-        host?.allWidgets()?.filterIsInstance<LyricsWidget>()?.forEach {
-            out.addAll(it.mediaHelper().playingPackages)
-        }
-        return out
-    }
+    /** 内存清理保护：正在播放音乐的包（MediaHub 全局会话集合，多音乐卡共享同一实例） */
+    internal fun playingPkgs(): Set<String> = MediaHub.playingPackages
 
     /** 内存清理保护 / 全屏搬移：全部 VDWidget 绑定的包名 */
     internal fun vdPkgs(): Set<String> = host?.vdBoundedPkgs() ?: emptySet()

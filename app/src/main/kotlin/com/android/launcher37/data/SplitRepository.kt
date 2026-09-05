@@ -3,75 +3,84 @@ import com.android.launcher37.data.Store
 import com.android.launcher37.util.Prefs
 import android.content.Context
 import android.content.SharedPreferences
+import java.util.UUID
 
 /**
  * 分屏项仓储（持久化 `split_items`）。
  *
- * 存储格式：`pkg/cls1|pkg/cls2` 列表，每条一行（`\n` 分隔）。
+ * 存储格式：`id|left|right`，每条一行（`\n` 分隔）。id 为稳定标识，删除任意一条
+ * 不会使抽屉排序/隐藏记录（tag = `split:<id>`）错位到其他分屏上。
  * 加载时自动剔除任一侧应用未安装的条目并回写。
  */
 object SplitRepository {
 
     private const val KEY = "split_items"
 
+    /** 一条分屏项：id 稳定（持久化后不变），left/right 为 `pkg/cls` 标识 */
+    class Entry(val id: String, val left: String, val right: String)
+
     /**
-     * 加载所有分屏项。已安装校验失败的会自动剔除并回写。
+     * 加载所有分屏项。格式非法或已卸载的条目剔除，有变化时回写。
      */
     @JvmStatic
-    fun load(c: Context): MutableList<Array<String>> {
+    fun load(c: Context): MutableList<Entry> {
         val json = prefs(c).getString(KEY, "")
-        val out = ArrayList<Array<String>>()
+        val out = ArrayList<Entry>()
         if (json.isNullOrEmpty()) return out
         var changed = false
         for (s in json.split("\n".toRegex())) {
-            val sep = s.indexOf('|')
-            if (sep > 0) {
-                val left = s.substring(0, sep)
-                val right = s.substring(sep + 1)
-                if (Store.installed(c, Store.pkgOf(left)) && Store.installed(c, Store.pkgOf(right))) {
-                    out.add(arrayOf(left, right))
-                } else {
-                    changed = true
-                }
+            // pkg/cls 不含 '|'，按 '|' 切成 3 段即合法条目
+            val parts = s.split('|')
+            if (parts.size != 3 || parts.any { it.isEmpty() }) {
+                changed = true
+                continue
+            }
+            val e = Entry(parts[0], parts[1], parts[2])
+            if (Store.installed(c, Store.pkgOf(e.left)) && Store.installed(c, Store.pkgOf(e.right))) {
+                out.add(e)
+            } else {
+                changed = true
             }
         }
         if (changed) save(c, out)
         return out
     }
 
-    /** 取指定下标的分屏项；越界返回 null */
+    /** 按稳定 id 取分屏项；不存在返回 null */
     @JvmStatic
-    fun get(c: Context, index: Int): Array<String>? {
-        val items = load(c)
-        return if (index in 0 until items.size) items[index] else null
+    fun get(c: Context, id: String): Entry? {
+        if (id.isEmpty()) return null
+        return load(c).firstOrNull { it.id == id }
     }
 
     /** 追加分屏项（自动去重 + 排序后稳定） */
     @JvmStatic
     fun add(c: Context, left: String, right: String) {
         val items = load(c).toMutableList()
-        val entry = arrayOf(left, right)
         // 去重：完全相同的 left|right 跳过
-        if (items.none { it[0] == left && it[1] == right }) {
-            items.add(entry)
+        if (items.none { it.left == left && it.right == right }) {
+            items.add(Entry(newId(), left, right))
             save(c, items)
         }
     }
 
-    /** 按下标删除分屏项 */
+    /** 按 id 删除分屏项 */
     @JvmStatic
-    fun remove(c: Context, index: Int) {
+    fun remove(c: Context, id: String) {
         val items = load(c)
-        if (index !in 0 until items.size) return
-        items.removeAt(index)
-        save(c, items)
+        val filtered = items.filter { it.id != id }
+        if (filtered.size != items.size) save(c, filtered)
     }
 
-    private fun save(c: Context, items: List<Array<String>>) {
+    /** 稳定 id：随机 10 位 hex，不随删除/新增的数组下标漂移 */
+    private fun newId(): String =
+        "s" + UUID.randomUUID().toString().replace("-", "").take(10)
+
+    private fun save(c: Context, items: List<Entry>) {
         val sb = StringBuilder()
-        for (i in items.indices) {
+        for ((i, e) in items.withIndex()) {
             if (i > 0) sb.append("\n")
-            sb.append(items[i][0]).append("|").append(items[i][1])
+            sb.append(e.id).append("|").append(e.left).append("|").append(e.right)
         }
         prefs(c).edit().putString(KEY, sb.toString()).apply()
     }

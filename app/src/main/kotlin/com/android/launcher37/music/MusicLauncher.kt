@@ -23,11 +23,15 @@ class MusicLauncher(
     companion object {
         private const val CHECK_INTERVAL_MS = 200L
         private const val TIMEOUT_MS = 8_000L
+
+        /** play() 重发节流：PAUSED 时按 1s 间隔重试，避免 200ms 轮询刷屏 40 次命令 */
+        private const val PLAY_RETRY_MS = 1_000L
     }
 
     private val mHandler = MainThread.handler
     private var mPendingPackage: String? = null
     private var mStartTime: Long = 0
+    private var mLastPlaySentMs: Long = 0
 
     private val mCheckRunnable: Runnable = Runnable {
         if (mActivity.isDestroyed || mActivity.isFinishing) {
@@ -47,12 +51,15 @@ class MusicLauncher(
                 cancelPending()
                 return@Runnable
             }
-            // PAUSED / NONE / STOPPED：每次检查都发送 play()
-            val result = mMediaHelper.play(packageName)
-            if (result == 1) {
-                mReturnHome?.run()
-                cancelPending()
-                return@Runnable
+            // PAUSED / NONE / STOPPED：按 [PLAY_RETRY_MS] 间隔重发 play()
+            val now = System.currentTimeMillis()
+            if (now - mLastPlaySentMs >= PLAY_RETRY_MS) {
+                mLastPlaySentMs = now
+                if (mMediaHelper.play(packageName) == 1) {
+                    mReturnHome?.run()
+                    cancelPending()
+                    return@Runnable
+                }
             }
         }
         // 超时：停在当前界面，不做任何操作
@@ -90,6 +97,7 @@ class MusicLauncher(
         cancelPending()
         mPendingPackage = boundPkg
         mStartTime = System.currentTimeMillis()
+        mLastPlaySentMs = 0
         // 启动后开始轮询播放状态
         scheduleCheck()
     }

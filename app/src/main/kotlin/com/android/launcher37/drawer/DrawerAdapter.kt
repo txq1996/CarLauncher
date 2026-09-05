@@ -52,11 +52,10 @@ internal class DrawerAdapter(
             tags.add("$LAYOUT_PREFIX$name")
         }
         val splits = SplitRepository.load(context)
-        for (i in splits.indices) {
-            val pair = splits[i]
-            val t = "$SPLIT_PREFIX$i"
-            labels.add("${Store.label(context, pair[0])}|${Store.label(context, pair[1])}")
-            icons.add(Store.normalizedSplitIcon(context, pair[0], pair[1])); tags.add(t)
+        for (pair in splits) {
+            labels.add("${Store.label(context, pair.left)}|${Store.label(context, pair.right)}")
+            icons.add(Store.normalizedSplitIcon(context, pair.left, pair.right))
+            tags.add("$SPLIT_PREFIX${pair.id}")
         }
         for (ri in apps) {
             val id = "${ri.activityInfo.packageName}/${ri.activityInfo.name}"

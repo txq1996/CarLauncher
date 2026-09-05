@@ -65,9 +65,7 @@ class PageHost(
     /** 加载激活布局并创建 WidgetHost（容器测量完成后由 Activity 调用）。
      *  [designRequested] 为 true 表示进入设计器即装配：VD 不挂 surface 不拉起应用。 */
     fun install(designRequested: Boolean = false) {
-        val doc = LayoutRepository.loadActive(activity, screenW(), screenH())
-        val layout = doc.pages.firstOrNull()
-            ?: HomeLayout(HomeLayout.CURRENT_VERSION, screenW(), screenH(), emptyList())
+        val layout = LayoutRepository.loadActive(activity, screenW(), screenH()).page
         Dbg.i(TAG) { "install designRequested=$designRequested active=${LayoutRepository.activeName(activity)} widgets=${layout.widgets.size} canvas=${screenW()}x${screenH()}" }
         rebuild(layout, designRequested)
     }
@@ -153,9 +151,7 @@ class PageHost(
         if (mDirty) {
             // 未点保存退出：丢弃所有更改，从盘上重载激活布局
             mDirty = false
-            val doc = LayoutRepository.loadActive(activity, screenW(), screenH())
-            val page = doc.pages.firstOrNull()
-                ?: HomeLayout(HomeLayout.CURRENT_VERSION, screenW(), screenH(), emptyList())
+            val page = LayoutRepository.loadActive(activity, screenW(), screenH()).page
             Dbg.i(TAG) { "exitDesignMode: discard draft, reload from disk" }
             rebuild(page, false)
         }
@@ -181,7 +177,7 @@ class PageHost(
         // 状态栏显隐为全局 SP 运行态，保存布局时一并记录（每布局独立恢复）
         val hide = Prefs.of(activity).getBoolean(SettingsActivity.KEY_HIDE_STATUS_BAR, false)
         Dbg.i(TAG) { "doPersist layout=$name widgets=${layout.widgets.size} hideStatusBar=$hide" }
-        LayoutRepository.save(activity, NamedLayout(name, listOf(layout.copy(hideStatusBar = hide))))
+        LayoutRepository.save(activity, NamedLayout(name, layout.copy(hideStatusBar = hide)))
     }
 
     /** 布局变更通知（拖动/缩放实时调用）：仅标脏 */
@@ -200,9 +196,8 @@ class PageHost(
 
     /** 按名应用布局（布局管理"进入"调用）：置 active + 重建。成功返回 true */
     fun applyLayout(name: String): Boolean {
-        val doc = LayoutRepository.load(activity, name, screenW(), screenH())
+        val page = LayoutRepository.load(activity, name, screenW(), screenH())?.page
             ?: return false.also { Dbg.i(TAG) { "applyLayout $name FAILED (not found)" } }
-        val page = doc.pages.firstOrNull() ?: return false.also { Dbg.i(TAG) { "applyLayout $name FAILED (empty pages)" } }
         LayoutRepository.setActive(activity, name)
         Dbg.i(TAG) { "applyLayout $name widgets=${page.widgets.size}" }
         rebuild(page, false)

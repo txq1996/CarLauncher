@@ -12,40 +12,32 @@ import kotlin.math.roundToInt
 /**
  * 布局持久化：命名布局仓库（内部存储 filesDir/layouts.json）。
  *
- * JSON 结构：
- * { "version":1, "active":"默认布局",
- *   "layouts":[ {"name":"默认布局","pages":[ <HomeLayout JSON>... ]} ] }
- *
- * 每个 HomeLayout（=一页）结构：
- * { "version":1, "screenWidth":1280, "screenHeight":720,
- *   "widgets":[ {"id":1,"type":"time","x":..,"y":..,"w":..,"h":..,"visible":true,"config":{...}} ] }
+ * JSON 结构（每个布局条目 = name + [HomeLayout] 字段平铺）：
+ * { "version":1, "active":"经典布局",
+ *   "layouts":[ {"name":"默认布局","version":1,"screenWidth":1280,"screenHeight":720,
+ *                "widgets":[ {"id":1,"type":"time","x":..,"y":..,"w":..,"h":..,"visible":true,"config":{...}} ]} ] }
  *
  * 内置模板（[BUILTIN_NAME]）为代码常量，不入库 → 天然只读、不可覆盖/删除。
- * 旧单页文件 home_layout.json 首次启动自动迁移为"默认布局"（迁移后保留旧文件不删）。
  *
  * 加载时若保存屏幕尺寸与当前不一致，按比例缩放全部坐标尺寸（保持相对布局），
- * 并 clamp 到最小 20×20、屏幕边界内。
+ * 并 clamp 到最小 40×40、屏幕边界内。
  */
 object LayoutRepository {
     private const val TAG = "LayoutRepository"
     private const val FILE = "layouts.json"
-    private const val LEGACY_FILE = "home_layout.json"
 
     /** 内置只读模板名（代码常量，不入库） */
     const val BUILTIN_NAME = "经典布局"
-    /** 迁移/首启用户布局默认名 */
-    const val DEFAULT_NAME = "默认布局"
     const val MIN_SIZE = 40
 
     fun file(context: Context): File = File(context.filesDir, FILE)
-    private fun legacyFile(context: Context): File = File(context.filesDir, LEGACY_FILE)
 
     /** 内置模板是否为真 */
     fun isBuiltIn(name: String): Boolean = name == BUILTIN_NAME
 
     /** 内置模板（单页默认布局；只读，不入库） */
     fun builtin(screenW: Int, screenH: Int): NamedLayout =
-        NamedLayout(BUILTIN_NAME, listOf(defaultLayout(screenW, screenH)))
+        NamedLayout(BUILTIN_NAME, defaultLayout(screenW, screenH))
 
     // ── 命名布局仓库 ─────────────────────────────────
 
@@ -57,24 +49,16 @@ object LayoutRepository {
         return names
     }
 
-    fun list(context: Context): List<NamedLayout> {
-        val out = ArrayList<NamedLayout>()
-        // 内置以代码生成（屏幕尺寸未知时用 0 占位，加载时 normalize）
-        out.add(NamedLayout(BUILTIN_NAME, emptyList()))
-        out.addAll(loadRepo(context).layouts)
-        return out
-    }
-
     /** 读取命名布局；经典布局优先取持久化修改版（重置后回落代码模板），其余走文件。无/失败返回 null。 */
     fun load(context: Context, name: String, screenW: Int, screenH: Int): NamedLayout? {
         val l = loadRepo(context).layouts.firstOrNull { it.name == name }
-        if (l == null && isBuiltIn(name)) return builtin(screenW, screenH)
-        return l?.copy(pages = l.pages.map { normalize(it, screenW, screenH) })
+            ?: if (isBuiltIn(name)) return builtin(screenW, screenH) else return null
+        return l.copy(page = normalize(l.page, screenW, screenH))
     }
 
     /** 保存命名布局（经典布局的修改同样写盘；重置用 [delete] 清除） */
     fun save(context: Context, layout: NamedLayout): Boolean {
-        Dbg.d(TAG) { "save name=${layout.name} pages=${layout.pages.size}" }
+        Dbg.d(TAG) { "save name=${layout.name} widgets=${layout.page.widgets.size}" }
         val repo = loadRepo(context)
         val idx = repo.layouts.indexOfFirst { it.name == layout.name }
         val layouts = ArrayList(repo.layouts)
@@ -104,26 +88,14 @@ object LayoutRepository {
     }
 
     /**
-     * 加载激活布局：先迁移旧文件，再返回 active 对应布局。
+     * 加载激活布局：返回 active 对应布局。
      * 无任何数据 → 内置模板（用户改动需"另存为"）。
      */
     fun loadActive(context: Context, screenW: Int, screenH: Int): NamedLayout {
-        migrateIfNeeded(context)
         val name = activeName(context)
-        Dbg.d(TAG) { "loadActive name=$name screen=${screenW}x$screenH" }
+        Dbg.d(TAG) { "loadActive name=$name screen=${screenW}x${screenH}" }
         return load(context, name, screenW, screenH)
             ?: builtin(screenW, screenH)
-    }
-
-    /** 首次启动迁移：仅当 layouts.json 不存在且旧 home_layout.json 存在时执行 */
-    fun migrateIfNeeded(context: Context) {
-        val repoFile = file(context)
-        val legacy = legacyFile(context)
-        if (repoFile.exists() || !legacy.isFile || legacy.length() <= 0L) return
-        val old = try { fromJson(legacy.readText()) } catch (e: Exception) {
-            Log.w(TAG, "legacy parse failed", e); null
-        } ?: return
-        writeRepo(context, Repo(1, DEFAULT_NAME, listOf(NamedLayout(DEFAULT_NAME, listOf(old)))))
     }
 
     // ── 单页工具（原样保留，供 builtin/迁移/加载复用） ─────
@@ -252,14 +224,8 @@ object LayoutRepository {
             val layouts = ArrayList<NamedLayout>(arr.length())
             for (i in 0 until arr.length()) {
                 val lo = arr.optJSONObject(i) ?: continue
-                val name = lo.optString("name", "")
-                val pages = ArrayList<HomeLayout>()
-                val pa = lo.optJSONArray("pages")
-                if (pa != null) for (j in 0 until pa.length()) {
-                    val po = pa.optJSONObject(j) ?: continue
-                    pages.add(homeLayoutFromJson(po))
-                }
-                layouts.add(NamedLayout(name, pages))
+                // 布局条目 = name + HomeLayout 字段平铺（widgets/screenWidth/...）
+                layouts.add(NamedLayout(lo.optString("name", ""), homeLayoutFromJson(lo)))
             }
             Repo(o.optInt("version", 1), o.optString("active", ""), layouts)
         } else {
@@ -275,12 +241,7 @@ object LayoutRepository {
             put("version", repo.version)
             put("active", repo.active)
             put("layouts", JSONArray().apply {
-                for (l in repo.layouts) put(JSONObject().apply {
-                    put("name", l.name)
-                    put("pages", JSONArray().apply {
-                        for (p in l.pages) put(homeLayoutToJson(p))
-                    })
-                })
+                for (l in repo.layouts) put(homeLayoutToJson(l.page).put("name", l.name))
             })
         }
         // 原子写：先写临时文件再 rename 覆盖，车机断电/进程被杀时不会留下半截 JSON
@@ -292,33 +253,5 @@ object LayoutRepository {
     } catch (e: Exception) {
         Log.w(TAG, "writeRepo failed", e)
         false
-    }
-
-    /** 旧单页文件读取（仅迁移用） */
-    private fun fromJson(text: String): HomeLayout {
-        val o = JSONObject(text)
-        val arr = o.optJSONArray("widgets") ?: JSONArray()
-        val widgets = ArrayList<WidgetSpec>(arr.length())
-        for (i in 0 until arr.length()) {
-            val c = arr.optJSONObject(i) ?: continue
-            val cfg = LinkedHashMap<String, String>()
-            val cj = c.optJSONObject("config")
-            if (cj != null) for (k in cj.keys()) cfg[k] = cj.optString(k, "")
-            widgets.add(
-                WidgetSpec(
-                    id = c.optInt("id", i + 1),
-                    type = c.optString("type", ""),
-                    x = c.optInt("x", 0), y = c.optInt("y", 0),
-                    w = c.optInt("w", 300), h = c.optInt("h", 200),
-                    visible = c.optBoolean("visible", true),
-                    config = cfg
-                )
-            )
-        }
-        return HomeLayout(
-            o.optInt("version", HomeLayout.CURRENT_VERSION),
-            o.optInt("screenWidth", 0), o.optInt("screenHeight", 0),
-            widgets
-        )
     }
 }

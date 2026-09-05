@@ -59,6 +59,9 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
     /** 异步加载 token：配置快速连续变更时丢弃过期 UI 刷新 */
     private var mRefreshToken = 0
 
+    /** 已入队未执行的刷新任务：拖动/属性面板高频调用合并为一次 IO 任务 */
+    private var mRefreshQueued = false
+
     /** 绑定选择器加载 token（独立于 refresh，避免互相作废） */
     private var mPickerToken = 0
 
@@ -103,17 +106,20 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
 
     // ── 异步刷新 ─────────────────────────────────────
 
-    /** 后台解析全部条目（图标预取走缓存），完成后 UI 线程重建。
+    /**
+     * 异步刷新（合并去抖）：拖动每帧 MOVE 都会触发，仅首个调用入队，其余只推进
+     * token；任务执行时读最新 config，完成后若 token 已变（期间又有变更）再补一次。
+     * 避免对 SharedExecutor（2 线程共享池）塞入高频 PackageManager binder 查询、
+     * 挤占歌词取词等其他 IO 任务。
      *  第一条缺省绑定「应用抽屉」（可换绑），其余按绑定/默认应用渲染。 */
     private fun refresh() {
-        val token = ++mRefreshToken
-        val count = cfgInt(CFG_COUNT, 6)
-        val bindings = bindingTokens()
+        mRefreshToken++
+        if (mRefreshQueued) return
+        mRefreshQueued = true
         SharedExecutor.io().execute {
-            // token 前置检查：设计器拖动/缩放每次 MOVE 都触发 refresh，过期任务在此
-            // 立即退出，避免对 SharedExecutor（2 线程共享池）塞入高频 PackageManager
-            // binder 查询、挤占歌词取词等其他 IO 任务
-            if (token != mRefreshToken) return@execute
+            val token = mRefreshToken
+            val count = cfgInt(CFG_COUNT, 6)
+            val bindings = bindingTokens()
             val sortedApps = AppQuery.launcherEntriesSorted(activity)
             val entries = ArrayList<Entry>(count)
             for (i in 0 until count) {
@@ -122,8 +128,12 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
                 resolveEntry(i, bindToken, sortedApps)?.let { entries.add(it) }
             }
             activity.runOnUiThread {
-                if (token != mRefreshToken) return@runOnUiThread
+                mRefreshQueued = false
                 if (activity.isDestroyed || activity.isFinishing) return@runOnUiThread
+                if (token != mRefreshToken) {
+                    refresh() // 执行期间又有变更：以最新配置补刷一次
+                    return@runOnUiThread
+                }
                 rebuildItems(entries)
             }
         }
@@ -164,12 +174,12 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
                 }
             }
             "split" -> {
-                val pair = arg.toIntOrNull()?.let { SplitRepository.get(activity, it) }
-                    ?: return null
+                // token = split:<稳定id>，删除其他分屏项不会错位
+                val pair = SplitRepository.get(activity, arg) ?: return null
                 Entry(index,
-                    Store.normalizedSplitIcon(activity, pair[0], pair[1]),
-                    "${Store.label(activity, pair[0])}|${Store.label(activity, pair[1])}", bindable = true
-                ) { Store.launchSplit(activity, pair[0], pair[1]) }
+                    Store.normalizedSplitIcon(activity, pair.left, pair.right),
+                    "${Store.label(activity, pair.left)}|${Store.label(activity, pair.right)}", bindable = true
+                ) { Store.launchSplit(activity, pair.left, pair.right) }
             }
             "layout" -> if (arg.isEmpty()) null else Entry(index,
                 Store.normalizedGlyphIcon(activity, R.drawable.ic_layout), arg, bindable = true
@@ -266,10 +276,10 @@ class AppListWidget(activity: Activity, spec: WidgetSpec) : WidgetView(activity,
             for (name in LayoutRepository.listNames(activity)) {
                 items.add(Item(Store.normalizedGlyphIcon(activity, R.drawable.ic_layout), name, "layout:$name"))
             }
-            for ((i, pair) in SplitRepository.load(activity).withIndex()) {
+            for (pair in SplitRepository.load(activity)) {
                 items.add(Item(
-                    Store.normalizedSplitIcon(activity, pair[0], pair[1]),
-                    "${Store.label(activity, pair[0])}|${Store.label(activity, pair[1])}", "split:$i"
+                    Store.normalizedSplitIcon(activity, pair.left, pair.right),
+                    "${Store.label(activity, pair.left)}|${Store.label(activity, pair.right)}", "split:${pair.id}"
                 ))
             }
             for (ri in AppQuery.launcherEntriesSorted(activity)) {
