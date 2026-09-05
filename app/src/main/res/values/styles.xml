@@ -48,8 +48,12 @@
         <item name="android:button">@drawable/checkbox_px</item>
     </style>
 
-    <!-- 设置页主题按钮（检查更新/布局管理等）：56px 高、18px 字，水平 20px 内边距，无默认最小宽高（与代码 actionButton 一致）；
-         统一按钮背景 bg_btn（surface_variant 常态 / surface_highlight 按压）并去掉 Material 默认阴影动画 -->
+    <!-- 通用按钮样式（ThemeButton）：56px 高、18px 字、水平 20px 内边距、bg_btn 背景（surface_variant 常态 / surface_highlight 按压）、foreground 文字色、无圆角无阴影
+         使用位置：
+         - activity_settings.xml 中 btn_check_update（检查更新按钮）
+         - SettingsActivity.actionButton()（布局行：设默认/删除/重命名/复制/属性/设计器）
+         - SettingsActivity.dialogButton()（对话框：取消/确认/删除等）
+         - UpdateDelegate.label()（更新确认对话框：稍后/立即更新） -->
     <style name="ThemeButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">56px</item>

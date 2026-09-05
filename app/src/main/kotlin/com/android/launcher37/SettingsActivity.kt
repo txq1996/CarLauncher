@@ -9,6 +9,7 @@ import com.android.launcher37.drawer.AppDrawer
 import com.android.launcher37.data.Store
 import com.android.launcher37.util.Prefs
 import com.android.launcher37.util.SharedExecutor
+import com.android.launcher37.util.ThemeButtonUtil
 import com.android.launcher37.navi.MapFeature
 import com.android.launcher37.data.AppQuery
 
@@ -208,20 +209,11 @@ class SettingsActivity : Activity() {
         val sw = resources.displayMetrics.widthPixels
         val sh = resources.displayMetrics.heightPixels
 
-        // 按钮样式与通用卡 ThemeButton 一致：18px 字号、前景色、56px 高、左右 20px 内边距
-        // （注意直接用 px 值，不经 px() 缩放，保持与 XML ThemeButton 同高）
+        // 通用按钮（复用 ThemeButton 样式）：用于布局行 设默认/删除/重命名/复制/属性/设计器
         fun actionButton(text: String, onClick: () -> Unit): Button =
             Button(ctx).apply {
                 this.text = text
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, 18f)
-                setTextColor(resources.getColor(R.color.foreground, theme))
-                setBackgroundResource(R.drawable.bg_btn)
-                stateListAnimator = null
-                minHeight = 56
-                minimumHeight = 0
-                minimumWidth = 0
-                minWidth = 0
-                setPadding(20, 0, 20, 0)
+                ThemeButtonUtil.apply(this)
                 setOnClickListener { onClick() }
             }
 
@@ -445,19 +437,13 @@ class SettingsActivity : Activity() {
         setPadding(18, 12, 18, 0)
     }
 
-    /** 紧凑按钮（与布局行 actionButton 同款：18px 字、56px 高、20px 水平内边距、统一 bg_btn 背景） */
-    private fun dialogButton(text: String, onClick: () -> Unit): Button = Button(this).apply {
-        this.text = text
-        setTextSize(TypedValue.COMPLEX_UNIT_PX, 18f)
-        setTextColor(getColor(R.color.foreground))
-        setBackgroundResource(R.drawable.bg_btn)
-        stateListAnimator = null
-        minHeight = 56
-        minimumHeight = 0
-        minimumWidth = 0
-        setPadding(20, 0, 20, 0)
-        setOnClickListener { onClick() }
-    }
+    /** 通用按钮（复用 ThemeButton 样式）：用于对话框 取消/确认/删除 等 */
+    private fun dialogButton(text: String, onClick: () -> Unit): Button =
+        Button(this).apply {
+            this.text = text
+            ThemeButtonUtil.apply(this)
+            setOnClickListener { onClick() }
+        }
 
     /**
      * 紧凑对话框骨架：14px 标题 + 内容 + 底部按钮行（按钮从右往左：取消在前），

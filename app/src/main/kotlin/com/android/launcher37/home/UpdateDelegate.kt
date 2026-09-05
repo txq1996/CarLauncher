@@ -27,17 +27,10 @@ class UpdateDelegate(
                 val size = if (info.sizeBytes > 0) "\n大小：%.1f MB".format(info.sizeBytes / 1048576f) else ""
                 // 紧凑对话框（px 定值）替代系统 AlertDialog 的 sp 大标题/大正文
                 val ctx = act
+                // 通用按钮（复用 ThemeButton 样式）：用于更新确认对话框 稍后/立即更新
                 fun label(text: String, onClick: () -> Unit) = android.widget.Button(ctx).apply {
                     this.text = text
-                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 18f)
-                    setTextColor(ctx.getColor(com.android.launcher37.R.color.foreground))
-                    // 统一按钮样式（与设置页 actionButton 一致）
-                    setBackgroundResource(com.android.launcher37.R.drawable.bg_btn)
-                    stateListAnimator = null
-                    minHeight = 56
-                    minimumHeight = 0
-                    minimumWidth = 0
-                    setPadding(20, 0, 20, 0)
+                    com.android.launcher37.util.ThemeButtonUtil.apply(this)
                     setOnClickListener { onClick() }
                 }
                 var dlg: AlertDialog? = null
